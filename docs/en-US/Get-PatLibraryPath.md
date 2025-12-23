@@ -14,17 +14,19 @@ Retrieves library section paths from a Plex server.
 
 ### All (Default)
 ```
-Get-PatLibraryPath [-ServerUri <String>] [<CommonParameters>]
+Get-PatLibraryPath [-ServerUri <String>] [-ProgressAction <ActionPreference>] [<CommonParameters>]
 ```
 
 ### ById
 ```
-Get-PatLibraryPath [-ServerUri <String>] [-SectionId <Int32>] [<CommonParameters>]
+Get-PatLibraryPath [-ServerUri <String>] [-SectionId <Int32>] [-ProgressAction <ActionPreference>]
+ [<CommonParameters>]
 ```
 
 ### ByName
 ```
-Get-PatLibraryPath [-ServerUri <String>] [-SectionName <String>] [<CommonParameters>]
+Get-PatLibraryPath [-ServerUri <String>] [-SectionName <String>] [-ProgressAction <ActionPreference>]
+ [<CommonParameters>]
 ```
 
 ## DESCRIPTION
@@ -88,6 +90,21 @@ The friendly name of the library section (e.g., "Movies", "TV Shows")
 Type: String
 Parameter Sets: ByName
 Aliases:
+
+Required: False
+Position: Named
+Default value: None
+Accept pipeline input: False
+Accept wildcard characters: False
+```
+
+### -ProgressAction
+{{ Fill ProgressAction Description }}
+
+```yaml
+Type: ActionPreference
+Parameter Sets: (All)
+Aliases: proga
 
 Required: False
 Position: Named

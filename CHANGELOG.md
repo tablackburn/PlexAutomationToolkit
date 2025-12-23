@@ -11,3 +11,23 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - Initial release of PlexAutomationToolkit with core server management commands (add, remove, set default, retrieve stored servers).
 - Library management commands to list sections, refresh sections, resolve library paths, and browse child items by path, section name, or section ID.
+- Optional X-Plex-Token authentication support for Plex servers requiring authentication
+- New cmdlet `Get-PatToken` to help users obtain their Plex authentication token with detailed instructions
+- New parameter `-Token` on `Add-PatServer` to store authentication tokens with server configurations
+- Private helper function `Get-PatAuthHeaders` for centralized authentication header management
+- All API-calling cmdlets now support authenticated requests when tokens are configured
+
+### Changed
+
+- Updated `Get-PatServer`, `Get-PatLibrary`, `Get-PatLibraryPath`, `Get-PatLibraryChildItem`, and `Update-PatLibrary` to include X-Plex-Token header in API requests when servers have authentication tokens configured
+- Enhanced documentation with authentication guidance and security warnings
+
+### Security
+
+- **IMPORTANT**: Tokens are stored in PLAINTEXT in `servers.json`. Only use on trusted systems with appropriate file permissions.
+
+### Notes
+
+- Backward compatible: Existing server configurations without tokens continue to work
+- Authentication is OPTIONAL: Unauthenticated local network access still supported when servers are configured to allow it
+- No configuration schema version bump: Token property is additive

@@ -14,17 +14,20 @@ Lists directories and files at a given path on the Plex server.
 
 ### PathOnly (Default)
 ```
-Get-PatLibraryChildItem [-ServerUri <String>] [-Path <String>] [<CommonParameters>]
+Get-PatLibraryChildItem [-ServerUri <String>] [-Path <String>] [-ProgressAction <ActionPreference>]
+ [<CommonParameters>]
 ```
 
 ### ByName
 ```
-Get-PatLibraryChildItem [-ServerUri <String>] [-Path <String>] [-SectionName <String>] [<CommonParameters>]
+Get-PatLibraryChildItem [-ServerUri <String>] [-Path <String>] [-SectionName <String>]
+ [-ProgressAction <ActionPreference>] [<CommonParameters>]
 ```
 
 ### ById
 ```
-Get-PatLibraryChildItem [-ServerUri <String>] [-Path <String>] [-SectionId <Int32>] [<CommonParameters>]
+Get-PatLibraryChildItem [-ServerUri <String>] [-Path <String>] [-SectionId <Int32>]
+ [-ProgressAction <ActionPreference>] [<CommonParameters>]
 ```
 
 ## DESCRIPTION
@@ -111,6 +114,21 @@ Accept wildcard characters: False
 Type: String
 Parameter Sets: ByName
 Aliases:
+
+Required: False
+Position: Named
+Default value: None
+Accept pipeline input: False
+Accept wildcard characters: False
+```
+
+### -ProgressAction
+{{ Fill ProgressAction Description }}
+
+```yaml
+Type: ActionPreference
+Parameter Sets: (All)
+Aliases: proga
 
 Required: False
 Position: Named

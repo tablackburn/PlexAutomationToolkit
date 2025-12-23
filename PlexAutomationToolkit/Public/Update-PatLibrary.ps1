@@ -117,13 +117,16 @@ function Update-PatLibrary {
     )
 
     # Use default server if ServerUri not specified
+    $server = $null
+    $usingDefaultServer = $false
     if (-not $ServerUri) {
         try {
-            $defaultServer = Get-PatStoredServer -Default -ErrorAction 'Stop'
-            if (-not $defaultServer) {
+            $server = Get-PatStoredServer -Default -ErrorAction 'Stop'
+            if (-not $server) {
                 throw "No default server configured. Use Add-PatServer with -Default or specify -ServerUri."
             }
-            $ServerUri = $defaultServer.uri
+            $ServerUri = $server.uri
+            $usingDefaultServer = $true
         }
         catch {
             throw "Failed to get default server: $($_.Exception.Message)"
@@ -133,7 +136,13 @@ function Update-PatLibrary {
     # If using section name, resolve it to section ID
     if ($PSCmdlet.ParameterSetName -eq 'ByName') {
         try {
-            $sections = Get-PatLibrary -ServerUri $ServerUri -ErrorAction 'Stop'
+            # If using default server, don't pass ServerUri so Get-PatLibrary can retrieve server object with token
+            if ($usingDefaultServer) {
+                $sections = Get-PatLibrary -ErrorAction 'Stop'
+            }
+            else {
+                $sections = Get-PatLibrary -ServerUri $ServerUri -ErrorAction 'Stop'
+            }
             $matchedSection = $sections.Directory | Where-Object { $_.title -eq $SectionName }
 
             if (-not $matchedSection) {
@@ -167,9 +176,17 @@ function Update-PatLibrary {
         $target = "section $SectionId"
     }
 
+    # Build headers with authentication if we have server object
+    $headers = if ($server) {
+        Get-PatAuthHeaders -Server $server
+    }
+    else {
+        @{ Accept = 'application/json' }
+    }
+
     if ($PSCmdlet.ShouldProcess($target, 'Refresh library')) {
         try {
-            Invoke-PatApi -Uri $uri -Method 'Post' -ErrorAction 'Stop'
+            Invoke-PatApi -Uri $uri -Method 'Post' -Headers $headers -ErrorAction 'Stop'
         }
         catch {
             throw "Failed to refresh Plex library: $($_.Exception.Message)"

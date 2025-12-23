@@ -31,13 +31,14 @@ function Get-PatServer {
     )
 
     # Use default server if ServerUri not specified
+    $server = $null
     if (-not $ServerUri) {
         try {
-            $defaultServer = Get-PatStoredServer -Default -ErrorAction 'Stop'
-            if (-not $defaultServer) {
+            $server = Get-PatStoredServer -Default -ErrorAction 'Stop'
+            if (-not $server) {
                 throw "No default server configured. Use Add-PatServer with -Default or specify -ServerUri."
             }
-            $ServerUri = $defaultServer.uri
+            $ServerUri = $server.uri
         }
         catch {
             throw "Failed to get default server: $($_.Exception.Message)"
@@ -46,8 +47,16 @@ function Get-PatServer {
 
     $uri = Join-PatUri -BaseUri $ServerUri -Endpoint '/'
 
+    # Build headers with authentication if we have server object
+    $headers = if ($server) {
+        Get-PatAuthHeaders -Server $server
+    }
+    else {
+        @{ Accept = 'application/json' }
+    }
+
     try {
-        Invoke-PatApi -Uri $uri -ErrorAction 'Stop'
+        Invoke-PatApi -Uri $uri -Headers $headers -ErrorAction 'Stop'
     }
     catch {
         throw "Failed to get Plex server information: $($_.Exception.Message)"

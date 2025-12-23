@@ -13,12 +13,13 @@ Adds a Plex server to the configuration.
 ## SYNTAX
 
 ```
-Add-PatServer [-Name] <String> [-ServerUri] <String> [-Default] [-WhatIf] [-Confirm] [<CommonParameters>]
+Add-PatServer [-Name] <String> [-ServerUri] <String> [-Default] [[-Token] <String>]
+ [-ProgressAction <ActionPreference>] [-WhatIf] [-Confirm] [<CommonParameters>]
 ```
 
 ## DESCRIPTION
 Adds a new Plex server entry to the server configuration file.
-Optionally marks the server as default.
+Optionally marks the server as default and stores an authentication token.
 
 ## EXAMPLES
 
@@ -35,6 +36,13 @@ Add-PatServer -Name "Remote Server" -ServerUri "http://remote.plex.com:32400"
 ```
 
 Adds a new server without marking it as default
+
+### EXAMPLE 3
+```
+Add-PatServer -Name "Authenticated Server" -ServerUri "http://plex.remote.com:32400" -Token "ABC123xyz" -Default
+```
+
+Adds a new server with authentication token and marks it as default
 
 ## PARAMETERS
 
@@ -83,6 +91,26 @@ Accept pipeline input: False
 Accept wildcard characters: False
 ```
 
+### -Token
+Optional Plex authentication token (X-Plex-Token).
+Required for servers that don't allow unauthenticated local network access.
+Use Get-PatToken for instructions on obtaining your token.
+
+WARNING: Tokens are stored in PLAINTEXT in servers.json.
+Only use on trusted systems.
+
+```yaml
+Type: String
+Parameter Sets: (All)
+Aliases:
+
+Required: False
+Position: 3
+Default value: None
+Accept pipeline input: False
+Accept wildcard characters: False
+```
+
 ### -WhatIf
 Shows what would happen if the cmdlet runs.
 The cmdlet is not run.
@@ -114,6 +142,21 @@ Accept pipeline input: False
 Accept wildcard characters: False
 ```
 
+### -ProgressAction
+{{ Fill ProgressAction Description }}
+
+```yaml
+Type: ActionPreference
+Parameter Sets: (All)
+Aliases: proga
+
+Required: False
+Position: Named
+Default value: None
+Accept pipeline input: False
+Accept wildcard characters: False
+```
+
 ### CommonParameters
 This cmdlet supports the common parameters: -Debug, -ErrorAction, -ErrorVariable, -InformationAction, -InformationVariable, -OutVariable, -OutBuffer, -PipelineVariable, -Verbose, -WarningAction, and -WarningVariable. For more information, see [about_CommonParameters](http://go.microsoft.com/fwlink/?LinkID=113216).
 
@@ -122,5 +165,10 @@ This cmdlet supports the common parameters: -Debug, -ErrorAction, -ErrorVariable
 ## OUTPUTS
 
 ## NOTES
+Security Warning: Authentication tokens are stored in PLAINTEXT in the servers.json configuration file.
+Your Plex token provides full access to your Plex account.
+Only use on trusted systems with appropriate file permissions.
 
 ## RELATED LINKS
+
+[Get-PatToken](Get-PatToken.md)

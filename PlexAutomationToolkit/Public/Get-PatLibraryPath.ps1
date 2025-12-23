@@ -134,13 +134,15 @@ function Get-PatLibraryPath {
     )
 
     # Use default server if ServerUri not specified
+    $usingDefaultServer = $false
     if (-not $ServerUri) {
         try {
-            $defaultServer = Get-PatStoredServer -Default -ErrorAction 'Stop'
-            if (-not $defaultServer) {
+            $server = Get-PatStoredServer -Default -ErrorAction 'Stop'
+            if (-not $server) {
                 throw "No default server configured. Use Add-PatServer with -Default or specify -ServerUri."
             }
-            $ServerUri = $defaultServer.uri
+            $ServerUri = $server.uri
+            $usingDefaultServer = $true
         }
         catch {
             throw "Failed to get default server: $($_.Exception.Message)"
@@ -149,7 +151,13 @@ function Get-PatLibraryPath {
 
     try {
         # Get all sections first
-        $allSections = Get-PatLibrary -ServerUri $ServerUri -ErrorAction 'Stop'
+        # If using default server, don't pass ServerUri so Get-PatLibrary can retrieve server object with token
+        if ($usingDefaultServer) {
+            $allSections = Get-PatLibrary -ErrorAction 'Stop'
+        }
+        else {
+            $allSections = Get-PatLibrary -ServerUri $ServerUri -ErrorAction 'Stop'
+        }
 
         # If SectionName is provided, filter to that section
         if ($SectionName) {

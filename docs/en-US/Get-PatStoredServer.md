@@ -14,17 +14,17 @@ Gets stored Plex server configurations.
 
 ### All (Default)
 ```
-Get-PatStoredServer [<CommonParameters>]
+Get-PatStoredServer [-ProgressAction <ActionPreference>] [<CommonParameters>]
 ```
 
 ### ByName
 ```
-Get-PatStoredServer [-Name <String>] [<CommonParameters>]
+Get-PatStoredServer [-Name <String>] [-ProgressAction <ActionPreference>] [<CommonParameters>]
 ```
 
 ### Default
 ```
-Get-PatStoredServer [-Default] [<CommonParameters>]
+Get-PatStoredServer [-Default] [-ProgressAction <ActionPreference>] [<CommonParameters>]
 ```
 
 ## DESCRIPTION
@@ -82,6 +82,21 @@ Aliases:
 Required: False
 Position: Named
 Default value: False
+Accept pipeline input: False
+Accept wildcard characters: False
+```
+
+### -ProgressAction
+{{ Fill ProgressAction Description }}
+
+```yaml
+Type: ActionPreference
+Parameter Sets: (All)
+Aliases: proga
+
+Required: False
+Position: Named
+Default value: None
 Accept pipeline input: False
 Accept wildcard characters: False
 ```

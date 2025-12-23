@@ -76,6 +76,7 @@ FunctionsToExport = @(
     'Get-PatLibraryPath'
     'Get-PatServer'
     'Get-PatStoredServer'
+    'Get-PatToken'
     'Remove-PatServer'
     'Set-PatDefaultServer'
     'Update-PatLibrary'

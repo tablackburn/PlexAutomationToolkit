@@ -16,6 +16,12 @@ function Add-PatServer {
     .PARAMETER Default
         If specified, marks this server as the default server
 
+    .PARAMETER Token
+        Optional Plex authentication token (X-Plex-Token). Required for servers that don't allow
+        unauthenticated local network access. Use Get-PatToken for instructions on obtaining your token.
+
+        WARNING: Tokens are stored in PLAINTEXT in servers.json. Only use on trusted systems.
+
     .EXAMPLE
         Add-PatServer -Name "Main Server" -ServerUri "http://plex.local:32400" -Default
         Adds a new server and marks it as default
@@ -23,6 +29,15 @@ function Add-PatServer {
     .EXAMPLE
         Add-PatServer -Name "Remote Server" -ServerUri "http://remote.plex.com:32400"
         Adds a new server without marking it as default
+
+    .EXAMPLE
+        Add-PatServer -Name "Authenticated Server" -ServerUri "http://plex.remote.com:32400" -Token "ABC123xyz" -Default
+        Adds a new server with authentication token and marks it as default
+
+    .NOTES
+        Security Warning: Authentication tokens are stored in PLAINTEXT in the servers.json configuration file.
+        Your Plex token provides full access to your Plex account. Only use on trusted systems with
+        appropriate file permissions.
     #>
     [CmdletBinding(SupportsShouldProcess)]
     param (
@@ -38,7 +53,12 @@ function Add-PatServer {
 
         [Parameter(Mandatory = $false)]
         [switch]
-        $Default
+        $Default,
+
+        [Parameter(Mandatory = $false)]
+        [ValidateNotNullOrEmpty()]
+        [string]
+        $Token
     )
 
     try {
@@ -61,6 +81,11 @@ function Add-PatServer {
             name    = $Name
             uri     = $ServerUri
             default = $Default.IsPresent
+        }
+
+        # Conditionally add token if provided
+        if ($Token) {
+            $newServer | Add-Member -NotePropertyName 'token' -NotePropertyValue $Token
         }
 
         $config.servers += $newServer
