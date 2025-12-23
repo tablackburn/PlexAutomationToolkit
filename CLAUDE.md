@@ -120,6 +120,74 @@ Tests run against built module in `Output/<ModuleName>/<Version>/` directory. Th
 - All files must be UTF-8 encoding (no UTF-16)
 - No tab characters allowed (use 4 spaces for indentation)
 
+## Integration Testing
+
+Integration tests verify PlexAutomationToolkit against a real Plex server. They are automatically skipped if environment variables are not configured.
+
+### Setup Integration Tests
+
+1. Create local configuration:
+   ```powershell
+   Copy-Item tests/local.settings.example.ps1 tests/local.settings.ps1
+   ```
+
+2. Edit `tests/local.settings.ps1`:
+   - Set `PLEX_SERVER_URI` to your Plex server (e.g., `http://192.168.1.100:32400`)
+   - Set `PLEX_TOKEN` (obtain via `Get-PatToken`)
+
+3. Load settings before testing:
+   ```powershell
+   . ./tests/local.settings.ps1
+   ./build.ps1 -Task Test  # Runs both unit and integration tests
+   ```
+
+### Integration Test Categories
+
+**Read-Only Tests**: Safe, use dynamic discovery
+- Server connectivity and info retrieval (`Get-PatServer`)
+- Library section listing and querying (`Get-PatLibrary`)
+- Server configuration retrieval (`Get-PatStoredServer`)
+- Path and content browsing (if implemented)
+
+**Server Configuration Tests**: Safe with cleanup
+- Add/remove server configurations (`Add-PatServer`, `Remove-PatServer`)
+- Set default server (`Set-PatDefaultServer`)
+- Uses temporary test entries with "IntegrationTest-" prefix
+- Always cleans up in `AfterAll` blocks
+
+**Mutation Tests**: Require `$env:PLEX_ALLOW_MUTATIONS = 'true'`
+- Library refresh operations (`Update-PatLibrary`)
+- Triggers Plex server to scan for new content
+
+### CI/CD Integration
+
+GitHub Actions automatically runs integration tests when these secrets are configured:
+- `PLEX_SERVER_URI`
+- `PLEX_TOKEN`
+- `PLEX_ALLOW_MUTATIONS` (optional)
+
+If secrets are not set, integration tests are automatically skipped (not failed).
+
+### Integration Test Implementation Pattern
+
+All integration tests use conditional execution via `BeforeDiscovery`:
+
+```powershell
+BeforeDiscovery {
+    $script:integrationEnabled = $false
+
+    if ($env:PLEX_SERVER_URI -and $env:PLEX_TOKEN) {
+        $script:integrationEnabled = $true
+    }
+}
+
+Describe 'Test Suite' -Skip:(-not $script:integrationEnabled) {
+    # Tests only run when env vars are set
+}
+```
+
+See `tests/Integration/README.md` for detailed setup instructions.
+
 ## Versioning and Changelog
 
 - **ModuleVersion** in `PlexAutomationToolkit.psd1` must match latest version in `CHANGELOG.md`
