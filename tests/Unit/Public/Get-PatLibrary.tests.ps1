@@ -19,7 +19,7 @@ BeforeAll {
 Describe 'Get-PatLibrary' {
 
     BeforeAll {
-        # Mock API response for all library sections (from real Plex server)
+        # Mock API response for all library sections (sanitized test data)
         $script:mockAllSectionsResponse = @{
             size        = 7
             allowSync   = $false
@@ -35,7 +35,7 @@ Describe 'Get-PatLibrary' {
                     agent       = 'tv.plex.agents.movie'
                     scanner     = 'Plex Movie'
                     language    = 'en-US'
-                    uuid        = 'cac318a8-ee45-486c-9d68-4e8972a60265'
+                    uuid        = 'a1b2c3d4-e5f6-4a5b-8c9d-0e1f2a3b4c5d'
                 }
                 @{
                     allowSync   = $false
@@ -47,7 +47,7 @@ Describe 'Get-PatLibrary' {
                     agent       = 'tv.plex.agents.movie'
                     scanner     = 'Plex Movie'
                     language    = 'en-US'
-                    uuid        = '919d6683-a202-4374-8b68-442cb487b014'
+                    uuid        = 'f1e2d3c4-b5a6-47b8-9c0d-1e2f3a4b5c6d'
                 }
                 @{
                     allowSync   = $false
@@ -59,12 +59,12 @@ Describe 'Get-PatLibrary' {
                     agent       = 'tv.plex.agents.series'
                     scanner     = 'Plex TV Series'
                     language    = 'en-US'
-                    uuid        = '7227a7ad-a66c-4bc4-b440-96e28ae88043'
+                    uuid        = '9a8b7c6d-5e4f-4321-ab0c-de1f2a3b4c5d'
                 }
             )
         }
 
-        # Mock API response for a specific section (from real Plex server)
+        # Mock API response for a specific section (sanitized test data)
         $script:mockSectionResponse = @{
             size               = 20
             allowSync          = $false
