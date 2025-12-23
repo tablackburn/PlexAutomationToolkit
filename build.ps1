@@ -4,7 +4,7 @@ param(
     [parameter(ParameterSetName = 'task', Position = 0)]
     [ArgumentCompleter( {
         param($Command, $Parameter, $WordToComplete, $CommandAst, $FakeBoundParams)
-        $psakeFile = './psakeFile.ps1'
+        $psakeFile = './build.psake.ps1'
         switch ($Parameter) {
             'Task' {
                 if ([string]::IsNullOrEmpty($WordToComplete)) {
@@ -54,7 +54,7 @@ if ($Bootstrap.IsPresent) {
 }
 
 # Execute psake task(s)
-$psakeFile = './psakeFile.ps1'
+$psakeFile = './build.psake.ps1'
 if ($PSCmdlet.ParameterSetName -eq 'Help') {
     Get-PSakeScriptTasks -buildFile $psakeFile |
         Format-Table -Property Name, Description, Alias, DependsOn

@@ -1,0 +1,220 @@
+function Get-PatLibraryChildItem {
+    <#
+    .SYNOPSIS
+        Lists directories and files at a given path on the Plex server.
+
+    .DESCRIPTION
+        Browses the filesystem on the Plex server, listing subdirectories and files
+        at a specified path. Uses the Plex internal browse service endpoint.
+
+    .PARAMETER ServerUri
+        The base URI of the Plex server (e.g., http://plex.example.com:32400)
+        If not specified, uses the default stored server.
+
+    .PARAMETER Path
+        The absolute filesystem path to browse (e.g., /mnt/media, /var/lib/plexmediaserver)
+        If omitted, lists root-level accessible paths.
+
+    .PARAMETER SectionId
+        Optional library section ID. When provided, the command browses each path configured for that
+        section. Cannot be combined with SectionName.
+
+    .PARAMETER SectionName
+        Optional library section name (e.g., "Movies"). When provided, the command browses each path
+        configured for that section. Cannot be combined with SectionId.
+
+    .EXAMPLE
+        Get-PatLibraryChildItem -ServerUri "http://plex.example.com:32400" -Path "/mnt/media"
+        Lists directories and files under /mnt/media
+
+    .EXAMPLE
+        Get-PatLibraryChildItem
+        Lists root-level paths from the default stored server
+
+    .EXAMPLE
+        Get-PatLibraryChildItem -Path "/mnt/smb/nas5/movies"
+        Lists all items (directories and files) under the movies path
+
+    .EXAMPLE
+        Get-PatLibraryChildItem -SectionName "Movies"
+        Lists items from every path configured for the Movies section
+
+    .OUTPUTS
+        PSCustomObject
+    #>
+    [CmdletBinding(DefaultParameterSetName = 'PathOnly')]
+    param (
+        [Parameter(Mandatory = $false)]
+        [ValidateNotNullOrEmpty()]
+        [string]
+        $ServerUri,
+
+        [Parameter(Mandatory = $false, ParameterSetName = 'PathOnly')]
+        [Parameter(Mandatory = $false, ParameterSetName = 'ById')]
+        [Parameter(Mandatory = $false, ParameterSetName = 'ByName')]
+        [ValidateNotNullOrEmpty()]
+        [string]
+        $Path,
+
+        [Parameter(Mandatory = $false, ParameterSetName = 'ById')]
+        [ValidateRange(1, [int]::MaxValue)]
+        [ArgumentCompleter({
+            param($commandName, $parameterName, $wordToComplete, $commandAst, $fakeBoundParameters)
+
+            $serverUri = $null
+
+            if ($fakeBoundParameters.ContainsKey('ServerUri')) {
+                $serverUri = $fakeBoundParameters['ServerUri']
+            }
+            else {
+                try {
+                    $defaultServer = Get-PatStoredServer -Default -ErrorAction 'Stop'
+                    if ($defaultServer) {
+                        $serverUri = $defaultServer.uri
+                    }
+                }
+                catch {
+                }
+            }
+
+            if ($serverUri) {
+                try {
+                    $sections = Get-PatLibrary -ServerUri $serverUri -ErrorAction 'SilentlyContinue'
+                    $sections.Directory | ForEach-Object {
+                        $sectionId = ($_.key -replace '.*/(\d+)$', '$1')
+                        if ($sectionId -like "$wordToComplete*") {
+                            [System.Management.Automation.CompletionResult]::new($sectionId, "$sectionId - $($_.title)", 'ParameterValue', "$($_.title) (ID: $sectionId)")
+                        }
+                    }
+                }
+                catch {
+                }
+            }
+        })]
+        [int]
+        $SectionId,
+
+        [Parameter(Mandatory = $false, ParameterSetName = 'ByName')]
+        [ValidateNotNullOrEmpty()]
+        [ArgumentCompleter({
+            param($commandName, $parameterName, $wordToComplete, $commandAst, $fakeBoundParameters)
+
+            $serverUri = $null
+
+            if ($fakeBoundParameters.ContainsKey('ServerUri')) {
+                $serverUri = $fakeBoundParameters['ServerUri']
+            }
+            else {
+                try {
+                    $defaultServer = Get-PatStoredServer -Default -ErrorAction 'Stop'
+                    if ($defaultServer) {
+                        $serverUri = $defaultServer.uri
+                    }
+                }
+                catch {
+                }
+            }
+
+            if ($serverUri) {
+                try {
+                    $sections = Get-PatLibrary -ServerUri $serverUri -ErrorAction 'SilentlyContinue'
+                    $sections.Directory.title | Where-Object { $_ -like "$wordToComplete*" } | ForEach-Object {
+                        $sectionTitle = $_
+                        if ($sectionTitle -match '\s') {
+                            $completionText = "'$sectionTitle'"
+                        }
+                        else {
+                            $completionText = $sectionTitle
+                        }
+                        [System.Management.Automation.CompletionResult]::new($completionText, $sectionTitle, 'ParameterValue', $sectionTitle)
+                    }
+                }
+                catch {
+                }
+            }
+        })]
+        [string]
+        $SectionName
+    )
+
+    # Use default server if ServerUri not specified
+    if (-not $ServerUri) {
+        try {
+            $defaultServer = Get-PatStoredServer -Default -ErrorAction 'Stop'
+            if (-not $defaultServer) {
+                throw "No default server configured. Use Add-PatServer with -Default or specify -ServerUri."
+            }
+            $ServerUri = $defaultServer.uri
+        }
+        catch {
+            throw "Failed to get default server: $($_.Exception.Message)"
+        }
+    }
+
+    try {
+        $pathsToBrowse = @()
+
+        # If section parameters provided, collect all section locations
+        if ($SectionName -or $SectionId) {
+            $sections = Get-PatLibrary -ServerUri $ServerUri -ErrorAction 'Stop'
+
+            $matchingSection = $null
+            if ($SectionName) {
+                $matchingSection = $sections.Directory | Where-Object { $_.title -eq $SectionName }
+                if (-not $matchingSection) {
+                    throw "Library section '$SectionName' not found"
+                }
+            }
+            else {
+                $matchingSection = $sections.Directory | Where-Object {
+                    ($_.key -replace '.*/(\d+)$', '$1') -eq $SectionId.ToString()
+                }
+                if (-not $matchingSection) {
+                    throw "Library section with ID $SectionId not found"
+                }
+            }
+
+            if ($matchingSection.Location) {
+                $pathsToBrowse += $matchingSection.Location.path
+            }
+        }
+
+        if ($Path) {
+            # Explicit path overrides any section-derived paths
+            $pathsToBrowse = @($Path)
+        }
+
+        if (-not $pathsToBrowse -or $pathsToBrowse.Count -eq 0) {
+            # No path specified, no section provided -> browse root
+            $pathsToBrowse = @($null)
+        }
+
+        $results = @()
+
+        foreach ($p in $pathsToBrowse) {
+            $endpoint = '/services/browse'
+
+            if ($p) {
+                $pathBytes = [System.Text.Encoding]::UTF8.GetBytes($p)
+                $pathB64 = [Convert]::ToBase64String($pathBytes)
+                $endpoint += "/$pathB64"
+            }
+
+            $uri = Join-PatUri -BaseUri $ServerUri -Endpoint $endpoint -QueryString 'includeFiles=1'
+            $result = Invoke-PatApi -Uri $uri -ErrorAction 'Stop'
+
+            if ($result.Path) { $results += $result.Path }
+            if ($result.File) { $results += $result.File }
+
+            if (-not $result.Path -and -not $result.File) {
+                Write-Verbose "No items found at path: $p"
+            }
+        }
+
+        $results
+    }
+    catch {
+        $errPath = if ($Path) { $Path } elseif ($SectionName) { $SectionName } elseif ($SectionId) { $SectionId } else { '<root>' }
+        throw "Failed to list items for ${errPath}: $($_.Exception.Message)"
+    }
+}

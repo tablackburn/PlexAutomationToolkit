@@ -72,6 +72,8 @@ RequiredAssemblies = @()
 FunctionsToExport = @(
     'Add-PatServer'
     'Get-PatLibrary'
+    'Get-PatLibraryChildItem'
+    'Get-PatLibraryPath'
     'Get-PatServer'
     'Get-PatStoredServer'
     'Remove-PatServer'
