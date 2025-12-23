@@ -56,6 +56,21 @@ function Update-PatLibrary {
 
         Shows what would happen if the command runs without actually refreshing the library.
     #>
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+        'PSReviewUnusedParameter',
+        'commandName',
+        Justification = 'Standard ArgumentCompleter parameter, not always used'
+    )]
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+        'PSReviewUnusedParameter',
+        'parameterName',
+        Justification = 'Standard ArgumentCompleter parameter, not always used'
+    )]
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+        'PSReviewUnusedParameter',
+        'commandAst',
+        Justification = 'Standard ArgumentCompleter parameter, not always used'
+    )]
     [CmdletBinding(DefaultParameterSetName = 'ById', SupportsShouldProcess)]
     param (
         [Parameter(Mandatory = $false, ParameterSetName = 'ById')]
@@ -119,6 +134,119 @@ function Update-PatLibrary {
         [Parameter(Mandatory = $false, ParameterSetName = 'ById')]
         [Parameter(Mandatory = $false, ParameterSetName = 'ByName')]
         [ValidateNotNullOrEmpty()]
+        [ArgumentCompleter({
+            param($commandName, $parameterName, $wordToComplete, $commandAst, $fakeBoundParameters)
+
+            # Get ServerUri
+            $serverUri = $null
+            if ($fakeBoundParameters.ContainsKey('ServerUri')) {
+                $serverUri = $fakeBoundParameters['ServerUri']
+            }
+            else {
+                try {
+                    $defaultServer = Get-PatStoredServer -Default -ErrorAction 'Stop'
+                    if ($defaultServer) {
+                        $serverUri = $defaultServer.uri
+                    }
+                }
+                catch {
+                    # Silently fail if default server retrieval fails
+                }
+            }
+
+            if (-not $serverUri) { return }
+
+            # Get SectionId - could be direct or via SectionName
+            $sectionId = $null
+            if ($fakeBoundParameters.ContainsKey('SectionId')) {
+                $sectionId = $fakeBoundParameters['SectionId']
+            }
+            elseif ($fakeBoundParameters.ContainsKey('SectionName')) {
+                try {
+                    $sections = Get-PatLibrary -ServerUri $serverUri -ErrorAction 'SilentlyContinue'
+                    $matchedSection = $sections.Directory | Where-Object { $_.title -eq $fakeBoundParameters['SectionName'] }
+                    if ($matchedSection) {
+                        $sectionId = [int]($matchedSection.key -replace '.*/(\d+)$', '$1')
+                    }
+                }
+                catch {
+                    # Silently fail if section lookup fails
+                }
+            }
+
+            if (-not $sectionId) { return }
+
+            # Get root paths for this section
+            try {
+                $rootPaths = Get-PatLibraryPath -ServerUri $serverUri -SectionId $sectionId -ErrorAction 'SilentlyContinue'
+
+                if (-not $wordToComplete) {
+                    # No input yet - show root paths
+                    foreach ($rootPath in $rootPaths) {
+                        $path = $rootPath.path
+                        if ($path -match '\s') {
+                            $completionText = "'$path'"
+                        }
+                        else {
+                            $completionText = $path
+                        }
+                        [System.Management.Automation.CompletionResult]::new($completionText, $path, 'ParameterValue', $path)
+                    }
+                }
+                else {
+                    # User has started typing - check if it matches any root paths
+                    $matchingRoots = $rootPaths | Where-Object { $_.path -like "$wordToComplete*" }
+
+                    if ($matchingRoots) {
+                        # Show matching root paths
+                        foreach ($rootPath in $matchingRoots) {
+                            $path = $rootPath.path
+                            if ($path -match '\s') {
+                                $completionText = "'$path'"
+                            }
+                            else {
+                                $completionText = $path
+                            }
+                            [System.Management.Automation.CompletionResult]::new($completionText, $path, 'ParameterValue', $path)
+                        }
+                    }
+                    else {
+                        # Try to browse subdirectories
+                        $parentPath = Split-Path -Path $wordToComplete -Parent
+
+                        if ($parentPath) {
+                            try {
+                                $items = Get-PatLibraryChildItem -ServerUri $serverUri -Path $parentPath -ErrorAction 'SilentlyContinue'
+                                # Filter to directories only (items with 'path' property that aren't files)
+                                $directories = $items | Where-Object {
+                                    $_.PSObject.Properties.Name -contains 'path' -and
+                                    $_.PSObject.TypeNames[0] -notlike '*File*'
+                                }
+
+                                foreach ($dir in $directories) {
+                                    $dirPath = $dir.path
+                                    if ($dirPath -like "$wordToComplete*") {
+                                        if ($dirPath -match '\s') {
+                                            $completionText = "'$dirPath'"
+                                        }
+                                        else {
+                                            $completionText = $dirPath
+                                        }
+                                        [System.Management.Automation.CompletionResult]::new($completionText, $dirPath, 'ParameterValue', $dirPath)
+                                    }
+                                }
+                            }
+                            catch {
+                                # Silently fail if browse fails
+                            }
+                        }
+                    }
+                }
+            }
+            catch {
+                # Silently fail if path retrieval fails
+            }
+        })]
         [string]
         $Path
     )

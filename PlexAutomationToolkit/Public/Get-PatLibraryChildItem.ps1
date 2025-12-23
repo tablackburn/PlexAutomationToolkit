@@ -46,6 +46,21 @@ function Get-PatLibraryChildItem {
     .OUTPUTS
         PSCustomObject
     #>
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+        'PSReviewUnusedParameter',
+        'commandName',
+        Justification = 'Standard ArgumentCompleter parameter, not always used'
+    )]
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+        'PSReviewUnusedParameter',
+        'parameterName',
+        Justification = 'Standard ArgumentCompleter parameter, not always used'
+    )]
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+        'PSReviewUnusedParameter',
+        'commandAst',
+        Justification = 'Standard ArgumentCompleter parameter, not always used'
+    )]
     [CmdletBinding(DefaultParameterSetName = 'PathOnly')]
     param (
         [Parameter(Mandatory = $false)]
