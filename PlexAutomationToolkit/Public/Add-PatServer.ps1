@@ -24,15 +24,18 @@ function Add-PatServer {
 
     .EXAMPLE
         Add-PatServer -Name "Main Server" -ServerUri "http://plex.local:32400" -Default
-        Adds a new server and marks it as default
+
+        Adds a new server and marks it as default.
 
     .EXAMPLE
         Add-PatServer -Name "Remote Server" -ServerUri "http://remote.plex.com:32400"
-        Adds a new server without marking it as default
+
+        Adds a new server without marking it as default.
 
     .EXAMPLE
         Add-PatServer -Name "Authenticated Server" -ServerUri "http://plex.remote.com:32400" -Token "ABC123xyz" -Default
-        Adds a new server with authentication token and marks it as default
+
+        Adds a new server with authentication token and marks it as default.
 
     .NOTES
         Security Warning: Authentication tokens are stored in PLAINTEXT in the servers.json configuration file.

@@ -1,26 +1,15 @@
+# Module-specific runtime dependencies for PlexAutomationToolkit
+# See https://github.com/RamblingCookieMonster/PSDepend for options
 @{
-    PSDepend = @{
-        Version = '0.3.8'
-    }
     PSDependOptions = @{
-        Target = 'CurrentUser'
-    }
-    'Pester' = @{
-        Version = '5.7.1'
+        Target     = 'CurrentUser'
         Parameters = @{
-            SkipPublisherCheck = $true
+            Repository = 'PSGallery'
         }
     }
-    'psake' = @{
-        Version = '4.9.1'
-    }
-    'BuildHelpers' = @{
-        Version = '2.0.16'
-    }
-    'PowerShellBuild' = @{
-        Version = '0.7.3'
-    }
-    'PSScriptAnalyzer' = @{
-        Version = '1.24.0'
-    }
+    # Add module runtime dependencies here
+    # Example:
+    # 'SomeModule' = @{
+    #     Version = '1.0.0'
+    # }
 }

@@ -15,15 +15,18 @@ function Get-PatStoredServer {
 
     .EXAMPLE
         Get-PatStoredServer
-        Returns all stored servers
+
+        Returns all stored servers.
 
     .EXAMPLE
         Get-PatStoredServer -Default
-        Returns the default server
+
+        Returns the default server.
 
     .EXAMPLE
         Get-PatStoredServer -Name "Main Server"
-        Returns the server named "Main Server"
+
+        Returns the server named "Main Server".
 
     .OUTPUTS
         PSCustomObject

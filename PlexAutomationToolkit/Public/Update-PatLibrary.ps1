@@ -23,31 +23,38 @@ function Update-PatLibrary {
 
     .EXAMPLE
         Update-PatLibrary -ServerUri "http://plex.example.com:32400" -SectionId 2
-        Refreshes the entire library section 2
+
+        Refreshes the entire library section 2.
 
     .EXAMPLE
         Update-PatLibrary -SectionName "Movies"
-        Refreshes the "Movies" library section on the default stored server
+
+        Refreshes the "Movies" library section on the default stored server.
 
     .EXAMPLE
         Update-PatLibrary -ServerUri "http://plex.example.com:32400" -SectionName "Movies"
-        Refreshes the library section named "Movies"
+
+        Refreshes the library section named "Movies".
 
     .EXAMPLE
         Update-PatLibrary -ServerUri "http://plex.example.com:32400" -SectionId 2 -Path "/mnt/media/Movies"
-        Refreshes only the specified path within library section 2
+
+        Refreshes only the specified path within library section 2.
 
     .EXAMPLE
         Update-PatLibrary -SectionId 2 -Path "/mnt/media/Movies"
-        Refreshes only the specified path within library section 2 on the default stored server
+
+        Refreshes only the specified path within library section 2 on the default stored server.
 
     .EXAMPLE
         Update-PatLibrary -ServerUri "http://plex.example.com:32400" -SectionName "Movies" -Path "/mnt/media/Movies/Action"
-        Refreshes only the specified path within the "Movies" library section
+
+        Refreshes only the specified path within the "Movies" library section.
 
     .EXAMPLE
         Update-PatLibrary -ServerUri "http://plex.example.com:32400" -SectionId 2 -WhatIf
-        Shows what would happen if the command runs without actually refreshing the library
+
+        Shows what would happen if the command runs without actually refreshing the library.
     #>
     [CmdletBinding(DefaultParameterSetName = 'ById', SupportsShouldProcess)]
     param (

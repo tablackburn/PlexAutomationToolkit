@@ -12,11 +12,13 @@ function Get-PatServer {
 
     .EXAMPLE
         Get-PatServer -ServerUri "http://plex.example.com:32400"
-        Retrieves server information from the specified Plex server
+
+        Retrieves server information from the specified Plex server.
 
     .EXAMPLE
         Get-PatServer
-        Retrieves server information from the default stored server
+
+        Retrieves server information from the default stored server.
 
     .OUTPUTS
         PSCustomObject

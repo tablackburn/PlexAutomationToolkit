@@ -1,26 +1,93 @@
+# spell-checker:ignore BHPS oneline
+[Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+    'PSUseDeclaredVarsMoreThanAssignments',
+    'changelogVersion',
+    Justification = 'false positive'
+)]
+[Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+    'PSUseDeclaredVarsMoreThanAssignments',
+    'gitTagVersion',
+    Justification = 'false positive'
+)]
+[Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+    'PSUseDeclaredVarsMoreThanAssignments',
+    'manifestData',
+    Justification = 'false positive'
+)]
+[Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+    'PSUseDeclaredVarsMoreThanAssignments',
+    'requirements',
+    Justification = 'false positive'
+)]
+[Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+    'PSUseDeclaredVarsMoreThanAssignments',
+    'dependencies',
+    Justification = 'false positive'
+)]
+param()
+
+BeforeDiscovery {
+    <# Check if the BHBuildOutput environment variable exists to determine if this test is running in a psake
+    build or not. If it does not exist, it is not running in a psake build, so build the module.
+    If the BHBuildOutput environment variable exists, it is running in a psake build, so do not
+    build the module. #>
+    if ($null -eq $Env:BHBuildOutput) {
+        $buildFilePath = Join-Path -Path $PSScriptRoot -ChildPath '..\build.psake.ps1'
+        $invokePsakeParameters = @{
+            TaskList  = 'Build'
+            BuildFile = $buildFilePath
+        }
+        Invoke-psake @invokePsakeParameters
+    }
+
+    # Define the path to the module manifest
+    $moduleManifestFilename = $Env:BHProjectName + '.psd1'
+    $moduleManifestPath = Join-Path -Path $Env:BHBuildOutput -ChildPath $moduleManifestFilename
+
+    # Get the data from the module manifest
+    $testModuleManifestParameters = @{
+        Path          = $moduleManifestPath
+        ErrorAction   = 'Stop'
+        WarningAction = 'SilentlyContinue'
+    }
+    $manifestData = Test-ModuleManifest @testModuleManifestParameters
+    $dependencies = $manifestData.RequiredModules
+}
 BeforeAll {
-    
-    # NEW: Pre-Specify RegEx Matching Patterns
-    $gitTagMatchRegEx   = 'tag:\s?.(\d+(\.\d+)*)' # NOTE - was 'tag:\s*(\d+(?:\.\d+)*)' previously
-    $changelogTagMatchRegEx = "^##\s\[(?<Version>(\d+\.){1,3}\d+)\]"    
+    <# Check if the BHBuildOutput environment variable exists to determine if this test is running in a psake
+    build or not. If it does not exist, it is not running in a psake build, so build the module.
+    If the BHBuildOutput environment variable exists, it is running in a psake build, so do not
+    build the module. #>
+    if ($null -eq $Env:BHBuildOutput) {
+        $buildFilePath = Join-Path -Path $PSScriptRoot -ChildPath '..\build.psake.ps1'
+        $invokePsakeParameters = @{
+            TaskList  = 'Build'
+            BuildFile = $buildFilePath
+        }
+        Invoke-psake @invokePsakeParameters
+    }
 
-    $moduleName         = $env:BHProjectName
-    $manifest           = Import-PowerShellDataFile -Path $env:BHPSModuleManifest
-    $outputDir          = Join-Path -Path $ENV:BHProjectPath -ChildPath 'Output'
-    $outputModDir       = Join-Path -Path $outputDir -ChildPath $env:BHProjectName
-    $outputModVerDir    = Join-Path -Path $outputModDir -ChildPath $manifest.ModuleVersion
-    $outputManifestPath = Join-Path -Path $outputModVerDir -Child "$($moduleName).psd1"
-    $manifestData       = Test-ModuleManifest -Path $outputManifestPath -Verbose:$false -ErrorAction Stop -WarningAction SilentlyContinue
+    # Define the path to the module manifest
+    $moduleManifestFilename = $Env:BHProjectName + '.psd1'
+    $moduleManifestPath = Join-Path -Path $Env:BHBuildOutput -ChildPath $moduleManifestFilename
 
-    $changelogPath    = Join-Path -Path $env:BHProjectPath -Child 'CHANGELOG.md'
+    # Get the data from the module manifest
+    $testModuleManifestParameters = @{
+        Path          = $moduleManifestPath
+        ErrorAction   = 'Stop'
+        WarningAction = 'SilentlyContinue'
+    }
+    $manifestData = Test-ModuleManifest @testModuleManifestParameters
+
+    # Parse the version from the changelog
+    $changelogPath = Join-Path -Path $Env:BHProjectPath -ChildPath 'CHANGELOG.md'
+    $changelogVersionPattern = '^##\s\\?\[(?<Version>(\d+\.){1,3}\d+)\\?\]' # Matches on a line that starts with '## [Version]' or '## \[Version\]'
     $changelogVersion = Get-Content $changelogPath | ForEach-Object {
-        if ($_ -match $changelogTagMatchRegEx) {
+        if ($_ -match $changelogVersionPattern) {
             $changelogVersion = $matches.Version
             break
         }
     }
-
-    $script:manifest    = $null
 }
 Describe 'Module manifest' {
 
@@ -31,11 +98,11 @@ Describe 'Module manifest' {
         }
 
         It 'Has a valid name in the manifest' {
-            $manifestData.Name | Should -Be $moduleName
+            $manifestData.Name | Should -Be $Env:BHProjectName
         }
 
         It 'Has a valid root module' {
-            $manifestData.RootModule | Should -Be "$($moduleName).psm1"
+            $manifestData.RootModule | Should -Be "$($Env:BHProjectName).psm1"
         }
 
         It 'Has a valid version in the manifest' {
@@ -51,7 +118,7 @@ Describe 'Module manifest' {
         }
 
         It 'Has a valid guid' {
-            {[guid]::Parse($manifestData.Guid)} | Should -Not -Throw
+            { [guid]::Parse($manifestData.Guid) } | Should -Not -Throw
         }
 
         It 'Has a valid copyright' {
@@ -59,12 +126,29 @@ Describe 'Module manifest' {
         }
 
         It 'Has a valid version in the changelog' {
-            $changelogVersion               | Should -Not -BeNullOrEmpty
+            $changelogVersion | Should -Not -BeNullOrEmpty
             $changelogVersion -as [Version] | Should -Not -BeNullOrEmpty
         }
 
         It 'Changelog and manifest versions are the same' {
             $changelogVersion -as [Version] | Should -Be ( $manifestData.Version -as [Version] )
+        }
+
+        Context 'Module Dependency' -ForEach $dependencies {
+            # This ensures we keep our dependant modules in sync between the manifest file and the requirements
+            # script used to bootstrap and test.
+            BeforeAll {
+                $requirementsPath = Join-Path -Path $Env:BHProjectPath -Child 'requirements.psd1'
+                $requirements = Import-PowerShellDataFile $requirementsPath
+            }
+
+            It '<_.Name> exists in Requirements.psd1' {
+                $requirements.ContainsKey($_.Name) | Should -BeTrue
+            }
+
+            It '<_.Name> has matching version in the Requirements.psd1' {
+                [Version]$requirements.Item($_.Name).Version | Should -Be $_.Version
+            }
         }
     }
 }
@@ -72,16 +156,15 @@ Describe 'Module manifest' {
 Describe 'Git tagging' -Skip {
     BeforeAll {
         $gitTagVersion = $null
-        
-        # Ensure to only pull in a single git executable (in case multiple git's are found on path).
-        if ($git = (Get-Command git -CommandType Application -ErrorAction SilentlyContinue)[0]) {
+
+        if ($git = Get-Command -Name 'git' -CommandType 'Application' -ErrorAction 'SilentlyContinue') {
             $thisCommit = & $git log --decorate --oneline HEAD~1..HEAD
-            if ($thisCommit -match $gitTagMatchRegEx) { $gitTagVersion = $matches[1] }
+            if ($thisCommit -match 'tag:\s*(\d+(?:\.\d+)*)') { $gitTagVersion = $matches[1] }
         }
     }
 
     It 'Is tagged with a valid version' {
-        $gitTagVersion               | Should -Not -BeNullOrEmpty
+        $gitTagVersion | Should -Not -BeNullOrEmpty
         $gitTagVersion -as [Version] | Should -Not -BeNullOrEmpty
     }
 

@@ -1,11 +1,10 @@
 BeforeAll {
-
-    Set-StrictMode -Version latest
+    Set-StrictMode -Version 'Latest'
 
     # Make sure MetaFixers.psm1 is loaded - it contains Get-TextFilesList
     Import-Module -Name (Join-Path -Path $PSScriptRoot -ChildPath 'MetaFixers.psm1') -Verbose:$false -Force
 
-    $projectRoot = $ENV:BHProjectPath
+    $projectRoot = $Env:BHProjectPath
     if (-not $projectRoot) {
         $projectRoot = $PSScriptRoot
     }
@@ -18,8 +17,8 @@ BeforeAll {
             $unicodeFilesCount++
             Write-Warning (
                 "File $($textFile.FullName) contains 0x00 bytes." +
-                " It probably uses Unicode/UTF-16 and needs to be converted to UTF-8." +
-                " Use Fixer 'Get-UnicodeFilesList `$pwd | ConvertTo-UTF8'."
+                ' It probably uses Unicode/UTF-16 and needs to be converted to UTF-8.' +
+                ' Use Fixer "Get-UnicodeFilesList $pwd | ConvertTo-UTF8".'
             )
         }
         $unicodeFilesCount | Should -Be 0
@@ -28,7 +27,7 @@ BeforeAll {
         (Get-Content $fileName -Raw) | Select-String "`t" | Foreach-Object {
             Write-Warning (
                 "There are tabs in $fileName." +
-                " Use Fixer 'Get-TextFilesList `$pwd | ConvertTo-SpaceIndentation'."
+                ' Use Fixer "Get-TextFilesList `$pwd | ConvertTo-SpaceIndentation".'
             )
             $totalTabsCount++
         }
@@ -37,13 +36,13 @@ BeforeAll {
 
 Describe 'Text files formatting' {
     Context 'File encoding' {
-        It "No text file uses Unicode/UTF-16 encoding" {
+        It 'No text file uses Unicode/UTF-16 encoding' {
             $unicodeFilesCount | Should -Be 0
         }
     }
 
     Context 'Indentations' {
-        It "No text file use tabs for indentations" {
+        It 'No text file use tabs for indentations' {
             $totalTabsCount | Should -Be 0
         }
     }

@@ -19,19 +19,23 @@ function Get-PatLibraryPath {
 
     .EXAMPLE
         Get-PatLibraryPath
-        Retrieves all configured paths for all library sections from the default stored server
+
+        Retrieves all configured paths for all library sections from the default stored server.
 
     .EXAMPLE
         Get-PatLibraryPath -ServerUri "http://plex.example.com:32400" -SectionId 1
-        Retrieves all configured paths for library section 1
+
+        Retrieves all configured paths for library section 1.
 
     .EXAMPLE
         Get-PatLibraryPath -SectionId 2
-        Retrieves all configured paths for library section 2 from the default stored server
+
+        Retrieves all configured paths for library section 2 from the default stored server.
 
     .EXAMPLE
         Get-PatLibraryPath -SectionName "Movies"
-        Retrieves all configured paths for the "Movies" library section
+
+        Retrieves all configured paths for the "Movies" library section.
 
     .OUTPUTS
         PSCustomObject

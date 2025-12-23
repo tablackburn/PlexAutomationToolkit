@@ -11,11 +11,13 @@ function Remove-PatServer {
 
     .EXAMPLE
         Remove-PatServer -Name "Old Server"
-        Removes the server named "Old Server"
+
+        Removes the server named "Old Server".
 
     .EXAMPLE
         Remove-PatServer -Name "Test Server" -WhatIf
-        Shows what would be removed without actually removing it
+
+        Shows what would be removed without actually removing it.
     #>
     [CmdletBinding(SupportsShouldProcess)]
     param (

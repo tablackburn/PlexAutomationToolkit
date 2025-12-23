@@ -25,19 +25,23 @@ function Get-PatLibraryChildItem {
 
     .EXAMPLE
         Get-PatLibraryChildItem -ServerUri "http://plex.example.com:32400" -Path "/mnt/media"
-        Lists directories and files under /mnt/media
+
+        Lists directories and files under /mnt/media.
 
     .EXAMPLE
         Get-PatLibraryChildItem
-        Lists root-level paths from the default stored server
+
+        Lists root-level paths from the default stored server.
 
     .EXAMPLE
         Get-PatLibraryChildItem -Path "/mnt/smb/nas5/movies"
-        Lists all items (directories and files) under the movies path
+
+        Lists all items (directories and files) under the movies path.
 
     .EXAMPLE
         Get-PatLibraryChildItem -SectionName "Movies"
-        Lists items from every path configured for the Movies section
+
+        Lists items from every path configured for the Movies section.
 
     .OUTPUTS
         PSCustomObject

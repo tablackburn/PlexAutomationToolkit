@@ -12,7 +12,8 @@ function Set-PatDefaultServer {
 
     .EXAMPLE
         Set-PatDefaultServer -Name "Main Server"
-        Marks "Main Server" as the default server
+
+        Marks "Main Server" as the default server.
     #>
     [CmdletBinding(SupportsShouldProcess)]
     param (

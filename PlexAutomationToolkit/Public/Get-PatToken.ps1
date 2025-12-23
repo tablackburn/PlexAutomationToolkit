@@ -16,11 +16,13 @@ function Get-PatToken {
 
     .EXAMPLE
         Get-PatToken
-        Displays quick instructions for finding your Plex token
+
+        Displays quick instructions for finding your Plex token.
 
     .EXAMPLE
         Get-PatToken -ShowInstructions
-        Displays detailed step-by-step instructions with multiple methods
+
+        Displays detailed step-by-step instructions with multiple methods.
 
     .NOTES
         Security Warning: Plex tokens provide full access to your Plex account.

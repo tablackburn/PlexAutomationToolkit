@@ -60,7 +60,7 @@ BeforeDiscovery {
         #>
         param ($Parameters)
         $commonParameters = [System.Management.Automation.PSCmdlet]::CommonParameters +
-        [System.Management.Automation.PSCmdlet]::OptionalCommonParameters
+            [System.Management.Automation.PSCmdlet]::OptionalCommonParameters
         $Parameters | Where-Object { $_.Name -notin $commonParameters -and $_.IsDynamic -eq $false } | Sort-Object -Property 'Name' -Unique
     }
 
@@ -125,102 +125,100 @@ BeforeAll {
     }
 }
 
-InModuleScope -ModuleName $Env:BHProjectName {
-    Describe 'Test help for <_.Name>' -ForEach $commands {
+Describe "Test help for <_.Name>" -ForEach $commands {
 
-        BeforeDiscovery {
-            # Get command help, parameters, and links
-            $command = $_
-            $commandHelp = Get-Help -Name $command.Name -ErrorAction 'SilentlyContinue'
-            $commandParameters = global:FilterOutCommonParameters -Parameters $command.ParameterSets.Parameters
-            $commandParameterNames = $commandParameters.Name
-            $helpLinks = $commandHelp.relatedLinks.navigationLink.uri
+    BeforeDiscovery {
+        # Get command help, parameters, and links
+        $command               = $_
+        $commandHelp           = Get-Help -Name $command.Name -ErrorAction 'SilentlyContinue'
+        $commandParameters     = global:FilterOutCommonParameters -Parameters $command.ParameterSets.Parameters
+        $commandParameterNames = $commandParameters.Name
+        $helpLinks             = $commandHelp.relatedLinks.navigationLink.uri
+    }
+
+    BeforeAll {
+        # These variables are needed in both discovery and test phases so we need to duplicate them here
+        $command                = $_
+        $commandName            = $_.Name
+        $commandHelp            = Get-Help -Name $command.Name -ErrorAction 'SilentlyContinue'
+        $commandParameters      = global:FilterOutCommonParameters -Parameters $command.ParameterSets.Parameters
+        $commandParameterNames  = $commandParameters.Name
+        $helpParameters         = global:FilterOutCommonParameters -Parameters $commandHelp.Parameters.Parameter
+        $helpParameterNames     = $helpParameters.Name
+    }
+
+    # If help is not found, synopsis in auto-generated help is the syntax diagram
+    It 'Help is not auto-generated' {
+        $commandHelp.Synopsis | Should -Not -BeLike '*`[`<CommonParameters`>`]*'
+    }
+
+    # Should be a description for every function
+    It 'Has description' {
+        $commandHelp.Description | Should -Not -BeNullOrEmpty
+    }
+
+    # Should be at least one example
+    It 'Has example code' {
+        ($commandHelp.Examples.Example | Select-Object -First 1).Code | Should -Not -BeNullOrEmpty
+    }
+
+    # Should be at least one example description
+    It 'Has example help' {
+        ($commandHelp.Examples.Example.Remarks | Select-Object -First 1).Text | Should -Not -BeNullOrEmpty
+    }
+
+    It 'Help link <_> is valid' -ForEach $helpLinks {
+        $currentProgressPreference = $ProgressPreference
+        $ProgressPreference = 'SilentlyContinue'
+        $invokeWebRequestParameters = @{
+            Uri             = $_
+            UseBasicParsing = $true
+            ErrorAction     = 'Continue'
         }
+        $invokeWebRequestResult = Invoke-WebRequest @invokeWebRequestParameters
+        $ProgressPreference = $currentProgressPreference
+        $statusCode = $invokeWebRequestResult.StatusCode
+        $statusCode | Should -Be '200'
+    }
+
+    Context 'Parameter <_.Name>' -Foreach $commandParameters {
 
         BeforeAll {
-            # These variables are needed in both discovery and test phases so we need to duplicate them here
-            $command = $_
-            $commandName = $_.Name
-            $commandHelp = Get-Help -Name $command.Name -ErrorAction 'SilentlyContinue'
-            $commandParameters = global:FilterOutCommonParameters -Parameters $command.ParameterSets.Parameters
-            $commandParameterNames = $commandParameters.Name
-            $helpParameters = global:FilterOutCommonParameters -Parameters $commandHelp.Parameters.Parameter
-            $helpParameterNames = $helpParameters.Name
+            $parameter         = $_
+            $parameterName     = $parameter.Name
+            $parameterHelp     = $commandHelp.parameters.parameter | Where-Object { $_.Name -eq $parameterName }
+            $parameterHelpType = if ($parameterHelp.type.name) { $parameterHelp.type.name }
         }
 
-        # If help is not found, synopsis in auto-generated help is the syntax diagram
-        It 'Help is not auto-generated' {
-            $commandHelp.Synopsis | Should -Not -BeLike '*`[`<CommonParameters`>`]*'
-        }
-
-        # Should be a description for every function
+        # Should be a description for every parameter
         It 'Has description' {
-            $commandHelp.Description | Should -Not -BeNullOrEmpty
+            $parameterHelp.Description.Text | Should -Not -BeNullOrEmpty
         }
 
-        # Should be at least one example
-        It 'Has example code' {
-            ($commandHelp.Examples.Example | Select-Object -First 1).Code | Should -Not -BeNullOrEmpty
+        # Required value in Help should match IsMandatory property of parameter
+        It 'Has correct [mandatory] value' {
+            $codeMandatory = $_.IsMandatory.toString()
+            $parameterHelp.Required | Should -Be $codeMandatory
         }
 
-        # Should be at least one example description
-        It 'Has example help' {
-            ($commandHelp.Examples.Example.Remarks | Select-Object -First 1).Text | Should -Not -BeNullOrEmpty
-        }
-
-        It 'Help link <_> is valid' -ForEach $helpLinks {
-            $currentProgressPreference = $ProgressPreference
-            $ProgressPreference = 'SilentlyContinue'
-            $invokeWebRequestParameters = @{
-                Uri             = $_
-                UseBasicParsing = $true
-                ErrorAction     = 'Continue'
+        # Parameter type in help should match code
+        It 'Has correct parameter type' {
+            # Handle array of custom types by removing [] from end
+            $typeName = ($parameter.ParameterType.Name).TrimEnd('[]')
+            if ($typeName -in $global:CustomTypes) {
+                # Skip custom enums or classes. They won't show up in the help.
             }
-            $invokeWebRequestResult = Invoke-WebRequest @invokeWebRequestParameters
-            $ProgressPreference = $currentProgressPreference
-            $statusCode = $invokeWebRequestResult.StatusCode
-            $statusCode | Should -Be '200'
-        }
-
-        Context 'Parameter <_.Name>' -ForEach $commandParameters {
-
-            BeforeAll {
-                $parameter = $_
-                $parameterName = $parameter.Name
-                $parameterHelp = $commandHelp.parameters.parameter | Where-Object { $_.Name -eq $parameterName }
-                $parameterHelpType = if ($parameterHelp.type.name) { $parameterHelp.type.name }
-            }
-
-            # Should be a description for every parameter
-            It 'Has description' {
-                $parameterHelp.Description.Text | Should -Not -BeNullOrEmpty
-            }
-
-            # Required value in Help should match IsMandatory property of parameter
-            It 'Has correct [mandatory] value' {
-                $codeMandatory = $_.IsMandatory.toString()
-                $parameterHelp.Required | Should -Be $codeMandatory
-            }
-
-            # Parameter type in help should match code
-            It 'Has correct parameter type' {
-                # Handle array of custom types by removing [] from end
-                $typeName = ($parameter.ParameterType.Name).TrimEnd('[]')
-                if ($typeName -in $global:CustomTypes) {
-                    # Skip custom enums or classes. They won't show up in the help.
-                }
-                else {
-                    $parameterHelpType | Should -Be $parameter.ParameterType.Name
-                }
+            else {
+                $parameterHelpType | Should -Be $parameter.ParameterType.Name
             }
         }
+    }
 
-        Context 'Test <_> help parameter help for <commandName>' -ForEach $helpParameterNames {
+    Context 'Test <_> help parameter help for <commandName>' -Foreach $helpParameterNames {
 
-            # Shouldn't find extra parameters in help
-            It 'finds help parameter in code: <_>' {
-                $_ -in $parameterNames | Should -Be $true
-            }
+        # Shouldn't find extra parameters in help
+        It 'finds help parameter in code: <_>' {
+            $_ -in $parameterNames | Should -Be $true
         }
     }
 }

@@ -15,19 +15,23 @@ function Get-PatLibrary {
 
     .EXAMPLE
         Get-PatLibrary -ServerUri "http://plex.example.com:32400"
-        Retrieves all library sections from the server
+
+        Retrieves all library sections from the server.
 
     .EXAMPLE
         Get-PatLibrary
-        Retrieves all library sections from the default stored server
+
+        Retrieves all library sections from the default stored server.
 
     .EXAMPLE
         Get-PatLibrary -ServerUri "http://plex.example.com:32400" -SectionId 2
-        Retrieves information for library section 2
+
+        Retrieves information for library section 2.
 
     .EXAMPLE
         Get-PatLibrary -SectionId 2
-        Retrieves information for library section 2 from the default stored server
+
+        Retrieves information for library section 2 from the default stored server.
 
     .OUTPUTS
         PSCustomObject
