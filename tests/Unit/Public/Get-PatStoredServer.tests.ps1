@@ -25,12 +25,12 @@ Describe 'Get-PatStoredServer' {
             servers = @(
                 @{
                     name    = 'Primary Server'
-                    uri     = 'http://192.168.1.6:32400'
+                    uri     = 'http://plex-test-server.local:32400'
                     default = $true
                 }
                 @{
                     name    = 'Secondary Server'
-                    uri     = 'http://192.168.1.7:32400'
+                    uri     = 'http://plex-test-server-2.local:32400'
                     default = $false
                 }
             )
@@ -100,7 +100,7 @@ Describe 'Get-PatStoredServer' {
             $result = Get-PatStoredServer -Name 'Secondary Server'
             $result | Should -Not -BeNullOrEmpty
             $result.name | Should -Be 'Secondary Server'
-            $result.uri | Should -Be 'http://192.168.1.7:32400'
+            $result.uri | Should -Be 'http://plex-test-server-2.local:32400'
         }
 
         It 'Throws when server name is not found' {

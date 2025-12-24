@@ -46,7 +46,7 @@ Describe 'Update-PatLibrary' {
         # Mock default server
         $script:mockDefaultServer = @{
             name    = 'Test Server'
-            uri     = 'http://192.168.1.6:32400'
+            uri     = 'http://plex-test-server.local:32400'
             default = $true
         }
     }
@@ -58,27 +58,27 @@ Describe 'Update-PatLibrary' {
             }
 
             Mock -ModuleName $Env:BHProjectName Join-PatUri {
-                return "http://192.168.1.6:32400/library/sections/$SectionId/refresh"
+                return "http://plex-test-server.local:32400/library/sections/$SectionId/refresh"
             }
         }
 
         It 'Refreshes the library section' {
-            Update-PatLibrary -ServerUri 'http://192.168.1.6:32400' -SectionId 2 -Confirm:$false
+            Update-PatLibrary -ServerUri 'http://plex-test-server.local:32400' -SectionId 2 -Confirm:$false
             Should -Invoke -ModuleName $Env:BHProjectName Invoke-PatApi -ParameterFilter {
                 $Method -eq 'Post'
             }
         }
 
         It 'Calls Join-PatUri with correct endpoint' {
-            Update-PatLibrary -ServerUri 'http://192.168.1.6:32400' -SectionId 2 -Confirm:$false
+            Update-PatLibrary -ServerUri 'http://plex-test-server.local:32400' -SectionId 2 -Confirm:$false
             Should -Invoke -ModuleName $Env:BHProjectName Join-PatUri -ParameterFilter {
-                $BaseUri -eq 'http://192.168.1.6:32400' -and
+                $BaseUri -eq 'http://plex-test-server.local:32400' -and
                 $Endpoint -eq '/library/sections/2/refresh'
             }
         }
 
         It 'Validates SectionId is greater than 0' {
-            { Update-PatLibrary -ServerUri 'http://192.168.1.6:32400' -SectionId 0 -Confirm:$false } | Should -Throw
+            { Update-PatLibrary -ServerUri 'http://plex-test-server.local:32400' -SectionId 0 -Confirm:$false } | Should -Throw
         }
     }
 
@@ -102,21 +102,21 @@ Describe 'Update-PatLibrary' {
         }
 
         It 'Resolves section name to section ID' {
-            Update-PatLibrary -ServerUri 'http://192.168.1.6:32400' -SectionName 'Movies' -Confirm:$false
+            Update-PatLibrary -ServerUri 'http://plex-test-server.local:32400' -SectionName 'Movies' -Confirm:$false
             Should -Invoke -ModuleName $Env:BHProjectName Get-PatLibrary -ParameterFilter {
-                $ServerUri -eq 'http://192.168.1.6:32400'
+                $ServerUri -eq 'http://plex-test-server.local:32400'
             }
         }
 
         It 'Refreshes the correct library section' {
-            Update-PatLibrary -ServerUri 'http://192.168.1.6:32400' -SectionName 'TV Shows' -Confirm:$false
+            Update-PatLibrary -ServerUri 'http://plex-test-server.local:32400' -SectionName 'TV Shows' -Confirm:$false
             Should -Invoke -ModuleName $Env:BHProjectName Join-PatUri -ParameterFilter {
                 $Endpoint -eq '/library/sections/3/refresh'
             }
         }
 
         It 'Throws when section name is not found' {
-            { Update-PatLibrary -ServerUri 'http://192.168.1.6:32400' -SectionName 'Nonexistent' -Confirm:$false } | Should -Throw "*No library section found with name 'Nonexistent'*"
+            { Update-PatLibrary -ServerUri 'http://plex-test-server.local:32400' -SectionName 'Nonexistent' -Confirm:$false } | Should -Throw "*No library section found with name 'Nonexistent'*"
         }
 
         It 'Throws when multiple sections have the same name' {
@@ -129,7 +129,7 @@ Describe 'Update-PatLibrary' {
                 }
             }
 
-            { Update-PatLibrary -ServerUri 'http://192.168.1.6:32400' -SectionName 'Movies' -Confirm:$false } | Should -Throw "*Multiple library sections found*"
+            { Update-PatLibrary -ServerUri 'http://plex-test-server.local:32400' -SectionName 'Movies' -Confirm:$false } | Should -Throw "*Multiple library sections found*"
         }
     }
 
@@ -150,7 +150,7 @@ Describe 'Update-PatLibrary' {
 
         It 'Includes the path parameter in the request' {
             $testPath = '/mnt/media/Movies/Action'
-            Update-PatLibrary -ServerUri 'http://192.168.1.6:32400' -SectionId 2 -Path $testPath -Confirm:$false
+            Update-PatLibrary -ServerUri 'http://plex-test-server.local:32400' -SectionId 2 -Path $testPath -Confirm:$false
 
             Should -Invoke -ModuleName $Env:BHProjectName Join-PatUri -ParameterFilter {
                 $QueryString -like "*path=*"
@@ -159,7 +159,7 @@ Describe 'Update-PatLibrary' {
 
         It 'URL-encodes the path parameter' {
             $testPath = '/mnt/media/Movies With Spaces'
-            Update-PatLibrary -ServerUri 'http://192.168.1.6:32400' -SectionId 2 -Path $testPath -Confirm:$false
+            Update-PatLibrary -ServerUri 'http://plex-test-server.local:32400' -SectionId 2 -Path $testPath -Confirm:$false
 
             Should -Invoke -ModuleName $Env:BHProjectName Join-PatUri -ParameterFilter {
                 $QueryString -match 'path=.*%20.*'
@@ -178,7 +178,7 @@ Describe 'Update-PatLibrary' {
             }
 
             Mock -ModuleName $Env:BHProjectName Join-PatUri {
-                return 'http://192.168.1.6:32400/library/sections/2/refresh'
+                return 'http://plex-test-server.local:32400/library/sections/2/refresh'
             }
         }
 
@@ -192,7 +192,7 @@ Describe 'Update-PatLibrary' {
         It 'Calls Join-PatUri with default server URI' {
             Update-PatLibrary -SectionId 2 -Confirm:$false
             Should -Invoke -ModuleName $Env:BHProjectName Join-PatUri -ParameterFilter {
-                $BaseUri -eq 'http://192.168.1.6:32400'
+                $BaseUri -eq 'http://plex-test-server.local:32400'
             }
         }
     }
@@ -216,12 +216,12 @@ Describe 'Update-PatLibrary' {
             }
 
             Mock -ModuleName $Env:BHProjectName Join-PatUri {
-                return 'http://192.168.1.6:32400/library/sections/2/refresh'
+                return 'http://plex-test-server.local:32400/library/sections/2/refresh'
             }
         }
 
         It 'Does not call Invoke-PatApi' {
-            Update-PatLibrary -ServerUri 'http://192.168.1.6:32400' -SectionId 2 -WhatIf
+            Update-PatLibrary -ServerUri 'http://plex-test-server.local:32400' -SectionId 2 -WhatIf
             Should -Invoke -ModuleName $Env:BHProjectName Invoke-PatApi -Exactly 0
         }
     }
@@ -233,12 +233,12 @@ Describe 'Update-PatLibrary' {
             }
 
             Mock -ModuleName $Env:BHProjectName Join-PatUri {
-                return 'http://192.168.1.6:32400/library/sections/2/refresh'
+                return 'http://plex-test-server.local:32400/library/sections/2/refresh'
             }
         }
 
         It 'Throws an error with context' {
-            { Update-PatLibrary -ServerUri 'http://192.168.1.6:32400' -SectionId 2 -Confirm:$false } | Should -Throw '*Failed to refresh Plex library*'
+            { Update-PatLibrary -ServerUri 'http://plex-test-server.local:32400' -SectionId 2 -Confirm:$false } | Should -Throw '*Failed to refresh Plex library*'
         }
     }
 }

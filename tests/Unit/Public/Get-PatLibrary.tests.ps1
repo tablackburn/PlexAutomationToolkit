@@ -35,7 +35,7 @@ Describe 'Get-PatLibrary' {
                     agent       = 'tv.plex.agents.movie'
                     scanner     = 'Plex Movie'
                     language    = 'en-US'
-                    uuid        = 'a1b2c3d4-e5f6-4a5b-8c9d-0e1f2a3b4c5d'
+                    uuid        = '00000000-0000-0000-0000-000000000001'
                 }
                 @{
                     allowSync   = $false
@@ -47,7 +47,7 @@ Describe 'Get-PatLibrary' {
                     agent       = 'tv.plex.agents.movie'
                     scanner     = 'Plex Movie'
                     language    = 'en-US'
-                    uuid        = 'f1e2d3c4-b5a6-47b8-9c0d-1e2f3a4b5c6d'
+                    uuid        = '00000000-0000-0000-0000-000000000002'
                 }
                 @{
                     allowSync   = $false
@@ -59,7 +59,7 @@ Describe 'Get-PatLibrary' {
                     agent       = 'tv.plex.agents.series'
                     scanner     = 'Plex TV Series'
                     language    = 'en-US'
-                    uuid        = '9a8b7c6d-5e4f-4321-ab0c-de1f2a3b4c5d'
+                    uuid        = '00000000-0000-0000-0000-000000000003'
                 }
             )
         }
@@ -93,7 +93,7 @@ Describe 'Get-PatLibrary' {
         # Mock default server
         $script:mockDefaultServer = @{
             name    = 'Test Server'
-            uri     = 'http://192.168.1.6:32400'
+            uri     = 'http://plex-test-server.local:32400'
             default = $true
         }
     }
@@ -105,12 +105,12 @@ Describe 'Get-PatLibrary' {
             }
 
             Mock -ModuleName $Env:BHProjectName Join-PatUri {
-                return 'http://192.168.1.6:32400/library/sections'
+                return 'http://plex-test-server.local:32400/library/sections'
             }
         }
 
         It 'Returns all library sections' {
-            $result = Get-PatLibrary -ServerUri 'http://192.168.1.6:32400'
+            $result = Get-PatLibrary -ServerUri 'http://plex-test-server.local:32400'
             $result | Should -Not -BeNullOrEmpty
             $result.Directory | Should -HaveCount 3
             $result.Directory[0].PSObject.TypeNames[0] | Should -Be 'PlexAutomationToolkit.Library'
@@ -120,15 +120,15 @@ Describe 'Get-PatLibrary' {
         }
 
         It 'Calls Join-PatUri with correct endpoint' {
-            Get-PatLibrary -ServerUri 'http://192.168.1.6:32400'
+            Get-PatLibrary -ServerUri 'http://plex-test-server.local:32400'
             Should -Invoke -ModuleName $Env:BHProjectName Join-PatUri -ParameterFilter {
-                $BaseUri -eq 'http://192.168.1.6:32400' -and
+                $BaseUri -eq 'http://plex-test-server.local:32400' -and
                 $Endpoint -eq '/library/sections'
             }
         }
 
         It 'Calls Invoke-PatApi with correct URI' {
-            Get-PatLibrary -ServerUri 'http://192.168.1.6:32400'
+            Get-PatLibrary -ServerUri 'http://plex-test-server.local:32400'
             Should -Invoke -ModuleName $Env:BHProjectName Invoke-PatApi -Exactly 1
         }
     }
@@ -140,27 +140,27 @@ Describe 'Get-PatLibrary' {
             }
 
             Mock -ModuleName $Env:BHProjectName Join-PatUri {
-                return 'http://192.168.1.6:32400/library/sections/2'
+                return 'http://plex-test-server.local:32400/library/sections/2'
             }
         }
 
         It 'Returns the specific library section' {
-            $result = Get-PatLibrary -ServerUri 'http://192.168.1.6:32400' -SectionId 2
+            $result = Get-PatLibrary -ServerUri 'http://plex-test-server.local:32400' -SectionId 2
             $result | Should -Not -BeNullOrEmpty
             $result.title1 | Should -Be 'Movies'
             $result.librarySectionID | Should -Be 2
         }
 
         It 'Calls Join-PatUri with correct endpoint including SectionId' {
-            Get-PatLibrary -ServerUri 'http://192.168.1.6:32400' -SectionId 2
+            Get-PatLibrary -ServerUri 'http://plex-test-server.local:32400' -SectionId 2
             Should -Invoke -ModuleName $Env:BHProjectName Join-PatUri -ParameterFilter {
-                $BaseUri -eq 'http://192.168.1.6:32400' -and
+                $BaseUri -eq 'http://plex-test-server.local:32400' -and
                 $Endpoint -eq '/library/sections/2'
             }
         }
 
         It 'Validates SectionId is greater than 0' {
-            { Get-PatLibrary -ServerUri 'http://192.168.1.6:32400' -SectionId 0 } | Should -Throw
+            { Get-PatLibrary -ServerUri 'http://plex-test-server.local:32400' -SectionId 0 } | Should -Throw
         }
     }
 
@@ -175,7 +175,7 @@ Describe 'Get-PatLibrary' {
             }
 
             Mock -ModuleName $Env:BHProjectName Join-PatUri {
-                return 'http://192.168.1.6:32400/library/sections'
+                return 'http://plex-test-server.local:32400/library/sections'
             }
         }
 
@@ -190,7 +190,7 @@ Describe 'Get-PatLibrary' {
         It 'Calls Join-PatUri with default server URI' {
             Get-PatLibrary
             Should -Invoke -ModuleName $Env:BHProjectName Join-PatUri -ParameterFilter {
-                $BaseUri -eq 'http://192.168.1.6:32400'
+                $BaseUri -eq 'http://plex-test-server.local:32400'
             }
         }
     }
@@ -214,12 +214,12 @@ Describe 'Get-PatLibrary' {
             }
 
             Mock -ModuleName $Env:BHProjectName Join-PatUri {
-                return 'http://192.168.1.6:32400/library/sections'
+                return 'http://plex-test-server.local:32400/library/sections'
             }
         }
 
         It 'Throws an error with context' {
-            { Get-PatLibrary -ServerUri 'http://192.168.1.6:32400' } | Should -Throw '*Failed to get Plex library information*'
+            { Get-PatLibrary -ServerUri 'http://plex-test-server.local:32400' } | Should -Throw '*Failed to get Plex library information*'
         }
     }
 }
