@@ -22,6 +22,9 @@ function Add-PatServer {
 
         WARNING: Tokens are stored in PLAINTEXT in servers.json. Only use on trusted systems.
 
+    .PARAMETER PassThru
+        If specified, returns the server configuration object after adding.
+
     .EXAMPLE
         Add-PatServer -Name "Main Server" -ServerUri "http://plex.local:32400" -Default
 
@@ -37,12 +40,17 @@ function Add-PatServer {
 
         Adds a new server with authentication token and marks it as default.
 
+    .EXAMPLE
+        Add-PatServer -Name "New Server" -ServerUri "http://plex.local:32400" -PassThru
+
+        Adds a new server and returns the server configuration object.
+
     .NOTES
         Security Warning: Authentication tokens are stored in PLAINTEXT in the servers.json configuration file.
         Your Plex token provides full access to your Plex account. Only use on trusted systems with
         appropriate file permissions.
     #>
-    [CmdletBinding(SupportsShouldProcess)]
+    [CmdletBinding(SupportsShouldProcess, ConfirmImpact = 'Low')]
     param (
         [Parameter(Mandatory = $true)]
         [ValidateNotNullOrEmpty()]
@@ -61,7 +69,11 @@ function Add-PatServer {
         [Parameter(Mandatory = $false)]
         [ValidateNotNullOrEmpty()]
         [string]
-        $Token
+        $Token,
+
+        [Parameter(Mandatory = $false)]
+        [switch]
+        $PassThru
     )
 
     try {
@@ -96,6 +108,10 @@ function Add-PatServer {
         if ($PSCmdlet.ShouldProcess($Name, 'Add server to configuration')) {
             Set-PatServerConfig -Config $config -ErrorAction Stop
             Write-Verbose "Added server '$Name' to configuration"
+
+            if ($PassThru) {
+                $newServer
+            }
         }
     }
     catch {

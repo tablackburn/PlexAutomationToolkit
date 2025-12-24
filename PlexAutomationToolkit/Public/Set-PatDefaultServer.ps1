@@ -10,17 +10,29 @@ function Set-PatDefaultServer {
     .PARAMETER Name
         Name of the server to mark as default
 
+    .PARAMETER PassThru
+        If specified, returns the server configuration object after setting as default.
+
     .EXAMPLE
         Set-PatDefaultServer -Name "Main Server"
 
         Marks "Main Server" as the default server.
+
+    .EXAMPLE
+        Set-PatDefaultServer -Name "Main Server" -PassThru
+
+        Marks "Main Server" as default and returns the server configuration.
     #>
-    [CmdletBinding(SupportsShouldProcess)]
+    [CmdletBinding(SupportsShouldProcess, ConfirmImpact = 'Low')]
     param (
         [Parameter(Mandatory = $true)]
         [ValidateNotNullOrEmpty()]
         [string]
-        $Name
+        $Name,
+
+        [Parameter(Mandatory = $false)]
+        [switch]
+        $PassThru
     )
 
     try {
@@ -42,6 +54,10 @@ function Set-PatDefaultServer {
 
             Set-PatServerConfig -Config $config -ErrorAction Stop
             Write-Verbose "Set '$Name' as default server"
+
+            if ($PassThru) {
+                $server
+            }
         }
     }
     catch {

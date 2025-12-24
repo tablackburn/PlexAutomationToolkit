@@ -20,47 +20,92 @@ function Get-PatServer {
 
         Retrieves server information from the default stored server.
 
+    .EXAMPLE
+        "http://plex1.local:32400", "http://plex2.local:32400" | Get-PatServer
+
+        Retrieves server information from multiple servers via pipeline input.
+
     .OUTPUTS
-        PSCustomObject
-        Returns the MediaContainer object from the Plex API response
+        PlexAutomationToolkit.ServerInfo
+        Returns structured server information with properties: FriendlyName, Version,
+        Platform, PlatformVersion, MachineIdentifier, and various server capabilities
     #>
     [CmdletBinding()]
     param (
-        [Parameter(Mandatory = $false)]
+        [Parameter(Mandatory = $false, ValueFromPipeline, ValueFromPipelineByPropertyName)]
         [ValidateNotNullOrEmpty()]
         [string]
         $ServerUri
     )
 
-    # Use default server if ServerUri not specified
-    $server = $null
-    if (-not $ServerUri) {
-        try {
-            $server = Get-PatStoredServer -Default -ErrorAction 'Stop'
-            if (-not $server) {
-                throw "No default server configured. Use Add-PatServer with -Default or specify -ServerUri."
+    begin {
+        # Will store server for default case
+        $defaultServer = $null
+    }
+
+    process {
+        # Use default server if ServerUri not specified
+        $server = $null
+        if (-not $ServerUri) {
+            # Cache default server lookup
+            if (-not $defaultServer) {
+                try {
+                    $defaultServer = Get-PatStoredServer -Default -ErrorAction 'Stop'
+                    if (-not $defaultServer) {
+                        throw "No default server configured. Use Add-PatServer with -Default or specify -ServerUri."
+                    }
+                    Write-Verbose "Using default server: $($defaultServer.uri)"
+                }
+                catch {
+                    throw "Failed to get default server: $($_.Exception.Message)"
+                }
             }
+            $server = $defaultServer
             $ServerUri = $server.uri
         }
-        catch {
-            throw "Failed to get default server: $($_.Exception.Message)"
+        else {
+            Write-Verbose "Using specified server: $ServerUri"
         }
-    }
 
-    $uri = Join-PatUri -BaseUri $ServerUri -Endpoint '/'
+        Write-Verbose "Retrieving server information from $ServerUri"
+        $uri = Join-PatUri -BaseUri $ServerUri -Endpoint '/'
 
-    # Build headers with authentication if we have server object
-    $headers = if ($server) {
-        Get-PatAuthHeaders -Server $server
-    }
-    else {
-        @{ Accept = 'application/json' }
-    }
+        # Build headers with authentication if we have server object
+        $headers = if ($server) {
+            Get-PatAuthHeaders -Server $server
+        }
+        else {
+            @{ Accept = 'application/json' }
+        }
 
-    try {
-        Invoke-PatApi -Uri $uri -Headers $headers -ErrorAction 'Stop'
-    }
-    catch {
-        throw "Failed to get Plex server information: $($_.Exception.Message)"
+        try {
+            $result = Invoke-PatApi -Uri $uri -Headers $headers -ErrorAction 'Stop'
+
+            # Return structured server information object
+            [PSCustomObject]@{
+                PSTypeName           = 'PlexAutomationToolkit.ServerInfo'
+                FriendlyName         = $result.friendlyName
+                Version              = $result.version
+                Platform             = $result.platform
+                PlatformVersion      = $result.platformVersion
+                MachineIdentifier    = $result.machineIdentifier
+                MyPlex               = $result.myPlex
+                MyPlexSigninState    = $result.myPlexSigninState
+                MyPlexUsername       = $result.myPlexUsername
+                Transcoders          = $result.transcoderActiveVideoSessions
+                Size                 = $result.size
+                AllowCameraUpload    = $result.allowCameraUpload
+                AllowChannelAccess   = $result.allowChannelAccess
+                AllowSync            = $result.allowSync
+                AllowTuners          = $result.allowTuners
+                BackgroundProcessing = $result.backgroundProcessing
+                Certificate          = $result.certificate
+                CompanionProxy       = $result.companionProxy
+                ServerUri            = $ServerUri
+            }
+        }
+        catch {
+            throw "Failed to get Plex server information: $($_.Exception.Message)"
+        }
     }
 }

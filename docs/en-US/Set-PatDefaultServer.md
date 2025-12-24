@@ -13,7 +13,7 @@ Sets the default Plex server.
 ## SYNTAX
 
 ```
-Set-PatDefaultServer [-Name] <String> [-ProgressAction <ActionPreference>] [-WhatIf] [-Confirm]
+Set-PatDefaultServer [-Name] <String> [-PassThru] [-ProgressAction <ActionPreference>] [-WhatIf] [-Confirm]
  [<CommonParameters>]
 ```
 
@@ -43,6 +43,21 @@ Aliases:
 Required: True
 Position: 1
 Default value: None
+Accept pipeline input: False
+Accept wildcard characters: False
+```
+
+### -PassThru
+If specified, returns the server configuration object after setting as default.
+
+```yaml
+Type: SwitchParameter
+Parameter Sets: (All)
+Aliases:
+
+Required: False
+Position: Named
+Default value: False
 Accept pipeline input: False
 Accept wildcard characters: False
 ```

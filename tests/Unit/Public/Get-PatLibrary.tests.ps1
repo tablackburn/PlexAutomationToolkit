@@ -113,6 +113,7 @@ Describe 'Get-PatLibrary' {
             $result = Get-PatLibrary -ServerUri 'http://192.168.1.6:32400'
             $result | Should -Not -BeNullOrEmpty
             $result.Directory | Should -HaveCount 3
+            $result.Directory[0].PSObject.TypeNames[0] | Should -Be 'PlexAutomationToolkit.Library'
             $result.Directory[0].title | Should -Be '4K Movies'
             $result.Directory[1].title | Should -Be 'Movies'
             $result.Directory[2].title | Should -Be 'TV Shows'

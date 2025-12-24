@@ -53,17 +53,17 @@ function Get-PatStoredServer {
                 if (-not $server) {
                     throw "No server found with name '$Name'"
                 }
-                return $server
+                Write-Output $server
             }
             'Default' {
                 $server = $config.servers | Where-Object { $_.default -eq $true }
                 if (-not $server) {
                     throw "No default server configured"
                 }
-                return $server
+                Write-Output $server
             }
             'All' {
-                return $config.servers
+                Write-Output $config.servers
             }
         }
     }

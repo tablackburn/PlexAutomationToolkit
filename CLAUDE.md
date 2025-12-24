@@ -202,11 +202,326 @@ See `tests/Integration/README.md` for detailed setup instructions.
 - Use `[Microsoft.PowerShell.Commands.WebRequestMethod]::Post` for POST operations
 - MediaContainer is the standard Plex API response wrapper object
 
+## PowerShell Best Practices
+
+### Naming Conventions
+
+**Functions**
+- Use approved PowerShell verbs: `Get`, `Set`, `Add`, `Remove`, `Update`, `New`, `Test`, `Invoke`
+- Check verb approval: `Get-Verb | Where-Object Verb -eq 'YourVerb'`
+- Follow Verb-Noun format in PascalCase: `Get-PatLibrary`, `Update-PatLibrary`
+- Module prefix (`Pat` for PlexAutomationToolkit) ensures uniqueness
+
+**Parameters**
+- Use PascalCase: `-ServerUri`, `-LibraryId`, `-Path`
+- Use singular forms: `-Library` not `-Libraries` (even if accepting arrays)
+- Match PowerShell common parameter names when applicable:
+  - `-Name`, `-Path`, `-Force`, `-PassThru`, `-WhatIf`, `-Confirm`
+- Avoid abbreviations unless widely recognized: `-Id` is OK, `-Srv` is not
+
+**Code Style**
+- Never use aliases in code (`foreach` instead of `%`, `Where-Object` instead of `?`)
+- Full cmdlet names for clarity and maintainability
+- Opening braces on same line: `function Get-PatLibrary {`
+
+### Parameter Design
+
+**Validation Attributes**
+```powershell
+# String validation
+[ValidateNotNullOrEmpty()]
+[string]$ServerUri
+
+# Numeric bounds
+[ValidateRange(1, [int]::MaxValue)]
+[int]$LibraryId
+
+# Restricted options
+[ValidateSet('Movies', 'TV Shows', 'Music')]
+[string]$LibraryType
+
+# Pattern matching
+[ValidatePattern('^https?://')]
+[string]$Uri
+```
+
+**Switch Parameters**
+```powershell
+# Use [switch] for boolean flags
+[switch]$Force
+
+# NOT this:
+[bool]$Force  # ❌ Anti-pattern
+```
+
+**Pipeline Support**
+```powershell
+# Accept pipeline input by value
+[Parameter(ValueFromPipeline)]
+[object]$InputObject
+
+# Accept pipeline input by property name
+[Parameter(ValueFromPipelineByPropertyName)]
+[string]$Name
+
+# Support both patterns when appropriate
+[Parameter(ValueFromPipeline, ValueFromPipelineByPropertyName)]
+[int]$LibraryId
+```
+
+### Pipeline and Output Design
+
+**Pipeline Processing**
+```powershell
+function Get-PatLibraryItem {
+    [CmdletBinding()]
+    param(
+        [Parameter(ValueFromPipeline)]
+        [int]$LibraryId
+    )
+
+    begin {
+        # Initialize once (e.g., establish connection, validate prerequisites)
+        Write-Verbose "Starting library item retrieval"
+    }
+
+    process {
+        # Execute for each pipeline item
+        foreach ($id in $LibraryId) {
+            # Process each item
+            $result = Invoke-PatApi -Uri $uri
+            Write-Output $result
+        }
+    }
+
+    end {
+        # Cleanup once (e.g., close connections, summary logging)
+        Write-Verbose "Completed library item retrieval"
+    }
+}
+```
+
+**Output Rich Objects**
+```powershell
+# Return structured objects, not formatted text
+[PSCustomObject]@{
+    PSTypeName = 'PlexAutomationToolkit.Library'
+    LibraryId  = $section.key
+    Name       = $section.title
+    Type       = $section.type
+    ServerUri  = $ServerUri
+}
+
+# NOT this:
+Write-Output "Library: $($section.title) (ID: $($section.key))"  # ❌ Anti-pattern
+```
+
+**PassThru Pattern**
+```powershell
+# Mutation cmdlets should be silent by default, but support -PassThru
+function Update-PatLibrary {
+    [CmdletBinding(SupportsShouldProcess)]
+    param(
+        [int]$LibraryId,
+
+        [switch]$PassThru
+    )
+
+    if ($PSCmdlet.ShouldProcess("Library $LibraryId", "Refresh")) {
+        # Perform update
+        Invoke-PatApi -Uri $uri -Method Post
+
+        # Optionally return the updated object
+        if ($PassThru) {
+            Get-PatLibrary -LibraryId $LibraryId
+        }
+    }
+}
+```
+
+### Error Handling and Streams
+
+**Output Streams**
+```powershell
+# Verbose: Detailed progress for -Verbose users
+Write-Verbose "Connecting to server: $ServerUri"
+
+# Warning: Non-fatal issues that users should know about
+Write-Warning "Library not found, using default"
+
+# Error: Terminating errors with proper ErrorRecord
+Write-Error -Message "Failed to connect to server" `
+            -Category ConnectionError `
+            -TargetObject $ServerUri `
+            -ErrorId "ServerConnectionFailed"
+
+# Information: General informational messages (PS 5.0+)
+Write-Information "Processing 10 libraries" -InformationAction Continue
+```
+
+**ErrorRecord Construction**
+```powershell
+try {
+    Invoke-PatApi -Uri $uri
+}
+catch {
+    $errorRecord = [System.Management.Automation.ErrorRecord]::new(
+        $_.Exception,
+        'ApiInvocationFailed',
+        [System.Management.Automation.ErrorCategory]::ConnectionError,
+        $uri
+    )
+    $PSCmdlet.WriteError($errorRecord)
+}
+```
+
+**Non-Interactive Design**
+```powershell
+# Support automation - avoid Read-Host or other interactive prompts
+# Use parameters with defaults instead:
+param(
+    [string]$ServerUri = (Get-PatDefaultServer).Uri
+)
+
+# For confirmations, use ShouldProcess (respects -Confirm and -WhatIf)
+if ($PSCmdlet.ShouldProcess($targetName, $action)) {
+    # Perform action
+}
+```
+
+### ShouldProcess Pattern
+
+```powershell
+function Remove-PatServer {
+    [CmdletBinding(SupportsShouldProcess, ConfirmImpact = 'High')]
+    param(
+        [Parameter(Mandatory)]
+        [string]$Name
+    )
+
+    # ShouldProcess returns false when -WhatIf is used
+    if ($PSCmdlet.ShouldProcess($Name, "Remove Plex server configuration")) {
+        # Perform destructive operation
+        $config = Get-PatServerConfig
+        $config.servers = $config.servers | Where-Object { $_.name -ne $Name }
+        Set-PatServerConfig -Config $config
+    }
+}
+```
+
+**ConfirmImpact Levels**
+- `None`: No confirmation needed (Get-* cmdlets)
+- `Low`: Minor changes (Set-PatDefaultServer)
+- `Medium`: Significant changes (Update-PatLibrary) - default
+- `High`: Destructive operations (Remove-PatServer)
+
+### Comment-Based Help
+
+Every public function must include comprehensive help:
+
+```powershell
+function Get-PatLibrary {
+    <#
+    .SYNOPSIS
+    Retrieves Plex library sections from a Plex server.
+
+    .DESCRIPTION
+    The Get-PatLibrary cmdlet retrieves information about library sections
+    configured on a Plex Media Server. You can retrieve all libraries or
+    filter by library ID.
+
+    .PARAMETER ServerUri
+    The URI of the Plex server. Defaults to the stored default server.
+    Format: http://hostname:32400
+
+    .PARAMETER LibraryId
+    The ID of a specific library section to retrieve. If omitted, all
+    libraries are returned.
+
+    .EXAMPLE
+    Get-PatLibrary
+
+    Retrieves all library sections from the default Plex server.
+
+    .EXAMPLE
+    Get-PatLibrary -ServerUri "http://plex.local:32400" -LibraryId 1
+
+    Retrieves library section with ID 1 from the specified server.
+
+    .EXAMPLE
+    1, 2, 3 | Get-PatLibrary
+
+    Retrieves library sections with IDs 1, 2, and 3 via pipeline input.
+
+    .OUTPUTS
+    PlexAutomationToolkit.Library
+
+    .LINK
+    https://github.com/user/PlexAutomationToolkit
+    #>
+    [CmdletBinding()]
+    param(
+        [string]$ServerUri,
+
+        [Parameter(ValueFromPipeline)]
+        [int]$LibraryId
+    )
+
+    process {
+        # Implementation
+    }
+}
+```
+
 ## Coding Conventions
 
+### File and Encoding Standards
 - 4-space indentation (no tabs)
-- UTF-8 encoding only
-- Comment-based help in every public function
-- Consistent parameter validation (`ValidateNotNullOrEmpty`, etc.)
-- Short, user-facing error messages that rethrow with context
+- UTF-8 encoding only (no UTF-16)
+- Opening braces on same line
+- Newline at end of file
+
+### Code Style
+```powershell
+# ✓ Correct formatting
+function Get-PatLibrary {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [string]$Name
+    )
+
+    process {
+        if ($condition) {
+            # Implementation
+        }
+    }
+}
+
+# ❌ Incorrect - brace on new line
+function Get-PatLibrary
+{
+    # Don't do this
+}
+```
+
+### Variable and Scoping
+```powershell
+# Use meaningful variable names
+$librarySection  # ✓ Clear
+$ls              # ❌ Ambiguous
+
+# Prefer explicit scoping when necessary
+$script:moduleConfig
+$global:plexServers
+
+# Use approved variable names for common patterns
+$PSCmdlet        # Current cmdlet context
+$PSBoundParameters  # Parameters passed to function
+```
+
+### Return Values
 - Return objects from API helpers, don't write directly to pipeline inside helpers
+- Use `Write-Output` explicitly when needed for clarity, or just output the object
+- Avoid `return` unless exiting early; let objects flow to output naturally
+- Private functions should return objects; public functions write to pipeline

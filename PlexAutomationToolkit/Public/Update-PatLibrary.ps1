@@ -21,6 +21,9 @@ function Update-PatLibrary {
     .PARAMETER Path
         Optional path within the library to scan. If omitted, the entire section is scanned.
 
+    .PARAMETER PassThru
+        If specified, returns the library section object after refreshing.
+
     .EXAMPLE
         Update-PatLibrary -ServerUri "http://plex.example.com:32400" -SectionId 2
 
@@ -55,6 +58,11 @@ function Update-PatLibrary {
         Update-PatLibrary -ServerUri "http://plex.example.com:32400" -SectionId 2 -WhatIf
 
         Shows what would happen if the command runs without actually refreshing the library.
+
+    .EXAMPLE
+        Update-PatLibrary -SectionId 2 -PassThru
+
+        Refreshes library section 2 and returns the library object.
     #>
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
         'PSReviewUnusedParameter',
@@ -71,7 +79,7 @@ function Update-PatLibrary {
         'commandAst',
         Justification = 'Standard ArgumentCompleter parameter, not always used'
     )]
-    [CmdletBinding(DefaultParameterSetName = 'ById', SupportsShouldProcess)]
+    [CmdletBinding(DefaultParameterSetName = 'ById', SupportsShouldProcess, ConfirmImpact = 'Medium')]
     param (
         [Parameter(Mandatory = $false, ParameterSetName = 'ById')]
         [Parameter(Mandatory = $false, ParameterSetName = 'ByName')]
@@ -260,7 +268,12 @@ function Update-PatLibrary {
             }
         })]
         [string]
-        $Path
+        $Path,
+
+        [Parameter(Mandatory = $false, ParameterSetName = 'ById')]
+        [Parameter(Mandatory = $false, ParameterSetName = 'ByName')]
+        [switch]
+        $PassThru
     )
 
     # Use default server if ServerUri not specified
@@ -334,6 +347,16 @@ function Update-PatLibrary {
     if ($PSCmdlet.ShouldProcess($target, 'Refresh library')) {
         try {
             Invoke-PatApi -Uri $uri -Method 'Post' -Headers $headers -ErrorAction 'Stop'
+
+            if ($PassThru) {
+                # Return the refreshed library section
+                if ($usingDefaultServer) {
+                    Get-PatLibrary -SectionId $SectionId -ErrorAction 'Stop'
+                }
+                else {
+                    Get-PatLibrary -ServerUri $ServerUri -SectionId $SectionId -ErrorAction 'Stop'
+                }
+            }
         }
         catch {
             throw "Failed to refresh Plex library: $($_.Exception.Message)"

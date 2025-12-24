@@ -13,7 +13,7 @@ Adds a Plex server to the configuration.
 ## SYNTAX
 
 ```
-Add-PatServer [-Name] <String> [-ServerUri] <String> [-Default] [[-Token] <String>]
+Add-PatServer [-Name] <String> [-ServerUri] <String> [-Default] [[-Token] <String>] [-PassThru]
  [-ProgressAction <ActionPreference>] [-WhatIf] [-Confirm] [<CommonParameters>]
 ```
 
@@ -107,6 +107,21 @@ Aliases:
 Required: False
 Position: 3
 Default value: None
+Accept pipeline input: False
+Accept wildcard characters: False
+```
+
+### -PassThru
+If specified, returns the server configuration object after adding.
+
+```yaml
+Type: SwitchParameter
+Parameter Sets: (All)
+Aliases:
+
+Required: False
+Position: Named
+Default value: False
 Accept pipeline input: False
 Accept wildcard characters: False
 ```

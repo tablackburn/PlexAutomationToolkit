@@ -9,6 +9,9 @@ function Remove-PatServer {
     .PARAMETER Name
         Name of the server to remove
 
+    .PARAMETER PassThru
+        If specified, returns the removed server configuration object.
+
     .EXAMPLE
         Remove-PatServer -Name "Old Server"
 
@@ -18,13 +21,22 @@ function Remove-PatServer {
         Remove-PatServer -Name "Test Server" -WhatIf
 
         Shows what would be removed without actually removing it.
+
+    .EXAMPLE
+        Remove-PatServer -Name "Old Server" -PassThru
+
+        Removes the server and returns the removed server configuration.
     #>
-    [CmdletBinding(SupportsShouldProcess)]
+    [CmdletBinding(SupportsShouldProcess, ConfirmImpact = 'High')]
     param (
         [Parameter(Mandatory = $true)]
         [ValidateNotNullOrEmpty()]
         [string]
-        $Name
+        $Name,
+
+        [Parameter(Mandatory = $false)]
+        [switch]
+        $PassThru
     )
 
     try {
@@ -36,9 +48,16 @@ function Remove-PatServer {
         }
 
         if ($PSCmdlet.ShouldProcess($Name, 'Remove server from configuration')) {
+            # Store server before removing for PassThru
+            $removedServer = $server
+
             $config.servers = @($config.servers | Where-Object { $_.name -ne $Name })
             Set-PatServerConfig -Config $config -ErrorAction Stop
             Write-Verbose "Removed server '$Name' from configuration"
+
+            if ($PassThru) {
+                $removedServer
+            }
         }
     }
     catch {

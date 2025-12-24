@@ -14,13 +14,13 @@ Refreshes a Plex library section.
 
 ### ById (Default)
 ```
-Update-PatLibrary [-ServerUri <String>] -SectionId <Int32> [-Path <String>]
+Update-PatLibrary [-ServerUri <String>] -SectionId <Int32> [-Path <String>] [-PassThru]
  [-ProgressAction <ActionPreference>] [-WhatIf] [-Confirm] [<CommonParameters>]
 ```
 
 ### ByName
 ```
-Update-PatLibrary [-ServerUri <String>] -SectionName <String> [-Path <String>]
+Update-PatLibrary [-ServerUri <String>] -SectionName <String> [-Path <String>] [-PassThru]
  [-ProgressAction <ActionPreference>] [-WhatIf] [-Confirm] [<CommonParameters>]
 ```
 
@@ -148,6 +148,21 @@ Aliases:
 Required: False
 Position: Named
 Default value: None
+Accept pipeline input: False
+Accept wildcard characters: False
+```
+
+### -PassThru
+If specified, returns the library section object after refreshing.
+
+```yaml
+Type: SwitchParameter
+Parameter Sets: (All)
+Aliases:
+
+Required: False
+Position: Named
+Default value: False
 Accept pipeline input: False
 Accept wildcard characters: False
 ```

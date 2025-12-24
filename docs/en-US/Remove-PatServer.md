@@ -13,7 +13,7 @@ Removes a Plex server from the configuration.
 ## SYNTAX
 
 ```
-Remove-PatServer [-Name] <String> [-ProgressAction <ActionPreference>] [-WhatIf] [-Confirm]
+Remove-PatServer [-Name] <String> [-PassThru] [-ProgressAction <ActionPreference>] [-WhatIf] [-Confirm]
  [<CommonParameters>]
 ```
 
@@ -49,6 +49,21 @@ Aliases:
 Required: True
 Position: 1
 Default value: None
+Accept pipeline input: False
+Accept wildcard characters: False
+```
+
+### -PassThru
+If specified, returns the removed server configuration object.
+
+```yaml
+Type: SwitchParameter
+Parameter Sets: (All)
+Aliases:
+
+Required: False
+Position: Named
+Default value: False
 Accept pipeline input: False
 Accept wildcard characters: False
 ```
