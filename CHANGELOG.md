@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- New cmdlet `Clear-PatDefaultServer` to remove the default server designation from all configured servers
+  - Supports `-PassThru` parameter to return server configurations after clearing
+  - Supports `-WhatIf` and `-Confirm` for safe execution
+  - Useful for scripts requiring explicit `-ServerUri` parameter on all cmdlets
+
 ## [0.1.0] - 2025-12-22
 
 ### Added
