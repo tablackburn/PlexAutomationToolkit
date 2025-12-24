@@ -135,10 +135,15 @@ Integration tests verify PlexAutomationToolkit against a real Plex server. They 
    - Set `PLEX_SERVER_URI` to your Plex server (e.g., `http://192.168.1.100:32400`)
    - Set `PLEX_TOKEN` (obtain via `Get-PatToken`)
 
-3. Load settings before testing:
+3. Run tests (settings are automatically loaded by the Test task):
+   ```powershell
+   ./build.ps1 -Task Test  # Test task automatically loads local.settings.ps1
+   ```
+
+   The psake Test task depends on the LoadIntegrationSettings task, which automatically loads `tests/local.settings.ps1` if it exists. This follows the psake task dependency pattern. You can also manually load settings for ad-hoc testing:
    ```powershell
    . ./tests/local.settings.ps1
-   ./build.ps1 -Task Test  # Runs both unit and integration tests
+   Invoke-Pester -Path tests/Integration/
    ```
 
 ### Integration Test Categories

@@ -133,6 +133,6 @@ if ($PSCmdlet.ParameterSetName -eq 'Help') {
 }
 else {
     Set-BuildEnvironment -Force
-    Invoke-psake -buildFile $psakeFile -taskList $Task -nologo -properties $Properties -parameters $Parameters
+    Invoke-psake -BuildFile $psakeFile -TaskList $Task -NoLogo -Properties $Properties -Parameters $Parameters
     exit ([int](-not $psake.build_success))
 }
