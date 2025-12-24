@@ -65,6 +65,12 @@ function Get-PatLibraryChildItem {
     param (
         [Parameter(Mandatory = $false)]
         [ValidateNotNullOrEmpty()]
+        [ValidateScript({
+            if ($_ -notmatch '^https?://[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?)*(:[0-9]{1,5})?$') {
+                throw "ServerUri must be a valid HTTP or HTTPS URL (e.g., http://plex.local:32400)"
+            }
+            $true
+        })]
         [string]
         $ServerUri,
 
@@ -92,6 +98,7 @@ function Get-PatLibraryChildItem {
                     }
                 }
                 catch {
+                    Write-Debug "Tab completion failed for SectionId: $($_.Exception.Message)"
                 }
             }
             else {
@@ -106,6 +113,7 @@ function Get-PatLibraryChildItem {
                     }
                 }
                 catch {
+                    Write-Debug "Tab completion failed for SectionId (default server): $($_.Exception.Message)"
                 }
             }
         })]
@@ -133,6 +141,7 @@ function Get-PatLibraryChildItem {
                     }
                 }
                 catch {
+                    Write-Debug "Tab completion failed for SectionName: $($_.Exception.Message)"
                 }
             }
             else {
@@ -151,6 +160,7 @@ function Get-PatLibraryChildItem {
                     }
                 }
                 catch {
+                    Write-Debug "Tab completion failed for SectionName (default server): $($_.Exception.Message)"
                 }
             }
         })]
@@ -205,7 +215,13 @@ function Get-PatLibraryChildItem {
             }
 
             if ($matchingSection.Location) {
-                $pathsToBrowse += $matchingSection.Location.path
+                # Handle both single location and array of locations
+                $locations = @($matchingSection.Location)
+                foreach ($location in $locations) {
+                    if ($location.path) {
+                        $pathsToBrowse += $location.path
+                    }
+                }
             }
         }
 

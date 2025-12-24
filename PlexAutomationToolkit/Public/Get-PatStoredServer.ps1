@@ -53,17 +53,23 @@ function Get-PatStoredServer {
                 if (-not $server) {
                     throw "No server found with name '$Name'"
                 }
-                Write-Output $server
+                $server
             }
             'Default' {
-                $server = $config.servers | Where-Object { $_.default -eq $true }
-                if (-not $server) {
+                $defaultServers = @($config.servers | Where-Object { $_.default -eq $true })
+                if ($defaultServers.Count -eq 0) {
                     throw "No default server configured"
                 }
-                Write-Output $server
+                if ($defaultServers.Count -gt 1) {
+                    Write-Warning "Multiple default servers found in configuration. Using first: $($defaultServers[0].name). Run Set-PatDefaultServer to fix."
+                }
+                $defaultServers[0]
             }
             'All' {
-                Write-Output $config.servers
+                # Return servers if any exist, otherwise return nothing (not $null)
+                if ($config.servers) {
+                    $config.servers
+                }
             }
         }
     }

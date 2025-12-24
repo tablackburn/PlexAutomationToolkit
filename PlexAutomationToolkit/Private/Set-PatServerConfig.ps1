@@ -35,6 +35,12 @@ function Set-PatServerConfig {
             throw "Configuration missing 'servers' property"
         }
 
+        # Validate only one default server
+        $defaultServers = @($Config.servers | Where-Object { $_.default -eq $true })
+        if ($defaultServers.Count -gt 1) {
+            Write-Warning "Configuration has multiple default servers: $($defaultServers.name -join ', '). Only first will be used."
+        }
+
         # Convert to JSON with proper formatting
         $json = $Config | ConvertTo-Json -Depth 10 -ErrorAction Stop
 

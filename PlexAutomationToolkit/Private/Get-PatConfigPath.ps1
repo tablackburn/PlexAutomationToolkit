@@ -21,17 +21,20 @@ function Get-PatConfigPath {
 
         # Test if OneDrive location is writable
         try {
-            if (-not (Test-Path $configDir)) {
-                New-Item -Path $configDir -ItemType Directory -Force -ErrorAction Stop | Out-Null
-            }
+            # Create directory if needed (Force handles race condition)
+            $null = New-Item -Path $configDir -ItemType Directory -Force -ErrorAction Stop
+
             # Test write access
             $testFile = Join-Path $configDir '.test'
             [IO.File]::WriteAllText($testFile, 'test')
             Remove-Item $testFile -Force
             return $configPath
         }
-        catch {
+        catch [System.IO.IOException] {
             # OneDrive path not accessible, continue to fallback
+        }
+        catch {
+            # Other errors, continue to fallback
         }
     }
 
@@ -40,17 +43,15 @@ function Get-PatConfigPath {
     $configPath = Join-Path $configDir 'servers.json'
 
     try {
-        if (-not (Test-Path $configDir)) {
-            New-Item -Path $configDir -ItemType Directory -Force -ErrorAction Stop | Out-Null
-        }
+        # Create directory if needed (Force handles race condition)
+        $null = New-Item -Path $configDir -ItemType Directory -Force -ErrorAction Stop
         return $configPath
     }
     catch {
         # Documents not accessible, use LocalAppData as last resort
         $configDir = Join-Path $env:LOCALAPPDATA 'PlexAutomationToolkit'
-        if (-not (Test-Path $configDir)) {
-            New-Item -Path $configDir -ItemType Directory -Force -ErrorAction Stop | Out-Null
-        }
+        # Create directory if needed (Force handles race condition)
+        $null = New-Item -Path $configDir -ItemType Directory -Force -ErrorAction Stop
         return Join-Path $configDir 'servers.json'
     }
 }

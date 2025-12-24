@@ -39,6 +39,11 @@ function Invoke-PatApi {
         }
     )
 
+    # Warn if using HTTP with authentication token
+    if ($Uri -match '^http://' -and $Headers.ContainsKey('X-Plex-Token')) {
+        Write-Warning "Sending authentication token over unencrypted HTTP connection. Consider using HTTPS."
+    }
+
     $apiQueryParameters = @{
         Method      = $Method
         Uri         = $Uri

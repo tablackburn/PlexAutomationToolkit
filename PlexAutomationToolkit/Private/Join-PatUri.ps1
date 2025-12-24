@@ -22,11 +22,19 @@ function Join-PatUri {
         Returns: http://1.2.3.4:32400/media/providers
 
     .PARAMETER QueryString
-        Optional query string to append to the URI (without leading ?)
+        Optional query string to append to the URI (without leading ?).
+        IMPORTANT: Query string values must be URL-encoded before passing to this function.
+        Use [System.Uri]::EscapeDataString() to encode parameter values.
 
     .EXAMPLE
         Join-PatUri -BaseUri "http://plex.example.com:32400" -Endpoint "/library/sections/2/refresh" -QueryString "path=%2Fmedia"
         Returns: http://plex.example.com:32400/library/sections/2/refresh?path=%2Fmedia
+
+    .EXAMPLE
+        $path = "/media/movies"
+        $encodedPath = [System.Uri]::EscapeDataString($path)
+        Join-PatUri -BaseUri "http://plex.example.com:32400" -Endpoint "/library/sections/2/refresh" -QueryString "path=$encodedPath"
+        Returns: http://plex.example.com:32400/library/sections/2/refresh?path=%2Fmedia%2Fmovies
     #>
     [CmdletBinding()]
     [OutputType([string])]
@@ -42,6 +50,13 @@ function Join-PatUri {
         $Endpoint,
 
         [Parameter(Mandatory = $false)]
+        [ValidateScript({
+            # Validate that QueryString doesn't contain unencoded special characters that could indicate injection
+            if ($_ -match '[<>\"''\x00-\x1F]') {
+                throw "QueryString contains invalid characters. Ensure values are properly URL-encoded using [System.Uri]::EscapeDataString()"
+            }
+            $true
+        })]
         [string]
         $QueryString
     )

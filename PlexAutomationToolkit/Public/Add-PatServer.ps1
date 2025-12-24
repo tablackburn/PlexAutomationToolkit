@@ -59,6 +59,12 @@ function Add-PatServer {
 
         [Parameter(Mandatory = $true)]
         [ValidateNotNullOrEmpty()]
+        [ValidateScript({
+            if ($_ -notmatch '^https?://[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?)*(:[0-9]{1,5})?$') {
+                throw "ServerUri must be a valid HTTP or HTTPS URL (e.g., http://plex.local:32400)"
+            }
+            $true
+        })]
         [string]
         $ServerUri,
 
@@ -77,6 +83,11 @@ function Add-PatServer {
     )
 
     try {
+        # Warn if using unencrypted HTTP
+        if ($ServerUri -match '^http://') {
+            Write-Warning "Using unencrypted HTTP connection to '$ServerUri'. Authentication tokens will be transmitted in clear text. Consider using HTTPS for secure communication."
+        }
+
         $config = Get-PatServerConfig -ErrorAction Stop
 
         # Check for duplicate name

@@ -84,6 +84,12 @@ function Update-PatLibrary {
         [Parameter(Mandatory = $false, ParameterSetName = 'ById')]
         [Parameter(Mandatory = $false, ParameterSetName = 'ByName')]
         [ValidateNotNullOrEmpty()]
+        [ValidateScript({
+            if ($_ -notmatch '^https?://[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?)*(:[0-9]{1,5})?$') {
+                throw "ServerUri must be a valid HTTP or HTTPS URL (e.g., http://plex.local:32400)"
+            }
+            $true
+        })]
         [string]
         $ServerUri,
 
@@ -114,7 +120,7 @@ function Update-PatLibrary {
                     }
                 }
                 catch {
-                    # Silently fail if server is unavailable
+                    Write-Debug "Tab completion failed for SectionName: $($_.Exception.Message)"
                 }
             }
             else {
@@ -134,7 +140,7 @@ function Update-PatLibrary {
                     }
                 }
                 catch {
-                    # Silently fail if default server retrieval fails
+                    Write-Debug "Tab completion failed for SectionName (default server): $($_.Exception.Message)"
                 }
             }
         })]
@@ -157,6 +163,7 @@ function Update-PatLibrary {
                     if (-not $defaultServer) { return }
                 }
                 catch {
+                    Write-Debug "Tab completion failed: Could not retrieve default server"
                     return
                 }
             }
@@ -180,7 +187,7 @@ function Update-PatLibrary {
                     }
                 }
                 catch {
-                    # Silently fail if section lookup fails
+                    Write-Debug "Tab completion failed: Could not resolve section name to ID: $($_.Exception.Message)"
                 }
             }
 
@@ -257,14 +264,14 @@ function Update-PatLibrary {
                                 }
                             }
                             catch {
-                                # Silently fail if browse fails
+                                Write-Debug "Tab completion failed: Could not browse subdirectories: $($_.Exception.Message)"
                             }
                         }
                     }
                 }
             }
             catch {
-                # Silently fail if path retrieval fails
+                Write-Debug "Tab completion failed: Could not retrieve library paths: $($_.Exception.Message)"
             }
         })]
         [string]
@@ -313,7 +320,7 @@ function Update-PatLibrary {
                 throw "Multiple library sections found with name '$SectionName'. Please use -SectionId instead."
             }
 
-            $SectionId = [int]$matchedSection.key
+            $SectionId = [int]($matchedSection.key -replace '.*/(\d+)$', '$1')
         }
         catch {
             throw "Failed to resolve section name: $($_.Exception.Message)"
