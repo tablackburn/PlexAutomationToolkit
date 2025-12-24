@@ -89,28 +89,10 @@ function Update-PatLibrary {
         [ArgumentCompleter({
             param($commandName, $parameterName, $wordToComplete, $commandAst, $fakeBoundParameters)
 
-            $serverUri = $null
-
-            # Use provided ServerUri if available
+            # Use provided ServerUri if available, otherwise use default server
             if ($fakeBoundParameters.ContainsKey('ServerUri')) {
-                $serverUri = $fakeBoundParameters['ServerUri']
-            }
-            else {
-                # Fall back to default server
                 try {
-                    $defaultServer = Get-PatStoredServer -Default -ErrorAction 'Stop'
-                    if ($defaultServer) {
-                        $serverUri = $defaultServer.uri
-                    }
-                }
-                catch {
-                    # Silently fail if default server retrieval fails
-                }
-            }
-
-            if ($serverUri) {
-                try {
-                    $sections = Get-PatLibrary -ServerUri $serverUri -ErrorAction 'SilentlyContinue'
+                    $sections = Get-PatLibrary -ServerUri $fakeBoundParameters['ServerUri'] -ErrorAction 'SilentlyContinue'
                     $sections.Directory.title | Where-Object { $_ -like "$wordToComplete*" } | ForEach-Object {
                         $sectionTitle = $_
                         # Quote section names that contain spaces
@@ -127,6 +109,26 @@ function Update-PatLibrary {
                     # Silently fail if server is unavailable
                 }
             }
+            else {
+                # Fall back to default server - don't pass ServerUri so Get-PatLibrary retrieves server object with token
+                try {
+                    $sections = Get-PatLibrary -ErrorAction 'SilentlyContinue'
+                    $sections.Directory.title | Where-Object { $_ -like "$wordToComplete*" } | ForEach-Object {
+                        $sectionTitle = $_
+                        # Quote section names that contain spaces
+                        if ($sectionTitle -match '\s') {
+                            $completionText = "'$sectionTitle'"
+                        }
+                        else {
+                            $completionText = $sectionTitle
+                        }
+                        [System.Management.Automation.CompletionResult]::new($completionText, $sectionTitle, 'ParameterValue', $sectionTitle)
+                    }
+                }
+                catch {
+                    # Silently fail if default server retrieval fails
+                }
+            }
         })]
         [string]
         $SectionName,
@@ -137,24 +139,19 @@ function Update-PatLibrary {
         [ArgumentCompleter({
             param($commandName, $parameterName, $wordToComplete, $commandAst, $fakeBoundParameters)
 
-            # Get ServerUri
-            $serverUri = $null
-            if ($fakeBoundParameters.ContainsKey('ServerUri')) {
-                $serverUri = $fakeBoundParameters['ServerUri']
-            }
-            else {
+            # Check if ServerUri was explicitly provided
+            $usingDefaultServer = -not $fakeBoundParameters.ContainsKey('ServerUri')
+
+            # If using default server, verify it exists
+            if ($usingDefaultServer) {
                 try {
                     $defaultServer = Get-PatStoredServer -Default -ErrorAction 'Stop'
-                    if ($defaultServer) {
-                        $serverUri = $defaultServer.uri
-                    }
+                    if (-not $defaultServer) { return }
                 }
                 catch {
-                    # Silently fail if default server retrieval fails
+                    return
                 }
             }
-
-            if (-not $serverUri) { return }
 
             # Get SectionId - could be direct or via SectionName
             $sectionId = $null
@@ -163,7 +160,12 @@ function Update-PatLibrary {
             }
             elseif ($fakeBoundParameters.ContainsKey('SectionName')) {
                 try {
-                    $sections = Get-PatLibrary -ServerUri $serverUri -ErrorAction 'SilentlyContinue'
+                    if ($usingDefaultServer) {
+                        $sections = Get-PatLibrary -ErrorAction 'SilentlyContinue'
+                    }
+                    else {
+                        $sections = Get-PatLibrary -ServerUri $fakeBoundParameters['ServerUri'] -ErrorAction 'SilentlyContinue'
+                    }
                     $matchedSection = $sections.Directory | Where-Object { $_.title -eq $fakeBoundParameters['SectionName'] }
                     if ($matchedSection) {
                         $sectionId = [int]($matchedSection.key -replace '.*/(\d+)$', '$1')
@@ -178,7 +180,12 @@ function Update-PatLibrary {
 
             # Get root paths for this section
             try {
-                $rootPaths = Get-PatLibraryPath -ServerUri $serverUri -SectionId $sectionId -ErrorAction 'SilentlyContinue'
+                if ($usingDefaultServer) {
+                    $rootPaths = Get-PatLibraryPath -SectionId $sectionId -ErrorAction 'SilentlyContinue'
+                }
+                else {
+                    $rootPaths = Get-PatLibraryPath -ServerUri $fakeBoundParameters['ServerUri'] -SectionId $sectionId -ErrorAction 'SilentlyContinue'
+                }
 
                 if (-not $wordToComplete) {
                     # No input yet - show root paths
@@ -216,7 +223,12 @@ function Update-PatLibrary {
 
                         if ($parentPath) {
                             try {
-                                $items = Get-PatLibraryChildItem -ServerUri $serverUri -Path $parentPath -ErrorAction 'SilentlyContinue'
+                                if ($usingDefaultServer) {
+                                    $items = Get-PatLibraryChildItem -Path $parentPath -ErrorAction 'SilentlyContinue'
+                                }
+                                else {
+                                    $items = Get-PatLibraryChildItem -ServerUri $fakeBoundParameters['ServerUri'] -Path $parentPath -ErrorAction 'SilentlyContinue'
+                                }
                                 # Filter to directories only (items with 'path' property that aren't files)
                                 $directories = $items | Where-Object {
                                     $_.PSObject.Properties.Name -contains 'path' -and

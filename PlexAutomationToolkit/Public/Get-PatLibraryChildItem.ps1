@@ -80,25 +80,24 @@ function Get-PatLibraryChildItem {
         [ArgumentCompleter({
             param($commandName, $parameterName, $wordToComplete, $commandAst, $fakeBoundParameters)
 
-            $serverUri = $null
-
+            # Use provided ServerUri if available, otherwise use default server
             if ($fakeBoundParameters.ContainsKey('ServerUri')) {
-                $serverUri = $fakeBoundParameters['ServerUri']
-            }
-            else {
                 try {
-                    $defaultServer = Get-PatStoredServer -Default -ErrorAction 'Stop'
-                    if ($defaultServer) {
-                        $serverUri = $defaultServer.uri
+                    $sections = Get-PatLibrary -ServerUri $fakeBoundParameters['ServerUri'] -ErrorAction 'SilentlyContinue'
+                    $sections.Directory | ForEach-Object {
+                        $sectionId = ($_.key -replace '.*/(\d+)$', '$1')
+                        if ($sectionId -like "$wordToComplete*") {
+                            [System.Management.Automation.CompletionResult]::new($sectionId, "$sectionId - $($_.title)", 'ParameterValue', "$($_.title) (ID: $sectionId)")
+                        }
                     }
                 }
                 catch {
                 }
             }
-
-            if ($serverUri) {
+            else {
+                # Fall back to default server - don't pass ServerUri so Get-PatLibrary retrieves server object with token
                 try {
-                    $sections = Get-PatLibrary -ServerUri $serverUri -ErrorAction 'SilentlyContinue'
+                    $sections = Get-PatLibrary -ErrorAction 'SilentlyContinue'
                     $sections.Directory | ForEach-Object {
                         $sectionId = ($_.key -replace '.*/(\d+)$', '$1')
                         if ($sectionId -like "$wordToComplete*") {
@@ -118,25 +117,28 @@ function Get-PatLibraryChildItem {
         [ArgumentCompleter({
             param($commandName, $parameterName, $wordToComplete, $commandAst, $fakeBoundParameters)
 
-            $serverUri = $null
-
+            # Use provided ServerUri if available, otherwise use default server
             if ($fakeBoundParameters.ContainsKey('ServerUri')) {
-                $serverUri = $fakeBoundParameters['ServerUri']
-            }
-            else {
                 try {
-                    $defaultServer = Get-PatStoredServer -Default -ErrorAction 'Stop'
-                    if ($defaultServer) {
-                        $serverUri = $defaultServer.uri
+                    $sections = Get-PatLibrary -ServerUri $fakeBoundParameters['ServerUri'] -ErrorAction 'SilentlyContinue'
+                    $sections.Directory.title | Where-Object { $_ -like "$wordToComplete*" } | ForEach-Object {
+                        $sectionTitle = $_
+                        if ($sectionTitle -match '\s') {
+                            $completionText = "'$sectionTitle'"
+                        }
+                        else {
+                            $completionText = $sectionTitle
+                        }
+                        [System.Management.Automation.CompletionResult]::new($completionText, $sectionTitle, 'ParameterValue', $sectionTitle)
                     }
                 }
                 catch {
                 }
             }
-
-            if ($serverUri) {
+            else {
+                # Fall back to default server - don't pass ServerUri so Get-PatLibrary retrieves server object with token
                 try {
-                    $sections = Get-PatLibrary -ServerUri $serverUri -ErrorAction 'SilentlyContinue'
+                    $sections = Get-PatLibrary -ErrorAction 'SilentlyContinue'
                     $sections.Directory.title | Where-Object { $_ -like "$wordToComplete*" } | ForEach-Object {
                         $sectionTitle = $_
                         if ($sectionTitle -match '\s') {
