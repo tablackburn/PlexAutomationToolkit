@@ -13,7 +13,7 @@ Displays instructions for obtaining a Plex authentication token.
 ## SYNTAX
 
 ```
-Get-PatToken [-ShowInstructions] [-ProgressAction <ActionPreference>] [<CommonParameters>]
+Get-PatToken [-ProgressAction <ActionPreference>] [<CommonParameters>]
 ```
 
 ## DESCRIPTION
@@ -40,21 +40,6 @@ Get-PatToken -ShowInstructions
 Displays detailed step-by-step instructions with multiple methods
 
 ## PARAMETERS
-
-### -ShowInstructions
-If specified, displays detailed step-by-step instructions
-
-```yaml
-Type: SwitchParameter
-Parameter Sets: (All)
-Aliases:
-
-Required: False
-Position: Named
-Default value: False
-Accept pipeline input: False
-Accept wildcard characters: False
-```
 
 ### -ProgressAction
 {{ Fill ProgressAction Description }}

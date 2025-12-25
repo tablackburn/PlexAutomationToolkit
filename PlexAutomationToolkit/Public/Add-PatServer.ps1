@@ -18,7 +18,10 @@ function Add-PatServer {
 
     .PARAMETER Token
         Optional Plex authentication token (X-Plex-Token). Required for servers that don't allow
-        unauthenticated local network access. Use Get-PatToken for instructions on obtaining your token.
+        unauthenticated local network access.
+
+        If not provided and the server requires authentication, you will be prompted to authenticate
+        using Connect-PatAccount.
 
         WARNING: Tokens are stored in PLAINTEXT in servers.json. Only use on trusted systems.
 
@@ -149,10 +152,42 @@ function Add-PatServer {
                 # Check for authentication failures (401 or 403)
                 if ($errorMessage -match '401|403|Unauthorized|Forbidden') {
                     if ($Token) {
-                        Write-Warning "Authentication with provided token failed for '$ServerUri'. Verify your token is correct using Get-PatToken. The server configuration has been saved but may not work until corrected."
+                        Write-Warning "Authentication with provided token failed for '$ServerUri'. Verify your token is correct. The server configuration has been saved but may not work until corrected."
                     }
                     else {
-                        Write-Warning "Server '$ServerUri' requires authentication but no token was provided. The server configuration has been saved but you may need to add a token using Remove-PatServer and Add-PatServer with -Token parameter."
+                        Write-Host "Server '$ServerUri' requires authentication." -ForegroundColor Yellow
+
+                        $choices = @(
+                            [System.Management.Automation.Host.ChoiceDescription]::new(
+                                '&Yes',
+                                'Authenticate with Plex using Connect-PatAccount (opens plex.tv/link)'
+                            )
+                            [System.Management.Automation.Host.ChoiceDescription]::new(
+                                '&No',
+                                'Save server without token (you can add it later)'
+                            )
+                        )
+
+                        $decision = $Host.UI.PromptForChoice(
+                            'Authentication Required',
+                            'Would you like to authenticate now using Connect-PatAccount?',
+                            $choices,
+                            0
+                        )
+
+                        if ($decision -eq 0) {
+                            try {
+                                $Token = Connect-PatAccount
+                                $newServer | Add-Member -NotePropertyName 'token' -NotePropertyValue $Token -Force
+                                Write-Host "Authentication successful. Token added to server configuration." -ForegroundColor Green
+                            }
+                            catch {
+                                Write-Warning "Authentication failed: $($_.Exception.Message). Server saved without token."
+                            }
+                        }
+                        else {
+                            Write-Warning "Server saved without token. You may need to re-add with -Token parameter."
+                        }
                     }
                 }
                 # Check for connection failures

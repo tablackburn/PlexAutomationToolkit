@@ -14,7 +14,7 @@ Adds a Plex server to the configuration.
 
 ```
 Add-PatServer [-Name] <String> [-ServerUri] <String> [-Default] [[-Token] <String>] [-PassThru]
- [-ProgressAction <ActionPreference>] [-WhatIf] [-Confirm] [<CommonParameters>]
+ [-SkipValidation] [-ProgressAction <ActionPreference>] [-WhatIf] [-Confirm] [<CommonParameters>]
 ```
 
 ## DESCRIPTION
@@ -113,6 +113,22 @@ Accept wildcard characters: False
 
 ### -PassThru
 If specified, returns the server configuration object after adding.
+
+```yaml
+Type: SwitchParameter
+Parameter Sets: (All)
+Aliases:
+
+Required: False
+Position: Named
+Default value: False
+Accept pipeline input: False
+Accept wildcard characters: False
+```
+
+### -SkipValidation
+If specified, skips validation of server connectivity and token authentication.
+Use this when adding a server that is temporarily offline or not yet configured.
 
 ```yaml
 Type: SwitchParameter
