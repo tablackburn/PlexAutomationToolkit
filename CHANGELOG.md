@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Added
 
+- New cmdlet `Connect-PatAccount` for simplified Plex authentication using PIN/OAuth flow
+  - Interactive authentication using 4-character PIN code at plex.tv/link
+  - No credential handling - uses same secure flow as Plex TV apps
+  - Returns authentication token for use with `Add-PatServer`
+  - Configurable timeout (default 5 minutes)
+  - Persistent client identifier stored in configuration
+- New private helper functions for PIN authentication flow:
+  - `Get-PatClientIdentifier` - Generates/retrieves unique device ID
+  - `New-PatPin` - Requests PIN from Plex API
+  - `Wait-PatPinAuthorization` - Polls for user authorization
+  - `Invoke-PatPinAuthentication` - Orchestrates complete PIN flow
 - New cmdlet `Clear-PatDefaultServer` to remove the default server designation from all configured servers
   - Supports `-PassThru` parameter to return server configurations after clearing
   - Supports `-WhatIf` and `-Confirm` for safe execution
