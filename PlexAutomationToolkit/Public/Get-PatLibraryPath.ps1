@@ -57,17 +57,6 @@ function Get-PatLibraryPath {
     )]
     [CmdletBinding(DefaultParameterSetName = 'All')]
     param (
-        [Parameter(Mandatory = $false)]
-        [ValidateNotNullOrEmpty()]
-        [ValidateScript({
-            if ($_ -notmatch '^https?://[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?)*(:[0-9]{1,5})?$') {
-                throw "ServerUri must be a valid HTTP or HTTPS URL (e.g., http://plex.local:32400)"
-            }
-            $true
-        })]
-        [string]
-        $ServerUri,
-
         [Parameter(Mandatory = $false, ParameterSetName = 'ByName')]
         [ValidateNotNullOrEmpty()]
         [ArgumentCompleter({
@@ -159,7 +148,18 @@ function Get-PatLibraryPath {
             }
         })]
         [int]
-        $SectionId
+        $SectionId,
+
+        [Parameter(Mandatory = $false)]
+        [ValidateNotNullOrEmpty()]
+        [ValidateScript({
+            if ($_ -notmatch '^https?://[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?)*(:[0-9]{1,5})?$') {
+                throw "ServerUri must be a valid HTTP or HTTPS URL (e.g., http://plex.local:32400)"
+            }
+            $true
+        })]
+        [string]
+        $ServerUri
     )
 
     # Use default server if ServerUri not specified
