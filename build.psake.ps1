@@ -18,7 +18,7 @@ properties {
 
 Task -Name 'Default' -Depends 'Test'
 
-Task -Name 'LoadIntegrationSettings' -Description 'Load integration test environment variables from local.settings.ps1' {
+Task -Name 'Init_Integration' -Description 'Load integration test environment variables from local.settings.ps1' {
     $localSettingsPath = Join-Path -Path $PSScriptRoot -ChildPath 'tests/local.settings.ps1'
     if (Test-Path -Path $localSettingsPath) {
         Write-Host "Loading integration test settings from tests/local.settings.ps1" -ForegroundColor Cyan
@@ -28,4 +28,4 @@ Task -Name 'LoadIntegrationSettings' -Description 'Load integration test environ
     }
 }
 
-Task -Name 'Test' -FromModule 'PowerShellBuild' -MinimumVersion '0.7.3' -Depends 'LoadIntegrationSettings'
+Task -Name 'Test' -FromModule 'PowerShellBuild' -MinimumVersion '0.7.3' -Depends 'Init_Integration'
