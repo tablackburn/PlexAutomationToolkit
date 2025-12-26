@@ -16,18 +16,14 @@ jobs:
         shell: pwsh
         run: ./build.ps1 -Task Build -Bootstrap
 
-      - name: Get Module Path
-        id: module-path
+      - name: Publish to PowerShell Gallery
         shell: pwsh
+        env:
+          PS_GALLERY_KEY: ${{ secrets.PS_GALLERY_KEY }}
         run: |
           $modulePath = Get-ChildItem -Path ./Output/PlexAutomationToolkit -Directory |
             Sort-Object Name -Descending |
             Select-Object -First 1 -ExpandProperty FullName
-          "path=$modulePath" >> $env:GITHUB_OUTPUT
 
-      - name: Publish to PowerShell Gallery
-        uses: natescherer/publish-powershell-action@v1
-        with:
-          token: ${{ secrets.PS_GALLERY_KEY }}
-          target: gallery
-          path: ${{ steps.module-path.outputs.path }}
+          Write-Host "Publishing module from: $modulePath"
+          Publish-Module -Path $modulePath -NuGetApiKey $env:PS_GALLERY_KEY -Verbose
