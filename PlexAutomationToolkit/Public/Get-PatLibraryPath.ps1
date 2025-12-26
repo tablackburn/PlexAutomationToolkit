@@ -68,10 +68,64 @@ function Get-PatLibraryPath {
         [string]
         $ServerUri,
 
+        [Parameter(Mandatory = $false, ParameterSetName = 'ByName')]
+        [ValidateNotNullOrEmpty()]
+        [ArgumentCompleter({
+            param($commandName, $parameterName, $wordToComplete, $commandAst, $fakeBoundParameters)
+
+            # Strip leading quotes for matching (case-insensitive)
+            $quoteChar = ''
+            $strippedWord = $wordToComplete
+            if ($wordToComplete -match "^([`"'])(.*)$") {
+                $quoteChar = $Matches[1]
+                $strippedWord = $Matches[2]
+            }
+
+            # Use provided ServerUri if available, otherwise use default server
+            if ($fakeBoundParameters.ContainsKey('ServerUri')) {
+                try {
+                    $sections = Get-PatLibrary -ServerUri $fakeBoundParameters['ServerUri'] -ErrorAction 'SilentlyContinue'
+                    foreach ($sectionTitle in $sections.Directory.title) {
+                        if ($sectionTitle -ilike "$strippedWord*") {
+                            if ($quoteChar) { $completionText = "$quoteChar$sectionTitle$quoteChar" }
+                            elseif ($sectionTitle -match '\s') { $completionText = "'$sectionTitle'" }
+                            else { $completionText = $sectionTitle }
+                            [System.Management.Automation.CompletionResult]::new($completionText, $sectionTitle, 'ParameterValue', $sectionTitle)
+                        }
+                    }
+                }
+                catch {
+                    # Silently fail if server is unavailable
+                }
+            }
+            else {
+                # Fall back to default server - don't pass ServerUri so Get-PatLibrary retrieves server object with token
+                try {
+                    $sections = Get-PatLibrary -ErrorAction 'SilentlyContinue'
+                    foreach ($sectionTitle in $sections.Directory.title) {
+                        if ($sectionTitle -ilike "$strippedWord*") {
+                            if ($quoteChar) { $completionText = "$quoteChar$sectionTitle$quoteChar" }
+                            elseif ($sectionTitle -match '\s') { $completionText = "'$sectionTitle'" }
+                            else { $completionText = $sectionTitle }
+                            [System.Management.Automation.CompletionResult]::new($completionText, $sectionTitle, 'ParameterValue', $sectionTitle)
+                        }
+                    }
+                }
+                catch {
+                    # Silently fail if default server retrieval fails
+                }
+            }
+        })]
+        [string]
+        $SectionName,
+
         [Parameter(Mandatory = $false, ParameterSetName = 'ById')]
         [ValidateRange(1, [int]::MaxValue)]
         [ArgumentCompleter({
             param($commandName, $parameterName, $wordToComplete, $commandAst, $fakeBoundParameters)
+
+            # Strip leading quotes for matching
+            $strippedWord = $wordToComplete -replace "^[`"']", ''
 
             # Use provided ServerUri if available, otherwise use default server
             if ($fakeBoundParameters.ContainsKey('ServerUri')) {
@@ -79,7 +133,7 @@ function Get-PatLibraryPath {
                     $sections = Get-PatLibrary -ServerUri $fakeBoundParameters['ServerUri'] -ErrorAction 'SilentlyContinue'
                     $sections.Directory | ForEach-Object {
                         $sectionId = ($_.key -replace '.*/(\d+)$', '$1')
-                        if ($sectionId -like "$wordToComplete*") {
+                        if ($sectionId -ilike "$strippedWord*") {
                             [System.Management.Automation.CompletionResult]::new($sectionId, "$sectionId - $($_.title)", 'ParameterValue', "$($_.title) (ID: $sectionId)")
                         }
                     }
@@ -94,7 +148,7 @@ function Get-PatLibraryPath {
                     $sections = Get-PatLibrary -ErrorAction 'SilentlyContinue'
                     $sections.Directory | ForEach-Object {
                         $sectionId = ($_.key -replace '.*/(\d+)$', '$1')
-                        if ($sectionId -like "$wordToComplete*") {
+                        if ($sectionId -ilike "$strippedWord*") {
                             [System.Management.Automation.CompletionResult]::new($sectionId, "$sectionId - $($_.title)", 'ParameterValue', "$($_.title) (ID: $sectionId)")
                         }
                     }
@@ -105,56 +159,7 @@ function Get-PatLibraryPath {
             }
         })]
         [int]
-        $SectionId,
-
-        [Parameter(Mandatory = $false, ParameterSetName = 'ByName')]
-        [ValidateNotNullOrEmpty()]
-        [ArgumentCompleter({
-            param($commandName, $parameterName, $wordToComplete, $commandAst, $fakeBoundParameters)
-
-            # Use provided ServerUri if available, otherwise use default server
-            if ($fakeBoundParameters.ContainsKey('ServerUri')) {
-                try {
-                    $sections = Get-PatLibrary -ServerUri $fakeBoundParameters['ServerUri'] -ErrorAction 'SilentlyContinue'
-                    $sections.Directory.title | Where-Object { $_ -like "$wordToComplete*" } | ForEach-Object {
-                        $sectionTitle = $_
-                        # Quote section names that contain spaces
-                        if ($sectionTitle -match '\s') {
-                            $completionText = "'$sectionTitle'"
-                        }
-                        else {
-                            $completionText = $sectionTitle
-                        }
-                        [System.Management.Automation.CompletionResult]::new($completionText, $sectionTitle, 'ParameterValue', $sectionTitle)
-                    }
-                }
-                catch {
-                    # Silently fail if server is unavailable
-                }
-            }
-            else {
-                # Fall back to default server - don't pass ServerUri so Get-PatLibrary retrieves server object with token
-                try {
-                    $sections = Get-PatLibrary -ErrorAction 'SilentlyContinue'
-                    $sections.Directory.title | Where-Object { $_ -like "$wordToComplete*" } | ForEach-Object {
-                        $sectionTitle = $_
-                        # Quote section names that contain spaces
-                        if ($sectionTitle -match '\s') {
-                            $completionText = "'$sectionTitle'"
-                        }
-                        else {
-                            $completionText = $sectionTitle
-                        }
-                        [System.Management.Automation.CompletionResult]::new($completionText, $sectionTitle, 'ParameterValue', $sectionTitle)
-                    }
-                }
-                catch {
-                    # Silently fail if default server retrieval fails
-                }
-            }
-        })]
-        [string]
-        $SectionName
+        $SectionId
     )
 
     # Use default server if ServerUri not specified

@@ -79,10 +79,10 @@ function Update-PatLibrary {
         'commandAst',
         Justification = 'Standard ArgumentCompleter parameter, not always used'
     )]
-    [CmdletBinding(DefaultParameterSetName = 'ById', SupportsShouldProcess, ConfirmImpact = 'Medium')]
+    [CmdletBinding(DefaultParameterSetName = 'ByName', SupportsShouldProcess, ConfirmImpact = 'Medium')]
     param (
-        [Parameter(Mandatory = $false, ParameterSetName = 'ById')]
         [Parameter(Mandatory = $false, ParameterSetName = 'ByName')]
+        [Parameter(Mandatory = $false, ParameterSetName = 'ById')]
         [ValidateNotNullOrEmpty()]
         [ValidateScript({
             if ($_ -notmatch '^https?://[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?)*(:[0-9]{1,5})?$') {
@@ -93,30 +93,30 @@ function Update-PatLibrary {
         [string]
         $ServerUri,
 
-        [Parameter(Mandatory = $true, ParameterSetName = 'ById')]
-        [ValidateRange(1, [int]::MaxValue)]
-        [int]
-        $SectionId,
-
         [Parameter(Mandatory = $true, ParameterSetName = 'ByName')]
         [ValidateNotNullOrEmpty()]
         [ArgumentCompleter({
             param($commandName, $parameterName, $wordToComplete, $commandAst, $fakeBoundParameters)
 
+            # Strip leading quotes for matching (case-insensitive)
+            $quoteChar = ''
+            $strippedWord = $wordToComplete
+            if ($wordToComplete -match "^([`"'])(.*)$") {
+                $quoteChar = $Matches[1]
+                $strippedWord = $Matches[2]
+            }
+
             # Use provided ServerUri if available, otherwise use default server
             if ($fakeBoundParameters.ContainsKey('ServerUri')) {
                 try {
                     $sections = Get-PatLibrary -ServerUri $fakeBoundParameters['ServerUri'] -ErrorAction 'SilentlyContinue'
-                    $sections.Directory.title | Where-Object { $_ -like "$wordToComplete*" } | ForEach-Object {
-                        $sectionTitle = $_
-                        # Quote section names that contain spaces
-                        if ($sectionTitle -match '\s') {
-                            $completionText = "'$sectionTitle'"
+                    foreach ($sectionTitle in $sections.Directory.title) {
+                        if ($sectionTitle -ilike "$strippedWord*") {
+                            if ($quoteChar) { $completionText = "$quoteChar$sectionTitle$quoteChar" }
+                            elseif ($sectionTitle -match '\s') { $completionText = "'$sectionTitle'" }
+                            else { $completionText = $sectionTitle }
+                            [System.Management.Automation.CompletionResult]::new($completionText, $sectionTitle, 'ParameterValue', $sectionTitle)
                         }
-                        else {
-                            $completionText = $sectionTitle
-                        }
-                        [System.Management.Automation.CompletionResult]::new($completionText, $sectionTitle, 'ParameterValue', $sectionTitle)
                     }
                 }
                 catch {
@@ -127,16 +127,13 @@ function Update-PatLibrary {
                 # Fall back to default server - don't pass ServerUri so Get-PatLibrary retrieves server object with token
                 try {
                     $sections = Get-PatLibrary -ErrorAction 'SilentlyContinue'
-                    $sections.Directory.title | Where-Object { $_ -like "$wordToComplete*" } | ForEach-Object {
-                        $sectionTitle = $_
-                        # Quote section names that contain spaces
-                        if ($sectionTitle -match '\s') {
-                            $completionText = "'$sectionTitle'"
+                    foreach ($sectionTitle in $sections.Directory.title) {
+                        if ($sectionTitle -ilike "$strippedWord*") {
+                            if ($quoteChar) { $completionText = "$quoteChar$sectionTitle$quoteChar" }
+                            elseif ($sectionTitle -match '\s') { $completionText = "'$sectionTitle'" }
+                            else { $completionText = $sectionTitle }
+                            [System.Management.Automation.CompletionResult]::new($completionText, $sectionTitle, 'ParameterValue', $sectionTitle)
                         }
-                        else {
-                            $completionText = $sectionTitle
-                        }
-                        [System.Management.Automation.CompletionResult]::new($completionText, $sectionTitle, 'ParameterValue', $sectionTitle)
                     }
                 }
                 catch {
@@ -147,11 +144,24 @@ function Update-PatLibrary {
         [string]
         $SectionName,
 
+        [Parameter(Mandatory = $true, ParameterSetName = 'ById')]
+        [ValidateRange(1, [int]::MaxValue)]
+        [int]
+        $SectionId,
+
         [Parameter(Mandatory = $false, ParameterSetName = 'ById')]
         [Parameter(Mandatory = $false, ParameterSetName = 'ByName')]
         [ValidateNotNullOrEmpty()]
         [ArgumentCompleter({
             param($commandName, $parameterName, $wordToComplete, $commandAst, $fakeBoundParameters)
+
+            # Strip leading quotes for matching (supports 'value and "value)
+            $quoteChar = ''
+            $strippedWord = $wordToComplete
+            if ($wordToComplete -match "^([`"'])(.*)$") {
+                $quoteChar = $Matches[1]
+                $strippedWord = $Matches[2]
+            }
 
             # Check if ServerUri was explicitly provided
             $usingDefaultServer = -not $fakeBoundParameters.ContainsKey('ServerUri')
@@ -202,70 +212,71 @@ function Update-PatLibrary {
                     $rootPaths = Get-PatLibraryPath -ServerUri $fakeBoundParameters['ServerUri'] -SectionId $sectionId -ErrorAction 'SilentlyContinue'
                 }
 
-                if (-not $wordToComplete) {
+                # Helper to create completion result with proper quoting
+                $createCompletion = {
+                    param($value)
+                    if ($value -ilike "$strippedWord*") {
+                        if ($quoteChar) { $text = "$quoteChar$value$quoteChar" }
+                        elseif ($value -match '\s') { $text = "'$value'" }
+                        else { $text = $value }
+                        [System.Management.Automation.CompletionResult]::new($text, $value, 'ParameterValue', $value)
+                    }
+                }
+
+                if (-not $strippedWord) {
                     # No input yet - show root paths
                     foreach ($rootPath in $rootPaths) {
-                        $path = $rootPath.path
-                        if ($path -match '\s') {
-                            $completionText = "'$path'"
-                        }
-                        else {
-                            $completionText = $path
-                        }
-                        [System.Management.Automation.CompletionResult]::new($completionText, $path, 'ParameterValue', $path)
+                        $result = & $createCompletion $rootPath.path
+                        if ($result) { $result }
                     }
                 }
                 else {
-                    # User has started typing - check if it matches any root paths
-                    $matchingRoots = $rootPaths | Where-Object { $_.path -like "$wordToComplete*" }
+                    # Determine the path to browse
+                    # If strippedWord exactly matches a root path, browse that path
+                    # Otherwise, get the parent directory manually (preserve Unix paths)
+                    $exactRoot = $rootPaths | Where-Object { $_.path -ieq $strippedWord }
+                    $pathToBrowse = if ($exactRoot) {
+                        $strippedWord
+                    } else {
+                        # Manual parent path extraction to preserve forward slashes
+                        # Split-Path on Windows converts /foo/bar to \foo\bar which breaks Linux paths
+                        $lastSlash = [Math]::Max($strippedWord.LastIndexOf('/'), $strippedWord.LastIndexOf('\'))
+                        if ($lastSlash -gt 0) { $strippedWord.Substring(0, $lastSlash) } else { $null }
+                    }
 
-                    if ($matchingRoots) {
-                        # Show matching root paths
-                        foreach ($rootPath in $matchingRoots) {
-                            $path = $rootPath.path
-                            if ($path -match '\s') {
-                                $completionText = "'$path'"
+                    $browsedItems = $false
+                    if ($pathToBrowse) {
+                        try {
+                            if ($usingDefaultServer) {
+                                $items = Get-PatLibraryChildItem -Path $pathToBrowse -ErrorAction 'SilentlyContinue'
                             }
                             else {
-                                $completionText = $path
+                                $items = Get-PatLibraryChildItem -ServerUri $fakeBoundParameters['ServerUri'] -Path $pathToBrowse -ErrorAction 'SilentlyContinue'
                             }
-                            [System.Management.Automation.CompletionResult]::new($completionText, $path, 'ParameterValue', $path)
-                        }
-                    }
-                    else {
-                        # Try to browse subdirectories
-                        $parentPath = Split-Path -Path $wordToComplete -Parent
 
-                        if ($parentPath) {
-                            try {
-                                if ($usingDefaultServer) {
-                                    $items = Get-PatLibraryChildItem -Path $parentPath -ErrorAction 'SilentlyContinue'
-                                }
-                                else {
-                                    $items = Get-PatLibraryChildItem -ServerUri $fakeBoundParameters['ServerUri'] -Path $parentPath -ErrorAction 'SilentlyContinue'
-                                }
-                                # Filter to directories only (items with 'path' property that aren't files)
-                                $directories = $items | Where-Object {
-                                    $_.PSObject.Properties.Name -contains 'path' -and
-                                    $_.PSObject.TypeNames[0] -notlike '*File*'
-                                }
-
-                                foreach ($dir in $directories) {
-                                    $dirPath = $dir.path
-                                    if ($dirPath -like "$wordToComplete*") {
-                                        if ($dirPath -match '\s') {
-                                            $completionText = "'$dirPath'"
-                                        }
-                                        else {
-                                            $completionText = $dirPath
-                                        }
-                                        [System.Management.Automation.CompletionResult]::new($completionText, $dirPath, 'ParameterValue', $dirPath)
+                            if ($items) {
+                                $browsedItems = $true
+                                foreach ($item in $items) {
+                                    # Get the path property (handle both 'path' and 'Path' casing)
+                                    $itemPath = if ($item.PSObject.Properties['path']) { $item.path } elseif ($item.PSObject.Properties['Path']) { $item.Path } else { $null }
+                                    if ($itemPath) {
+                                        $result = & $createCompletion $itemPath
+                                        if ($result) { $result }
                                     }
                                 }
                             }
-                            catch {
-                                Write-Debug "Tab completion failed: Could not browse subdirectories: $($_.Exception.Message)"
-                            }
+                        }
+                        catch {
+                            Write-Debug "Tab completion failed: Could not browse path: $($_.Exception.Message)"
+                        }
+                    }
+
+                    # Fall back to matching root paths if browsing didn't work
+                    if (-not $browsedItems) {
+                        $matchingRoots = $rootPaths | Where-Object { $_.path -ilike "$strippedWord*" }
+                        foreach ($rootPath in $matchingRoots) {
+                            $result = & $createCompletion $rootPath.path
+                            if ($result) { $result }
                         }
                     }
                 }

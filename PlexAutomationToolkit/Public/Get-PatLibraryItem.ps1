@@ -51,7 +51,7 @@ function Get-PatLibraryItem {
         'commandAst',
         Justification = 'Standard ArgumentCompleter parameter, not always used'
     )]
-    [CmdletBinding(DefaultParameterSetName = 'ById')]
+    [CmdletBinding(DefaultParameterSetName = 'ByName')]
     param (
         [Parameter(Mandatory = $false)]
         [ValidateNotNullOrEmpty()]
@@ -64,17 +64,69 @@ function Get-PatLibraryItem {
         [string]
         $ServerUri,
 
+        [Parameter(Mandatory = $true, ParameterSetName = 'ByName')]
+        [ValidateNotNullOrEmpty()]
+        [ArgumentCompleter({
+            param($commandName, $parameterName, $wordToComplete, $commandAst, $fakeBoundParameters)
+
+            # Strip leading quotes for matching (case-insensitive)
+            $quoteChar = ''
+            $strippedWord = $wordToComplete
+            if ($wordToComplete -match "^([`"'])(.*)$") {
+                $quoteChar = $Matches[1]
+                $strippedWord = $Matches[2]
+            }
+
+            if ($fakeBoundParameters.ContainsKey('ServerUri')) {
+                try {
+                    $sections = Get-PatLibrary -ServerUri $fakeBoundParameters['ServerUri'] -ErrorAction 'SilentlyContinue'
+                    foreach ($sectionTitle in $sections.Directory.title) {
+                        if ($sectionTitle -ilike "$strippedWord*") {
+                            if ($quoteChar) { $completionText = "$quoteChar$sectionTitle$quoteChar" }
+                            elseif ($sectionTitle -match '\s') { $completionText = "'$sectionTitle'" }
+                            else { $completionText = $sectionTitle }
+                            [System.Management.Automation.CompletionResult]::new($completionText, $sectionTitle, 'ParameterValue', $sectionTitle)
+                        }
+                    }
+                }
+                catch {
+                    Write-Debug "Tab completion failed for SectionName: $($_.Exception.Message)"
+                }
+            }
+            else {
+                try {
+                    $sections = Get-PatLibrary -ErrorAction 'SilentlyContinue'
+                    foreach ($sectionTitle in $sections.Directory.title) {
+                        if ($sectionTitle -ilike "$strippedWord*") {
+                            if ($quoteChar) { $completionText = "$quoteChar$sectionTitle$quoteChar" }
+                            elseif ($sectionTitle -match '\s') { $completionText = "'$sectionTitle'" }
+                            else { $completionText = $sectionTitle }
+                            [System.Management.Automation.CompletionResult]::new($completionText, $sectionTitle, 'ParameterValue', $sectionTitle)
+                        }
+                    }
+                }
+                catch {
+                    Write-Debug "Tab completion failed for SectionName (default server): $($_.Exception.Message)"
+                }
+            }
+        })]
+        [string]
+        $SectionName,
+
         [Parameter(Mandatory = $true, ParameterSetName = 'ById', ValueFromPipeline, ValueFromPipelineByPropertyName)]
         [ValidateRange(1, [int]::MaxValue)]
         [ArgumentCompleter({
             param($commandName, $parameterName, $wordToComplete, $commandAst, $fakeBoundParameters)
+
+            # Strip leading quotes for matching
+            $strippedWord = $wordToComplete -replace "^[`"']", ''
 
             if ($fakeBoundParameters.ContainsKey('ServerUri')) {
                 try {
                     $sections = Get-PatLibrary -ServerUri $fakeBoundParameters['ServerUri'] -ErrorAction 'SilentlyContinue'
                     $sections.Directory | ForEach-Object {
                         $sectionId = ($_.key -replace '.*/(\d+)$', '$1')
-                        if ($sectionId -like "$wordToComplete*") {
+                        if ($sectionId -ilike "$strippedWord*") {
                             [System.Management.Automation.CompletionResult]::new($sectionId, "$sectionId - $($_.title)", 'ParameterValue', "$($_.title) (ID: $sectionId)")
                         }
                     }
@@ -88,7 +140,7 @@ function Get-PatLibraryItem {
                     $sections = Get-PatLibrary -ErrorAction 'SilentlyContinue'
                     $sections.Directory | ForEach-Object {
                         $sectionId = ($_.key -replace '.*/(\d+)$', '$1')
-                        if ($sectionId -like "$wordToComplete*") {
+                        if ($sectionId -ilike "$strippedWord*") {
                             [System.Management.Automation.CompletionResult]::new($sectionId, "$sectionId - $($_.title)", 'ParameterValue', "$($_.title) (ID: $sectionId)")
                         }
                     }
@@ -99,52 +151,7 @@ function Get-PatLibraryItem {
             }
         })]
         [int]
-        $SectionId,
-
-        [Parameter(Mandatory = $true, ParameterSetName = 'ByName')]
-        [ValidateNotNullOrEmpty()]
-        [ArgumentCompleter({
-            param($commandName, $parameterName, $wordToComplete, $commandAst, $fakeBoundParameters)
-
-            if ($fakeBoundParameters.ContainsKey('ServerUri')) {
-                try {
-                    $sections = Get-PatLibrary -ServerUri $fakeBoundParameters['ServerUri'] -ErrorAction 'SilentlyContinue'
-                    $sections.Directory.title | Where-Object { $_ -like "$wordToComplete*" } | ForEach-Object {
-                        $sectionTitle = $_
-                        if ($sectionTitle -match '\s') {
-                            $completionText = "'$sectionTitle'"
-                        }
-                        else {
-                            $completionText = $sectionTitle
-                        }
-                        [System.Management.Automation.CompletionResult]::new($completionText, $sectionTitle, 'ParameterValue', $sectionTitle)
-                    }
-                }
-                catch {
-                    Write-Debug "Tab completion failed for SectionName: $($_.Exception.Message)"
-                }
-            }
-            else {
-                try {
-                    $sections = Get-PatLibrary -ErrorAction 'SilentlyContinue'
-                    $sections.Directory.title | Where-Object { $_ -like "$wordToComplete*" } | ForEach-Object {
-                        $sectionTitle = $_
-                        if ($sectionTitle -match '\s') {
-                            $completionText = "'$sectionTitle'"
-                        }
-                        else {
-                            $completionText = $sectionTitle
-                        }
-                        [System.Management.Automation.CompletionResult]::new($completionText, $sectionTitle, 'ParameterValue', $sectionTitle)
-                    }
-                }
-                catch {
-                    Write-Debug "Tab completion failed for SectionName (default server): $($_.Exception.Message)"
-                }
-            }
-        })]
-        [string]
-        $SectionName
+        $SectionId
     )
 
     begin {
