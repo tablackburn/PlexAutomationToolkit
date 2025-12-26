@@ -52,6 +52,7 @@ function Get-PatServer {
     process {
         # Use default server if ServerUri not specified
         $server = $null
+        $effectiveUri = $ServerUri
         if (-not $ServerUri) {
             # Cache default server lookup
             if (-not $defaultServer) {
@@ -67,14 +68,14 @@ function Get-PatServer {
                 }
             }
             $server = $defaultServer
-            $ServerUri = $server.uri
+            $effectiveUri = $server.uri
         }
         else {
             Write-Verbose "Using specified server: $ServerUri"
         }
 
-        Write-Verbose "Retrieving server information from $ServerUri"
-        $uri = Join-PatUri -BaseUri $ServerUri -Endpoint '/'
+        Write-Verbose "Retrieving server information from $effectiveUri"
+        $uri = Join-PatUri -BaseUri $effectiveUri -Endpoint '/'
 
         # Build headers with authentication if we have server object
         $headers = if ($server) {
@@ -107,7 +108,7 @@ function Get-PatServer {
                 BackgroundProcessing = $result.backgroundProcessing
                 Certificate          = $result.certificate
                 CompanionProxy       = $result.companionProxy
-                ServerUri            = $ServerUri
+                ServerUri            = $effectiveUri
             }
         }
         catch {

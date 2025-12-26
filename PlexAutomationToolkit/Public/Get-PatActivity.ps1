@@ -87,13 +87,14 @@ function Get-PatActivity {
 
     # Use default server if ServerUri not specified
     $server = $null
+    $effectiveUri = $ServerUri
     if (-not $ServerUri) {
         try {
             $server = Get-PatStoredServer -Default -ErrorAction 'Stop'
             if (-not $server) {
                 throw "No default server configured. Use Add-PatServer with -Default or specify -ServerUri."
             }
-            $ServerUri = $server.uri
+            $effectiveUri = $server.uri
         }
         catch {
             throw "Failed to get default server: $($_.Exception.Message)"
@@ -102,7 +103,7 @@ function Get-PatActivity {
 
     try {
         $endpoint = '/activities'
-        $uri = Join-PatUri -BaseUri $ServerUri -Endpoint $endpoint
+        $uri = Join-PatUri -BaseUri $effectiveUri -Endpoint $endpoint
 
         # Build headers with authentication if we have server object
         $headers = if ($server) {

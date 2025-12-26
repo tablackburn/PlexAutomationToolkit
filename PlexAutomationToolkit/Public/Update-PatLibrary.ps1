@@ -360,6 +360,7 @@ function Update-PatLibrary {
 
     # Use default server if ServerUri not specified
     $server = $null
+    $effectiveUri = $ServerUri
     $usingDefaultServer = $false
     if (-not $ServerUri) {
         try {
@@ -367,7 +368,7 @@ function Update-PatLibrary {
             if (-not $server) {
                 throw "No default server configured. Use Add-PatServer with -Default or specify -ServerUri."
             }
-            $ServerUri = $server.uri
+            $effectiveUri = $server.uri
             $usingDefaultServer = $true
         }
         catch {
@@ -376,6 +377,7 @@ function Update-PatLibrary {
     }
 
     # If using section name, resolve it to section ID
+    $resolvedSectionId = $SectionId
     if ($PSCmdlet.ParameterSetName -eq 'ByName') {
         try {
             # If using default server, don't pass ServerUri so Get-PatLibrary can retrieve server object with token
@@ -383,7 +385,7 @@ function Update-PatLibrary {
                 $sections = Get-PatLibrary -ErrorAction 'Stop'
             }
             else {
-                $sections = Get-PatLibrary -ServerUri $ServerUri -ErrorAction 'Stop'
+                $sections = Get-PatLibrary -ServerUri $effectiveUri -ErrorAction 'Stop'
             }
             $matchedSection = $sections.Directory | Where-Object { $_.title -eq $SectionName }
 
@@ -395,7 +397,7 @@ function Update-PatLibrary {
                 throw "Multiple library sections found with name '$SectionName'. Please use -SectionId instead."
             }
 
-            $SectionId = [int]($matchedSection.key -replace '.*/(\d+)$', '$1')
+            $resolvedSectionId = [int]($matchedSection.key -replace '.*/(\d+)$', '$1')
         }
         catch {
             throw "Failed to resolve section name: $($_.Exception.Message)"
@@ -406,8 +408,8 @@ function Update-PatLibrary {
     if ($Path -and -not $SkipPathValidation) {
         Write-Verbose "Validating path: $Path"
         $testParams = @{ Path = $Path }
-        if ($ServerUri) { $testParams['ServerUri'] = $ServerUri }
-        if ($SectionId) { $testParams['SectionId'] = $SectionId }
+        if ($effectiveUri) { $testParams['ServerUri'] = $effectiveUri }
+        if ($resolvedSectionId) { $testParams['SectionId'] = $resolvedSectionId }
 
         $pathValid = Test-PatLibraryPath @testParams
         if (-not $pathValid) {
@@ -420,26 +422,26 @@ function Update-PatLibrary {
     $beforeItems = $null
     if ($ReportChanges) {
         Write-Verbose "Capturing library state before scan"
-        $getItemParams = @{ SectionId = $SectionId }
-        if ($ServerUri) { $getItemParams['ServerUri'] = $ServerUri }
+        $getItemParams = @{ SectionId = $resolvedSectionId }
+        if ($effectiveUri) { $getItemParams['ServerUri'] = $effectiveUri }
         $beforeItems = @(Get-PatLibraryItem @getItemParams -ErrorAction 'SilentlyContinue')
         Write-Verbose "Captured $($beforeItems.Count) items before scan"
     }
 
-    $endpoint = "/library/sections/$SectionId/refresh"
+    $endpoint = "/library/sections/$resolvedSectionId/refresh"
     $queryString = $null
 
     if ($Path) {
         $queryString = "path=$([System.Uri]::EscapeDataString($Path))"
     }
 
-    $uri = Join-PatUri -BaseUri $ServerUri -Endpoint $endpoint -QueryString $queryString
+    $uri = Join-PatUri -BaseUri $effectiveUri -Endpoint $endpoint -QueryString $queryString
 
     if ($Path) {
-        $target = "section $SectionId path '$Path'"
+        $target = "section $resolvedSectionId path '$Path'"
     }
     else {
-        $target = "section $SectionId"
+        $target = "section $resolvedSectionId"
     }
 
     # Build headers with authentication if we have server object
@@ -458,11 +460,11 @@ function Update-PatLibrary {
             if ($Wait -or $ReportChanges) {
                 Write-Verbose "Waiting for scan to complete (timeout: ${Timeout}s)"
                 $waitParams = @{
-                    SectionId       = $SectionId
+                    SectionId       = $resolvedSectionId
                     Timeout         = $Timeout
                     PollingInterval = 2
                 }
-                if ($ServerUri) { $waitParams['ServerUri'] = $ServerUri }
+                if ($effectiveUri) { $waitParams['ServerUri'] = $effectiveUri }
 
                 Wait-PatLibraryScan @waitParams
                 Write-Verbose "Scan completed"
@@ -471,8 +473,8 @@ function Update-PatLibrary {
             # Report changes if requested
             if ($ReportChanges) {
                 Write-Verbose "Capturing library state after scan"
-                $getItemParams = @{ SectionId = $SectionId }
-                if ($ServerUri) { $getItemParams['ServerUri'] = $ServerUri }
+                $getItemParams = @{ SectionId = $resolvedSectionId }
+                if ($effectiveUri) { $getItemParams['ServerUri'] = $effectiveUri }
                 $afterItems = @(Get-PatLibraryItem @getItemParams -ErrorAction 'SilentlyContinue')
                 Write-Verbose "Captured $($afterItems.Count) items after scan"
 
@@ -482,10 +484,10 @@ function Update-PatLibrary {
             elseif ($PassThru) {
                 # Return the refreshed library section
                 if ($usingDefaultServer) {
-                    Get-PatLibrary -SectionId $SectionId -ErrorAction 'Stop'
+                    Get-PatLibrary -SectionId $resolvedSectionId -ErrorAction 'Stop'
                 }
                 else {
-                    Get-PatLibrary -ServerUri $ServerUri -SectionId $SectionId -ErrorAction 'Stop'
+                    Get-PatLibrary -ServerUri $effectiveUri -SectionId $resolvedSectionId -ErrorAction 'Stop'
                 }
             }
         }

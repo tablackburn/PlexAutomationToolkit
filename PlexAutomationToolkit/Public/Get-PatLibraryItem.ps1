@@ -157,6 +157,7 @@ function Get-PatLibraryItem {
     begin {
         # Use default server if ServerUri not specified
         $server = $null
+        $effectiveUri = $ServerUri
         $usingDefaultServer = $false
         if (-not $ServerUri) {
             try {
@@ -164,9 +165,9 @@ function Get-PatLibraryItem {
                 if (-not $server) {
                     throw "No default server configured. Use Add-PatServer with -Default or specify -ServerUri."
                 }
-                $ServerUri = $server.uri
+                $effectiveUri = $server.uri
                 $usingDefaultServer = $true
-                Write-Verbose "Using default server: $ServerUri"
+                Write-Verbose "Using default server: $effectiveUri"
             }
             catch {
                 throw "Failed to get default server: $($_.Exception.Message)"
@@ -188,26 +189,27 @@ function Get-PatLibraryItem {
     process {
         try {
             # Resolve SectionName to SectionId if needed
+            $resolvedSectionId = $SectionId
             if ($SectionName) {
                 # If using default server, don't pass ServerUri so Get-PatLibrary can use token
                 if ($usingDefaultServer) {
                     $sections = Get-PatLibrary -ErrorAction 'Stop'
                 }
                 else {
-                    $sections = Get-PatLibrary -ServerUri $ServerUri -ErrorAction 'Stop'
+                    $sections = Get-PatLibrary -ServerUri $effectiveUri -ErrorAction 'Stop'
                 }
                 $matchingSection = $sections.Directory | Where-Object { $_.title -eq $SectionName }
                 if (-not $matchingSection) {
                     throw "Library section '$SectionName' not found"
                 }
-                $SectionId = [int]($matchingSection.key -replace '.*/(\d+)$', '$1')
-                Write-Verbose "Resolved section name '$SectionName' to ID $SectionId"
+                $resolvedSectionId = [int]($matchingSection.key -replace '.*/(\d+)$', '$1')
+                Write-Verbose "Resolved section name '$SectionName' to ID $resolvedSectionId"
             }
 
-            $endpoint = "/library/sections/$SectionId/all"
-            Write-Verbose "Retrieving all items from library section $SectionId"
+            $endpoint = "/library/sections/$resolvedSectionId/all"
+            Write-Verbose "Retrieving all items from library section $resolvedSectionId"
 
-            $uri = Join-PatUri -BaseUri $ServerUri -Endpoint $endpoint
+            $uri = Join-PatUri -BaseUri $effectiveUri -Endpoint $endpoint
             $result = Invoke-PatApi -Uri $uri -Headers $headers -ErrorAction 'Stop'
 
             # Return the Metadata array
@@ -215,7 +217,7 @@ function Get-PatLibraryItem {
                 $result.Metadata
             }
             else {
-                Write-Verbose "No items found in library section $SectionId"
+                Write-Verbose "No items found in library section $resolvedSectionId"
             }
         }
         catch {

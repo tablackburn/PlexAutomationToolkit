@@ -109,6 +109,9 @@ function Add-PatServer {
     )
 
     try {
+        # Use local variable for potentially modified ServerUri (e.g., HTTP->HTTPS upgrade)
+        $effectiveUri = $ServerUri
+
         # Check if HTTPS is available when HTTP is specified
         if ($ServerUri -match '^http://' -and -not $SkipValidation) {
             $httpsUri = $ServerUri -replace '^http://', 'https://'
@@ -137,8 +140,8 @@ function Add-PatServer {
                     "Server supports HTTPS. Use $httpsUri instead?",
                     'HTTPS Available'
                 )) {
-                    $ServerUri = $httpsUri
-                    Write-Host "Using HTTPS: $ServerUri" -ForegroundColor Green
+                    $effectiveUri = $httpsUri
+                    Write-Host "Using HTTPS: $effectiveUri" -ForegroundColor Green
                 }
                 else {
                     Write-Warning "Using unencrypted HTTP. Authentication tokens will be transmitted in clear text."
@@ -166,7 +169,7 @@ function Add-PatServer {
         # Add new server
         $newServer = [PSCustomObject]@{
             name    = $Name
-            uri     = $ServerUri
+            uri     = $effectiveUri
             default = $Default.IsPresent
         }
 
@@ -181,7 +184,7 @@ function Add-PatServer {
 
             try {
                 # Build URI for root endpoint
-                $validationUri = Join-PatUri -BaseUri $ServerUri -Endpoint '/'
+                $validationUri = Join-PatUri -BaseUri $effectiveUri -Endpoint '/'
 
                 # Build headers with authentication if token provided
                 $validationHeaders = Get-PatAuthHeaders -Server $newServer
@@ -197,10 +200,10 @@ function Add-PatServer {
                 # Check for authentication failures (401 or 403)
                 if ($errorMessage -match '401|403|Unauthorized|Forbidden') {
                     if ($Token) {
-                        Write-Warning "Authentication with provided token failed for '$ServerUri'. Verify your token is correct. The server configuration has been saved but may not work until corrected."
+                        Write-Warning "Authentication with provided token failed for '$effectiveUri'. Verify your token is correct. The server configuration has been saved but may not work until corrected."
                     }
                     else {
-                        Write-Host "Server '$ServerUri' requires authentication." -ForegroundColor Yellow
+                        Write-Host "Server '$effectiveUri' requires authentication." -ForegroundColor Yellow
 
                         # Authenticate if -Force or user confirms
                         if ($Force -or $PSCmdlet.ShouldContinue(
@@ -208,8 +211,8 @@ function Add-PatServer {
                             'Authentication Required'
                         )) {
                             try {
-                                $Token = Connect-PatAccount -Force:$Force
-                                $newServer | Add-Member -NotePropertyName 'token' -NotePropertyValue $Token -Force
+                                $authToken = Connect-PatAccount -Force:$Force
+                                $newServer | Add-Member -NotePropertyName 'token' -NotePropertyValue $authToken -Force
                                 Write-Host "Authentication successful. Token added to server configuration." -ForegroundColor Green
                             }
                             catch {
@@ -223,11 +226,11 @@ function Add-PatServer {
                 }
                 # Check for connection failures
                 elseif ($errorMessage -match 'Unable to connect|No such host|refused|timed out|unreachable') {
-                    Write-Warning "Unable to connect to server at '$ServerUri'. The server may be offline or unreachable, but the configuration has been saved."
+                    Write-Warning "Unable to connect to server at '$effectiveUri'. The server may be offline or unreachable, but the configuration has been saved."
                 }
                 # Generic error
                 else {
-                    Write-Warning "Failed to validate server at '$ServerUri': $errorMessage. The configuration has been saved but may not work correctly."
+                    Write-Warning "Failed to validate server at '$effectiveUri': $errorMessage. The configuration has been saved but may not work correctly."
                 }
             }
         }

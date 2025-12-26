@@ -177,6 +177,7 @@ function Get-PatLibraryChildItem {
 
     # Use default server if ServerUri not specified
     $server = $null
+    $effectiveUri = $ServerUri
     $usingDefaultServer = $false
     if (-not $ServerUri) {
         try {
@@ -184,7 +185,7 @@ function Get-PatLibraryChildItem {
             if (-not $server) {
                 throw "No default server configured. Use Add-PatServer with -Default or specify -ServerUri."
             }
-            $ServerUri = $server.uri
+            $effectiveUri = $server.uri
             $usingDefaultServer = $true
         }
         catch {
@@ -202,7 +203,7 @@ function Get-PatLibraryChildItem {
                 $sections = Get-PatLibrary -ErrorAction 'Stop'
             }
             else {
-                $sections = Get-PatLibrary -ServerUri $ServerUri -ErrorAction 'Stop'
+                $sections = Get-PatLibrary -ServerUri $effectiveUri -ErrorAction 'Stop'
             }
 
             $matchingSection = $null
@@ -261,7 +262,7 @@ function Get-PatLibraryChildItem {
                 $endpoint += "/$pathB64"
             }
 
-            $uri = Join-PatUri -BaseUri $ServerUri -Endpoint $endpoint -QueryString 'includeFiles=1'
+            $uri = Join-PatUri -BaseUri $effectiveUri -Endpoint $endpoint -QueryString 'includeFiles=1'
             $result = Invoke-PatApi -Uri $uri -Headers $headers -ErrorAction 'Stop'
 
             if ($result.Path) { $results += $result.Path }
