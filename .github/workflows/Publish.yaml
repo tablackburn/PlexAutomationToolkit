@@ -28,6 +28,6 @@ jobs:
       - name: Publish to PowerShell Gallery
         uses: natescherer/publish-powershell-action@v1
         with:
-          token: ${{ secrets.PSGALLERY_API_KEY }}
+          token: ${{ secrets.PS_GALLERY_KEY }}
           target: gallery
           path: ${{ steps.module-path.outputs.path }}
