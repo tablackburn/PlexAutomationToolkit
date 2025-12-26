@@ -1,11 +1,9 @@
 BeforeAll {
-    $ModuleName = 'PlexAutomationToolkit'
-    $ModuleManifestPath = "$PSScriptRoot/../../../Output/$ModuleName/$((Test-ModuleManifest "$PSScriptRoot/../../../$ModuleName/$ModuleName.psd1").Version)/$ModuleName.psd1"
+    $ProjectRoot = Split-Path -Parent (Split-Path -Parent (Split-Path -Parent $PSScriptRoot))
+    $ModuleRoot = Join-Path $ProjectRoot 'PlexAutomationToolkit'
 
-    if (Get-Module -Name $ModuleName) {
-        Remove-Module -Name $ModuleName -Force
-    }
-    Import-Module $ModuleManifestPath -Force
+    # Import the function directly for testing
+    . (Join-Path $ModuleRoot 'Private\Wait-PatPinAuthorization.ps1')
 }
 
 Describe 'Wait-PatPinAuthorization' {

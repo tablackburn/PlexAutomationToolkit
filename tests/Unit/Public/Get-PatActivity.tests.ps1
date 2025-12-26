@@ -1,18 +1,10 @@
 BeforeAll {
-    # Import the module
-    if ($null -eq $Env:BHBuildOutput) {
-        $buildFilePath = Join-Path -Path $PSScriptRoot -ChildPath '..\..\..\build.psake.ps1'
-        $invokePsakeParameters = @{
-            TaskList  = 'Build'
-            BuildFile = $buildFilePath
-        }
-        Invoke-psake @invokePsakeParameters
-    }
+    # Import the module from source
+    $ProjectRoot = Split-Path -Parent (Split-Path -Parent (Split-Path -Parent $PSScriptRoot))
+    $ModuleRoot = Join-Path $ProjectRoot 'PlexAutomationToolkit'
+    $moduleManifestPath = Join-Path $ModuleRoot 'PlexAutomationToolkit.psd1'
 
-    $moduleManifestFilename = $Env:BHProjectName + '.psd1'
-    $moduleManifestPath = Join-Path -Path $Env:BHBuildOutput -ChildPath $moduleManifestFilename
-
-    Get-Module $Env:BHProjectName | Remove-Module -Force -ErrorAction 'Ignore'
+    Get-Module PlexAutomationToolkit | Remove-Module -Force -ErrorAction 'Ignore'
     Import-Module -Name $moduleManifestPath -Verbose:$false -ErrorAction 'Stop'
 }
 
@@ -56,11 +48,11 @@ Describe 'Get-PatActivity' {
 
     Context 'When retrieving all activities' {
         BeforeAll {
-            Mock -ModuleName $Env:BHProjectName Invoke-PatApi {
+            Mock -ModuleName PlexAutomationToolkit Invoke-PatApi {
                 return $script:mockActivitiesResponse
             }
 
-            Mock -ModuleName $Env:BHProjectName Join-PatUri {
+            Mock -ModuleName PlexAutomationToolkit Join-PatUri {
                 return 'http://plex.local:32400/activities'
             }
         }
@@ -72,7 +64,7 @@ Describe 'Get-PatActivity' {
 
         It 'Calls the activities endpoint' {
             Get-PatActivity -ServerUri 'http://plex.local:32400'
-            Should -Invoke -ModuleName $Env:BHProjectName Join-PatUri -ParameterFilter {
+            Should -Invoke -ModuleName PlexAutomationToolkit Join-PatUri -ParameterFilter {
                 $Endpoint -eq '/activities'
             }
         }
@@ -87,11 +79,11 @@ Describe 'Get-PatActivity' {
 
     Context 'When filtering by type' {
         BeforeAll {
-            Mock -ModuleName $Env:BHProjectName Invoke-PatApi {
+            Mock -ModuleName PlexAutomationToolkit Invoke-PatApi {
                 return $script:mockActivitiesResponse
             }
 
-            Mock -ModuleName $Env:BHProjectName Join-PatUri {
+            Mock -ModuleName PlexAutomationToolkit Join-PatUri {
                 return 'http://plex.local:32400/activities'
             }
         }
@@ -105,11 +97,11 @@ Describe 'Get-PatActivity' {
 
     Context 'When filtering by SectionId' {
         BeforeAll {
-            Mock -ModuleName $Env:BHProjectName Invoke-PatApi {
+            Mock -ModuleName PlexAutomationToolkit Invoke-PatApi {
                 return $script:mockActivitiesResponse
             }
 
-            Mock -ModuleName $Env:BHProjectName Join-PatUri {
+            Mock -ModuleName PlexAutomationToolkit Join-PatUri {
                 return 'http://plex.local:32400/activities'
             }
         }
@@ -128,11 +120,11 @@ Describe 'Get-PatActivity' {
 
     Context 'When no activities are running' {
         BeforeAll {
-            Mock -ModuleName $Env:BHProjectName Invoke-PatApi {
+            Mock -ModuleName PlexAutomationToolkit Invoke-PatApi {
                 return @{ Activity = @() }
             }
 
-            Mock -ModuleName $Env:BHProjectName Join-PatUri {
+            Mock -ModuleName PlexAutomationToolkit Join-PatUri {
                 return 'http://plex.local:32400/activities'
             }
         }
@@ -145,26 +137,26 @@ Describe 'Get-PatActivity' {
 
     Context 'When using default server' {
         BeforeAll {
-            Mock -ModuleName $Env:BHProjectName Get-PatStoredServer {
+            Mock -ModuleName PlexAutomationToolkit Get-PatStoredServer {
                 return $script:mockDefaultServer
             }
 
-            Mock -ModuleName $Env:BHProjectName Invoke-PatApi {
+            Mock -ModuleName PlexAutomationToolkit Invoke-PatApi {
                 return $script:mockActivitiesResponse
             }
 
-            Mock -ModuleName $Env:BHProjectName Join-PatUri {
+            Mock -ModuleName PlexAutomationToolkit Join-PatUri {
                 return 'http://plex-test-server.local:32400/activities'
             }
 
-            Mock -ModuleName $Env:BHProjectName Get-PatAuthHeaders {
+            Mock -ModuleName PlexAutomationToolkit Get-PatAuthHeaders {
                 return @{ Accept = 'application/json'; 'X-Plex-Token' = 'test-token' }
             }
         }
 
         It 'Uses default server when ServerUri not specified' {
             Get-PatActivity
-            Should -Invoke -ModuleName $Env:BHProjectName Get-PatStoredServer -ParameterFilter {
+            Should -Invoke -ModuleName PlexAutomationToolkit Get-PatStoredServer -ParameterFilter {
                 $Default -eq $true
             }
         }
@@ -172,11 +164,11 @@ Describe 'Get-PatActivity' {
 
     Context 'When API call fails' {
         BeforeAll {
-            Mock -ModuleName $Env:BHProjectName Invoke-PatApi {
+            Mock -ModuleName PlexAutomationToolkit Invoke-PatApi {
                 throw 'Connection refused'
             }
 
-            Mock -ModuleName $Env:BHProjectName Join-PatUri {
+            Mock -ModuleName PlexAutomationToolkit Join-PatUri {
                 return 'http://plex.local:32400/activities'
             }
         }

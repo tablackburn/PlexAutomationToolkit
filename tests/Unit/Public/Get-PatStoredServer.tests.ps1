@@ -1,18 +1,10 @@
 BeforeAll {
-    # Import the module
-    if ($null -eq $Env:BHBuildOutput) {
-        $buildFilePath = Join-Path -Path $PSScriptRoot -ChildPath '..\..\..\build.psake.ps1'
-        $invokePsakeParameters = @{
-            TaskList  = 'Build'
-            BuildFile = $buildFilePath
-        }
-        Invoke-psake @invokePsakeParameters
-    }
+    # Import the module from source
+    $ProjectRoot = Split-Path -Parent (Split-Path -Parent (Split-Path -Parent $PSScriptRoot))
+    $ModuleRoot = Join-Path $ProjectRoot 'PlexAutomationToolkit'
+    $moduleManifestPath = Join-Path $ModuleRoot 'PlexAutomationToolkit.psd1'
 
-    $moduleManifestFilename = $Env:BHProjectName + '.psd1'
-    $moduleManifestPath = Join-Path -Path $Env:BHBuildOutput -ChildPath $moduleManifestFilename
-
-    Get-Module $Env:BHProjectName | Remove-Module -Force -ErrorAction 'Ignore'
+    Get-Module PlexAutomationToolkit | Remove-Module -Force -ErrorAction 'Ignore'
     Import-Module -Name $moduleManifestPath -Verbose:$false -ErrorAction 'Stop'
 }
 
@@ -39,7 +31,7 @@ Describe 'Get-PatStoredServer' {
 
     Context 'When retrieving all servers' {
         BeforeAll {
-            Mock -ModuleName $Env:BHProjectName Get-PatServerConfig {
+            Mock -ModuleName PlexAutomationToolkit Get-PatServerConfig {
                 return $script:mockConfig
             }
         }
@@ -53,13 +45,13 @@ Describe 'Get-PatStoredServer' {
 
         It 'Calls Get-PatServerConfig once' {
             Get-PatStoredServer
-            Should -Invoke -ModuleName $Env:BHProjectName Get-PatServerConfig -Exactly 1
+            Should -Invoke -ModuleName PlexAutomationToolkit Get-PatServerConfig -Exactly 1
         }
     }
 
     Context 'When retrieving the default server' {
         BeforeAll {
-            Mock -ModuleName $Env:BHProjectName Get-PatServerConfig {
+            Mock -ModuleName PlexAutomationToolkit Get-PatServerConfig {
                 return $script:mockConfig
             }
         }
@@ -72,7 +64,7 @@ Describe 'Get-PatStoredServer' {
         }
 
         It 'Throws when no default server is configured' {
-            Mock -ModuleName $Env:BHProjectName Get-PatServerConfig {
+            Mock -ModuleName PlexAutomationToolkit Get-PatServerConfig {
                 return @{
                     version = '1.0'
                     servers = @(
@@ -91,7 +83,7 @@ Describe 'Get-PatStoredServer' {
 
     Context 'When retrieving a server by name' {
         BeforeAll {
-            Mock -ModuleName $Env:BHProjectName Get-PatServerConfig {
+            Mock -ModuleName PlexAutomationToolkit Get-PatServerConfig {
                 return $script:mockConfig
             }
         }
@@ -110,7 +102,7 @@ Describe 'Get-PatStoredServer' {
 
     Context 'When Get-PatServerConfig fails' {
         BeforeAll {
-            Mock -ModuleName $Env:BHProjectName Get-PatServerConfig {
+            Mock -ModuleName PlexAutomationToolkit Get-PatServerConfig {
                 throw 'Config file not found'
             }
         }

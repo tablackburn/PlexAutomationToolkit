@@ -17,20 +17,12 @@ BeforeDiscovery {
 }
 
 BeforeAll {
-    # Build module if needed
-    if ($null -eq $Env:BHBuildOutput) {
-        $buildFilePath = Join-Path -Path $PSScriptRoot -ChildPath '..\..\build.psake.ps1'
-        $invokePsakeParameters = @{
-            TaskList  = 'Build'
-            BuildFile = $buildFilePath
-        }
-        Invoke-psake @invokePsakeParameters
-    }
+    # Import the module from source
+    $ProjectRoot = Split-Path -Parent (Split-Path -Parent (Split-Path -Parent $PSScriptRoot))
+    $ModuleRoot = Join-Path $ProjectRoot 'PlexAutomationToolkit'
+    $moduleManifestPath = Join-Path $ModuleRoot 'PlexAutomationToolkit.psd1'
 
-    # Import module
-    $moduleManifestFilename = $Env:BHProjectName + '.psd1'
-    $moduleManifestPath = Join-Path -Path $Env:BHBuildOutput -ChildPath $moduleManifestFilename
-    Get-Module $Env:BHProjectName | Remove-Module -Force -ErrorAction 'Ignore'
+    Get-Module PlexAutomationToolkit | Remove-Module -Force -ErrorAction 'Ignore'
     Import-Module -Name $moduleManifestPath -Verbose:$false -ErrorAction 'Stop'
 
     # Import helpers
@@ -58,6 +50,7 @@ Describe 'Add-PatServer Integration Tests' -Skip:(-not $script:integrationEnable
         It 'Successfully adds a server with minimal parameters' {
             Add-PatServer -Name 'IntegrationTest-Minimal' `
                 -ServerUri $env:PLEX_SERVER_URI `
+                -SkipValidation `
                 -Confirm:$false
 
             $result = Get-PatStoredServer -Name 'IntegrationTest-Minimal'
@@ -70,6 +63,7 @@ Describe 'Add-PatServer Integration Tests' -Skip:(-not $script:integrationEnable
             Add-PatServer -Name 'IntegrationTest-WithToken' `
                 -ServerUri $env:PLEX_SERVER_URI `
                 -Token $env:PLEX_TOKEN `
+                -SkipValidation `
                 -Confirm:$false
 
             $result = Get-PatStoredServer -Name 'IntegrationTest-WithToken'
@@ -82,6 +76,7 @@ Describe 'Add-PatServer Integration Tests' -Skip:(-not $script:integrationEnable
                 -ServerUri $env:PLEX_SERVER_URI `
                 -Token $env:PLEX_TOKEN `
                 -Default `
+                -SkipValidation `
                 -Confirm:$false
 
             $result = Get-PatStoredServer -Default
@@ -95,11 +90,13 @@ Describe 'Add-PatServer Integration Tests' -Skip:(-not $script:integrationEnable
             Add-PatServer -Name 'IntegrationTest-First' `
                 -ServerUri $env:PLEX_SERVER_URI `
                 -Default `
+                -SkipValidation `
                 -Confirm:$false
 
             Add-PatServer -Name 'IntegrationTest-Second' `
                 -ServerUri $env:PLEX_SERVER_URI `
                 -Default `
+                -SkipValidation `
                 -Confirm:$false
 
             $allServers = Get-PatStoredServer
@@ -111,10 +108,12 @@ Describe 'Add-PatServer Integration Tests' -Skip:(-not $script:integrationEnable
         It 'Rejects duplicate server names' {
             Add-PatServer -Name 'IntegrationTest-Duplicate' `
                 -ServerUri $env:PLEX_SERVER_URI `
+                -SkipValidation `
                 -Confirm:$false
 
             { Add-PatServer -Name 'IntegrationTest-Duplicate' `
                     -ServerUri $env:PLEX_SERVER_URI `
+                    -SkipValidation `
                     -Confirm:$false } | Should -Throw '*already exists*'
         }
     }
@@ -125,6 +124,7 @@ Describe 'Add-PatServer Integration Tests' -Skip:(-not $script:integrationEnable
             Add-PatServer -Name 'IntegrationTest-Persist' `
                 -ServerUri $env:PLEX_SERVER_URI `
                 -Token $env:PLEX_TOKEN `
+                -SkipValidation `
                 -Confirm:$false
 
             # Re-import module to simulate new session
@@ -158,6 +158,7 @@ Describe 'Remove-PatServer Integration Tests' -Skip:(-not $script:integrationEna
             # Add test servers
             Add-PatServer -Name 'IntegrationTest-ToRemove' `
                 -ServerUri $env:PLEX_SERVER_URI `
+                -SkipValidation `
                 -Confirm:$false
         }
 
@@ -175,6 +176,7 @@ Describe 'Remove-PatServer Integration Tests' -Skip:(-not $script:integrationEna
         It 'Removal persists to configuration file' {
             Add-PatServer -Name 'IntegrationTest-RemovePersist' `
                 -ServerUri $env:PLEX_SERVER_URI `
+                -SkipValidation `
                 -Confirm:$false
 
             Remove-PatServer -Name 'IntegrationTest-RemovePersist' -Confirm:$false
@@ -200,10 +202,12 @@ Describe 'Set-PatDefaultServer Integration Tests' -Skip:(-not $script:integratio
         Add-PatServer -Name 'IntegrationTest-Server1' `
             -ServerUri $env:PLEX_SERVER_URI `
             -Default `
+            -SkipValidation `
             -Confirm:$false
 
         Add-PatServer -Name 'IntegrationTest-Server2' `
             -ServerUri $env:PLEX_SERVER_URI `
+            -SkipValidation `
             -Confirm:$false
     }
 

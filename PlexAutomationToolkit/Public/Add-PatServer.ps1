@@ -32,6 +32,12 @@ function Add-PatServer {
         If specified, skips validation of server connectivity and token authentication.
         Use this when adding a server that is temporarily offline or not yet configured.
 
+    .PARAMETER Force
+        Suppresses all interactive prompts. When specified:
+        - Automatically accepts HTTPS upgrade if available
+        - Automatically attempts authentication if server requires it
+        Use this parameter for non-interactive scripts and automation.
+
     .EXAMPLE
         Add-PatServer -Name "Main Server" -ServerUri "http://plex.local:32400" -Default
 
@@ -95,7 +101,11 @@ function Add-PatServer {
 
         [Parameter(Mandatory = $false)]
         [switch]
-        $SkipValidation
+        $SkipValidation,
+
+        [Parameter(Mandatory = $false)]
+        [switch]
+        $Force
     )
 
     try {
@@ -122,26 +132,11 @@ function Add-PatServer {
             }
 
             if ($httpsAvailable) {
-                # HTTPS is available, prompt user
-                $choices = @(
-                    [System.Management.Automation.Host.ChoiceDescription]::new(
-                        '&Yes',
-                        'Use HTTPS for secure communication (recommended)'
-                    )
-                    [System.Management.Automation.Host.ChoiceDescription]::new(
-                        '&No',
-                        'Use HTTP (tokens transmitted in clear text)'
-                    )
-                )
-
-                $decision = $Host.UI.PromptForChoice(
-                    'HTTPS Available',
+                # HTTPS is available - use it if -Force or user confirms
+                if ($Force -or $PSCmdlet.ShouldContinue(
                     "Server supports HTTPS. Use $httpsUri instead?",
-                    $choices,
-                    0
-                )
-
-                if ($decision -eq 0) {
+                    'HTTPS Available'
+                )) {
                     $ServerUri = $httpsUri
                     Write-Host "Using HTTPS: $ServerUri" -ForegroundColor Green
                 }
@@ -207,27 +202,13 @@ function Add-PatServer {
                     else {
                         Write-Host "Server '$ServerUri' requires authentication." -ForegroundColor Yellow
 
-                        $choices = @(
-                            [System.Management.Automation.Host.ChoiceDescription]::new(
-                                '&Yes',
-                                'Authenticate with Plex using Connect-PatAccount (opens plex.tv/link)'
-                            )
-                            [System.Management.Automation.Host.ChoiceDescription]::new(
-                                '&No',
-                                'Save server without token (you can add it later)'
-                            )
-                        )
-
-                        $decision = $Host.UI.PromptForChoice(
-                            'Authentication Required',
+                        # Authenticate if -Force or user confirms
+                        if ($Force -or $PSCmdlet.ShouldContinue(
                             'Would you like to authenticate now using Connect-PatAccount?',
-                            $choices,
-                            0
-                        )
-
-                        if ($decision -eq 0) {
+                            'Authentication Required'
+                        )) {
                             try {
-                                $Token = Connect-PatAccount
+                                $Token = Connect-PatAccount -Force:$Force
                                 $newServer | Add-Member -NotePropertyName 'token' -NotePropertyValue $Token -Force
                                 Write-Host "Authentication successful. Token added to server configuration." -ForegroundColor Green
                             }

@@ -77,6 +77,12 @@ BeforeDiscovery {
         Invoke-psake @invokePsakeParameters
     }
 
+    # PowerShellBuild outputs to Output/<ModuleName>/<Version>/, override BHBuildOutput
+    $projectRoot = Split-Path -Parent $PSScriptRoot
+    $sourceManifest = Join-Path $projectRoot "$Env:BHProjectName/$Env:BHProjectName.psd1"
+    $moduleVersion = (Import-PowerShellDataFile -Path $sourceManifest).ModuleVersion
+    $Env:BHBuildOutput = Join-Path $projectRoot "Output/$Env:BHProjectName/$moduleVersion"
+
     # Define the path to the module manifest
     $moduleManifestFilename = $Env:BHProjectName + '.psd1'
     $moduleManifestPath = Join-Path -Path $Env:BHBuildOutput -ChildPath $moduleManifestFilename
@@ -133,7 +139,7 @@ Describe "Test help for <_.Name>" -ForEach $commands {
         $commandHelp           = Get-Help -Name $command.Name -ErrorAction 'SilentlyContinue'
         $commandParameters     = global:FilterOutCommonParameters -Parameters $command.ParameterSets.Parameters
         $commandParameterNames = $commandParameters.Name
-        $helpLinks             = $commandHelp.relatedLinks.navigationLink.uri
+        $helpLinks             = $commandHelp.relatedLinks.navigationLink.uri | Where-Object { $_ -match '^https?://' }
     }
 
     BeforeAll {

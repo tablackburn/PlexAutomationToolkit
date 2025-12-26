@@ -20,6 +20,10 @@ function Connect-PatAccount {
         Maximum time to wait for authorization in seconds (default: 300 / 5 minutes).
         If you don't authorize the PIN within this time, authentication will fail.
 
+    .PARAMETER Force
+        Suppresses interactive prompts. When specified, automatically opens the browser
+        to the Plex authentication page. Use for non-interactive scripts.
+
     .EXAMPLE
         Connect-PatAccount
 
@@ -57,11 +61,15 @@ function Connect-PatAccount {
         [Parameter(Mandatory = $false)]
         [ValidateRange(1, 1800)]
         [int]
-        $TimeoutSeconds = 300
+        $TimeoutSeconds = 300,
+
+        [Parameter(Mandatory = $false)]
+        [switch]
+        $Force
     )
 
     try {
-        $token = Invoke-PatPinAuthentication -TimeoutSeconds $TimeoutSeconds
+        $token = Invoke-PatPinAuthentication -TimeoutSeconds $TimeoutSeconds -Force:$Force
         return $token
     }
     catch {

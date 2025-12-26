@@ -1,18 +1,10 @@
 BeforeAll {
-    # Import the module
-    if ($null -eq $Env:BHBuildOutput) {
-        $buildFilePath = Join-Path -Path $PSScriptRoot -ChildPath '..\..\..\build.psake.ps1'
-        $invokePsakeParameters = @{
-            TaskList  = 'Build'
-            BuildFile = $buildFilePath
-        }
-        Invoke-psake @invokePsakeParameters
-    }
+    # Import the module from source
+    $ProjectRoot = Split-Path -Parent (Split-Path -Parent (Split-Path -Parent $PSScriptRoot))
+    $ModuleRoot = Join-Path $ProjectRoot 'PlexAutomationToolkit'
+    $moduleManifestPath = Join-Path $ModuleRoot 'PlexAutomationToolkit.psd1'
 
-    $moduleManifestFilename = $Env:BHProjectName + '.psd1'
-    $moduleManifestPath = Join-Path -Path $Env:BHBuildOutput -ChildPath $moduleManifestFilename
-
-    Get-Module $Env:BHProjectName | Remove-Module -Force -ErrorAction 'Ignore'
+    Get-Module PlexAutomationToolkit | Remove-Module -Force -ErrorAction 'Ignore'
     Import-Module -Name $moduleManifestPath -Verbose:$false -ErrorAction 'Stop'
 }
 
@@ -100,11 +92,11 @@ Describe 'Get-PatLibrary' {
 
     Context 'When retrieving all library sections with explicit ServerUri' {
         BeforeAll {
-            Mock -ModuleName $Env:BHProjectName Invoke-PatApi {
+            Mock -ModuleName PlexAutomationToolkit Invoke-PatApi {
                 return $script:mockAllSectionsResponse
             }
 
-            Mock -ModuleName $Env:BHProjectName Join-PatUri {
+            Mock -ModuleName PlexAutomationToolkit Join-PatUri {
                 return 'http://plex-test-server.local:32400/library/sections'
             }
         }
@@ -121,7 +113,7 @@ Describe 'Get-PatLibrary' {
 
         It 'Calls Join-PatUri with correct endpoint' {
             Get-PatLibrary -ServerUri 'http://plex-test-server.local:32400'
-            Should -Invoke -ModuleName $Env:BHProjectName Join-PatUri -ParameterFilter {
+            Should -Invoke -ModuleName PlexAutomationToolkit Join-PatUri -ParameterFilter {
                 $BaseUri -eq 'http://plex-test-server.local:32400' -and
                 $Endpoint -eq '/library/sections'
             }
@@ -129,17 +121,17 @@ Describe 'Get-PatLibrary' {
 
         It 'Calls Invoke-PatApi with correct URI' {
             Get-PatLibrary -ServerUri 'http://plex-test-server.local:32400'
-            Should -Invoke -ModuleName $Env:BHProjectName Invoke-PatApi -Exactly 1
+            Should -Invoke -ModuleName PlexAutomationToolkit Invoke-PatApi -Exactly 1
         }
     }
 
     Context 'When retrieving a specific library section with explicit ServerUri' {
         BeforeAll {
-            Mock -ModuleName $Env:BHProjectName Invoke-PatApi {
+            Mock -ModuleName PlexAutomationToolkit Invoke-PatApi {
                 return $script:mockSectionResponse
             }
 
-            Mock -ModuleName $Env:BHProjectName Join-PatUri {
+            Mock -ModuleName PlexAutomationToolkit Join-PatUri {
                 return 'http://plex-test-server.local:32400/library/sections/2'
             }
         }
@@ -153,7 +145,7 @@ Describe 'Get-PatLibrary' {
 
         It 'Calls Join-PatUri with correct endpoint including SectionId' {
             Get-PatLibrary -ServerUri 'http://plex-test-server.local:32400' -SectionId 2
-            Should -Invoke -ModuleName $Env:BHProjectName Join-PatUri -ParameterFilter {
+            Should -Invoke -ModuleName PlexAutomationToolkit Join-PatUri -ParameterFilter {
                 $BaseUri -eq 'http://plex-test-server.local:32400' -and
                 $Endpoint -eq '/library/sections/2'
             }
@@ -166,15 +158,15 @@ Describe 'Get-PatLibrary' {
 
     Context 'When using default server' {
         BeforeAll {
-            Mock -ModuleName $Env:BHProjectName Get-PatStoredServer {
+            Mock -ModuleName PlexAutomationToolkit Get-PatStoredServer {
                 return $script:mockDefaultServer
             }
 
-            Mock -ModuleName $Env:BHProjectName Invoke-PatApi {
+            Mock -ModuleName PlexAutomationToolkit Invoke-PatApi {
                 return $script:mockAllSectionsResponse
             }
 
-            Mock -ModuleName $Env:BHProjectName Join-PatUri {
+            Mock -ModuleName PlexAutomationToolkit Join-PatUri {
                 return 'http://plex-test-server.local:32400/library/sections'
             }
         }
@@ -182,14 +174,14 @@ Describe 'Get-PatLibrary' {
         It 'Uses the default server URI' {
             $result = Get-PatLibrary
             $result | Should -Not -BeNullOrEmpty
-            Should -Invoke -ModuleName $Env:BHProjectName Get-PatStoredServer -ParameterFilter {
+            Should -Invoke -ModuleName PlexAutomationToolkit Get-PatStoredServer -ParameterFilter {
                 $Default -eq $true
             }
         }
 
         It 'Calls Join-PatUri with default server URI' {
             Get-PatLibrary
-            Should -Invoke -ModuleName $Env:BHProjectName Join-PatUri -ParameterFilter {
+            Should -Invoke -ModuleName PlexAutomationToolkit Join-PatUri -ParameterFilter {
                 $BaseUri -eq 'http://plex-test-server.local:32400'
             }
         }
@@ -197,7 +189,7 @@ Describe 'Get-PatLibrary' {
 
     Context 'When no default server is configured' {
         BeforeAll {
-            Mock -ModuleName $Env:BHProjectName Get-PatStoredServer {
+            Mock -ModuleName PlexAutomationToolkit Get-PatStoredServer {
                 return $null
             }
         }
@@ -209,11 +201,11 @@ Describe 'Get-PatLibrary' {
 
     Context 'When API call fails' {
         BeforeAll {
-            Mock -ModuleName $Env:BHProjectName Invoke-PatApi {
+            Mock -ModuleName PlexAutomationToolkit Invoke-PatApi {
                 throw 'Connection timeout'
             }
 
-            Mock -ModuleName $Env:BHProjectName Join-PatUri {
+            Mock -ModuleName PlexAutomationToolkit Join-PatUri {
                 return 'http://plex-test-server.local:32400/library/sections'
             }
         }

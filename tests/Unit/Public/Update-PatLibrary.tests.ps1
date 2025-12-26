@@ -1,18 +1,10 @@
 BeforeAll {
-    # Import the module
-    if ($null -eq $Env:BHBuildOutput) {
-        $buildFilePath = Join-Path -Path $PSScriptRoot -ChildPath '..\..\..\build.psake.ps1'
-        $invokePsakeParameters = @{
-            TaskList  = 'Build'
-            BuildFile = $buildFilePath
-        }
-        Invoke-psake @invokePsakeParameters
-    }
+    # Import the module from source
+    $ProjectRoot = Split-Path -Parent (Split-Path -Parent (Split-Path -Parent $PSScriptRoot))
+    $ModuleRoot = Join-Path $ProjectRoot 'PlexAutomationToolkit'
+    $moduleManifestPath = Join-Path $ModuleRoot 'PlexAutomationToolkit.psd1'
 
-    $moduleManifestFilename = $Env:BHProjectName + '.psd1'
-    $moduleManifestPath = Join-Path -Path $Env:BHBuildOutput -ChildPath $moduleManifestFilename
-
-    Get-Module $Env:BHProjectName | Remove-Module -Force -ErrorAction 'Ignore'
+    Get-Module PlexAutomationToolkit | Remove-Module -Force -ErrorAction 'Ignore'
     Import-Module -Name $moduleManifestPath -Verbose:$false -ErrorAction 'Stop'
 }
 
@@ -53,25 +45,25 @@ Describe 'Update-PatLibrary' {
 
     Context 'When refreshing library by SectionId with explicit ServerUri' {
         BeforeAll {
-            Mock -ModuleName $Env:BHProjectName Invoke-PatApi {
+            Mock -ModuleName PlexAutomationToolkit Invoke-PatApi {
                 return $null
             }
 
-            Mock -ModuleName $Env:BHProjectName Join-PatUri {
+            Mock -ModuleName PlexAutomationToolkit Join-PatUri {
                 return "http://plex-test-server.local:32400/library/sections/$SectionId/refresh"
             }
         }
 
         It 'Refreshes the library section' {
             Update-PatLibrary -ServerUri 'http://plex-test-server.local:32400' -SectionId 2 -Confirm:$false
-            Should -Invoke -ModuleName $Env:BHProjectName Invoke-PatApi -ParameterFilter {
+            Should -Invoke -ModuleName PlexAutomationToolkit Invoke-PatApi -ParameterFilter {
                 $Method -eq 'Post'
             }
         }
 
         It 'Calls Join-PatUri with correct endpoint' {
             Update-PatLibrary -ServerUri 'http://plex-test-server.local:32400' -SectionId 2 -Confirm:$false
-            Should -Invoke -ModuleName $Env:BHProjectName Join-PatUri -ParameterFilter {
+            Should -Invoke -ModuleName PlexAutomationToolkit Join-PatUri -ParameterFilter {
                 $BaseUri -eq 'http://plex-test-server.local:32400' -and
                 $Endpoint -eq '/library/sections/2/refresh'
             }
@@ -84,15 +76,15 @@ Describe 'Update-PatLibrary' {
 
     Context 'When refreshing library by SectionName' {
         BeforeAll {
-            Mock -ModuleName $Env:BHProjectName Get-PatLibrary {
+            Mock -ModuleName PlexAutomationToolkit Get-PatLibrary {
                 return $script:mockSectionsResponse
             }
 
-            Mock -ModuleName $Env:BHProjectName Invoke-PatApi {
+            Mock -ModuleName PlexAutomationToolkit Invoke-PatApi {
                 return $null
             }
 
-            Mock -ModuleName $Env:BHProjectName Join-PatUri {
+            Mock -ModuleName PlexAutomationToolkit Join-PatUri {
                 param($BaseUri, $Endpoint, $QueryString)
                 if ($QueryString) {
                     return "$BaseUri$Endpoint`?$QueryString"
@@ -103,14 +95,14 @@ Describe 'Update-PatLibrary' {
 
         It 'Resolves section name to section ID' {
             Update-PatLibrary -ServerUri 'http://plex-test-server.local:32400' -SectionName 'Movies' -Confirm:$false
-            Should -Invoke -ModuleName $Env:BHProjectName Get-PatLibrary -ParameterFilter {
+            Should -Invoke -ModuleName PlexAutomationToolkit Get-PatLibrary -ParameterFilter {
                 $ServerUri -eq 'http://plex-test-server.local:32400'
             }
         }
 
         It 'Refreshes the correct library section' {
             Update-PatLibrary -ServerUri 'http://plex-test-server.local:32400' -SectionName 'TV Shows' -Confirm:$false
-            Should -Invoke -ModuleName $Env:BHProjectName Join-PatUri -ParameterFilter {
+            Should -Invoke -ModuleName PlexAutomationToolkit Join-PatUri -ParameterFilter {
                 $Endpoint -eq '/library/sections/3/refresh'
             }
         }
@@ -120,7 +112,7 @@ Describe 'Update-PatLibrary' {
         }
 
         It 'Throws when multiple sections have the same name' {
-            Mock -ModuleName $Env:BHProjectName Get-PatLibrary {
+            Mock -ModuleName PlexAutomationToolkit Get-PatLibrary {
                 return @{
                     Directory = @(
                         @{ key = '2'; title = 'Movies' }
@@ -135,11 +127,11 @@ Describe 'Update-PatLibrary' {
 
     Context 'When refreshing library with a specific path' {
         BeforeAll {
-            Mock -ModuleName $Env:BHProjectName Invoke-PatApi {
+            Mock -ModuleName PlexAutomationToolkit Invoke-PatApi {
                 return $null
             }
 
-            Mock -ModuleName $Env:BHProjectName Join-PatUri {
+            Mock -ModuleName PlexAutomationToolkit Join-PatUri {
                 param($BaseUri, $Endpoint, $QueryString)
                 if ($QueryString) {
                     return "$BaseUri$Endpoint`?$QueryString"
@@ -152,7 +144,7 @@ Describe 'Update-PatLibrary' {
             $testPath = '/mnt/media/Movies/Action'
             Update-PatLibrary -ServerUri 'http://plex-test-server.local:32400' -SectionId 2 -Path $testPath -SkipPathValidation -Confirm:$false
 
-            Should -Invoke -ModuleName $Env:BHProjectName Join-PatUri -ParameterFilter {
+            Should -Invoke -ModuleName PlexAutomationToolkit Join-PatUri -ParameterFilter {
                 $QueryString -like "*path=*"
             }
         }
@@ -161,7 +153,7 @@ Describe 'Update-PatLibrary' {
             $testPath = '/mnt/media/Movies With Spaces'
             Update-PatLibrary -ServerUri 'http://plex-test-server.local:32400' -SectionId 2 -Path $testPath -SkipPathValidation -Confirm:$false
 
-            Should -Invoke -ModuleName $Env:BHProjectName Join-PatUri -ParameterFilter {
+            Should -Invoke -ModuleName PlexAutomationToolkit Join-PatUri -ParameterFilter {
                 $QueryString -match 'path=.*%20.*'
             }
         }
@@ -169,29 +161,29 @@ Describe 'Update-PatLibrary' {
 
     Context 'When using default server' {
         BeforeAll {
-            Mock -ModuleName $Env:BHProjectName Get-PatStoredServer {
+            Mock -ModuleName PlexAutomationToolkit Get-PatStoredServer {
                 return $script:mockDefaultServer
             }
 
-            Mock -ModuleName $Env:BHProjectName Invoke-PatApi {
+            Mock -ModuleName PlexAutomationToolkit Invoke-PatApi {
                 return $null
             }
 
-            Mock -ModuleName $Env:BHProjectName Join-PatUri {
+            Mock -ModuleName PlexAutomationToolkit Join-PatUri {
                 return 'http://plex-test-server.local:32400/library/sections/2/refresh'
             }
         }
 
         It 'Uses the default server URI' {
             Update-PatLibrary -SectionId 2 -Confirm:$false
-            Should -Invoke -ModuleName $Env:BHProjectName Get-PatStoredServer -ParameterFilter {
+            Should -Invoke -ModuleName PlexAutomationToolkit Get-PatStoredServer -ParameterFilter {
                 $Default -eq $true
             }
         }
 
         It 'Calls Join-PatUri with default server URI' {
             Update-PatLibrary -SectionId 2 -Confirm:$false
-            Should -Invoke -ModuleName $Env:BHProjectName Join-PatUri -ParameterFilter {
+            Should -Invoke -ModuleName PlexAutomationToolkit Join-PatUri -ParameterFilter {
                 $BaseUri -eq 'http://plex-test-server.local:32400'
             }
         }
@@ -199,7 +191,7 @@ Describe 'Update-PatLibrary' {
 
     Context 'When no default server is configured' {
         BeforeAll {
-            Mock -ModuleName $Env:BHProjectName Get-PatStoredServer {
+            Mock -ModuleName PlexAutomationToolkit Get-PatStoredServer {
                 return $null
             }
         }
@@ -211,28 +203,28 @@ Describe 'Update-PatLibrary' {
 
     Context 'When using -WhatIf' {
         BeforeAll {
-            Mock -ModuleName $Env:BHProjectName Invoke-PatApi {
+            Mock -ModuleName PlexAutomationToolkit Invoke-PatApi {
                 return $null
             }
 
-            Mock -ModuleName $Env:BHProjectName Join-PatUri {
+            Mock -ModuleName PlexAutomationToolkit Join-PatUri {
                 return 'http://plex-test-server.local:32400/library/sections/2/refresh'
             }
         }
 
         It 'Does not call Invoke-PatApi' {
             Update-PatLibrary -ServerUri 'http://plex-test-server.local:32400' -SectionId 2 -WhatIf
-            Should -Invoke -ModuleName $Env:BHProjectName Invoke-PatApi -Exactly 0
+            Should -Invoke -ModuleName PlexAutomationToolkit Invoke-PatApi -Exactly 0
         }
     }
 
     Context 'When API call fails' {
         BeforeAll {
-            Mock -ModuleName $Env:BHProjectName Invoke-PatApi {
+            Mock -ModuleName PlexAutomationToolkit Invoke-PatApi {
                 throw 'Connection timeout'
             }
 
-            Mock -ModuleName $Env:BHProjectName Join-PatUri {
+            Mock -ModuleName PlexAutomationToolkit Join-PatUri {
                 return 'http://plex-test-server.local:32400/library/sections/2/refresh'
             }
         }

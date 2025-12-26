@@ -24,6 +24,21 @@ function Update-PatLibrary {
     .PARAMETER PassThru
         If specified, returns the library section object after refreshing.
 
+    .PARAMETER SkipPathValidation
+        If specified, skips validation that the path exists before triggering the refresh.
+        Use when you know the path is valid or want to scan a path that may not be browsable.
+
+    .PARAMETER Wait
+        If specified, waits for the library scan to complete before returning.
+
+    .PARAMETER Timeout
+        Maximum time in seconds to wait for the scan to complete when using -Wait.
+        Default is 300 seconds (5 minutes).
+
+    .PARAMETER ReportChanges
+        If specified, returns a report of changes detected during the scan.
+        Automatically enables -Wait behavior.
+
     .EXAMPLE
         Update-PatLibrary -ServerUri "http://plex.example.com:32400" -SectionId 2
 

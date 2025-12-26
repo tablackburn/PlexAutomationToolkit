@@ -1,11 +1,11 @@
 BeforeAll {
-    $ModuleName = 'PlexAutomationToolkit'
-    $ModuleManifestPath = "$PSScriptRoot/../../../Output/$ModuleName/$((Test-ModuleManifest "$PSScriptRoot/../../../$ModuleName/$ModuleName.psd1").Version)/$ModuleName.psd1"
+    # Import the module from source
+    $ProjectRoot = Split-Path -Parent (Split-Path -Parent (Split-Path -Parent $PSScriptRoot))
+    $ModuleRoot = Join-Path $ProjectRoot 'PlexAutomationToolkit'
+    $moduleManifestPath = Join-Path $ModuleRoot 'PlexAutomationToolkit.psd1'
 
-    if (Get-Module -Name $ModuleName) {
-        Remove-Module -Name $ModuleName -Force
-    }
-    Import-Module $ModuleManifestPath -Force
+    Get-Module PlexAutomationToolkit | Remove-Module -Force -ErrorAction 'Ignore'
+    Import-Module -Name $moduleManifestPath -Verbose:$false -ErrorAction 'Stop'
 }
 
 Describe 'Get-PatClientIdentifier' {
@@ -16,11 +16,11 @@ Describe 'Get-PatClientIdentifier' {
             servers = @()
         }
 
-        Mock Get-PatServerConfig {
+        Mock Get-PatServerConfig -ModuleName PlexAutomationToolkit {
             return $script:mockConfig
         }
 
-        Mock Set-PatServerConfig {
+        Mock Set-PatServerConfig -ModuleName PlexAutomationToolkit {
             param($Config)
             $script:mockConfig = $Config
         }
@@ -28,18 +28,18 @@ Describe 'Get-PatClientIdentifier' {
 
     Context 'When client identifier does not exist' {
         It 'Should generate a new GUID-based identifier' {
-            $result = Get-PatClientIdentifier
+            $result = InModuleScope PlexAutomationToolkit { Get-PatClientIdentifier }
             $result | Should -Not -BeNullOrEmpty
             $result | Should -Match '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
         }
 
         It 'Should add identifier to config' {
-            $result = Get-PatClientIdentifier
-            Should -Invoke Set-PatServerConfig -Times 1
+            InModuleScope PlexAutomationToolkit { Get-PatClientIdentifier }
+            Should -Invoke Set-PatServerConfig -ModuleName PlexAutomationToolkit -Times 1
         }
 
         It 'Should save the identifier for future use' {
-            $result = Get-PatClientIdentifier
+            $result = InModuleScope PlexAutomationToolkit { Get-PatClientIdentifier }
             $script:mockConfig.clientIdentifier | Should -Be $result
         }
     }
@@ -50,35 +50,35 @@ Describe 'Get-PatClientIdentifier' {
         }
 
         It 'Should return existing identifier' {
-            $result = Get-PatClientIdentifier
+            $result = InModuleScope PlexAutomationToolkit { Get-PatClientIdentifier }
             $result | Should -Be 'existing-id-123'
         }
 
         It 'Should not generate new identifier' {
-            $result = Get-PatClientIdentifier
-            Should -Invoke Set-PatServerConfig -Times 0
+            InModuleScope PlexAutomationToolkit { Get-PatClientIdentifier }
+            Should -Invoke Set-PatServerConfig -ModuleName PlexAutomationToolkit -Times 0
         }
 
         It 'Should return same identifier on multiple calls' {
-            $result1 = Get-PatClientIdentifier
-            $result2 = Get-PatClientIdentifier
+            $result1 = InModuleScope PlexAutomationToolkit { Get-PatClientIdentifier }
+            $result2 = InModuleScope PlexAutomationToolkit { Get-PatClientIdentifier }
             $result1 | Should -Be $result2
         }
     }
 
     Context 'Error Handling' {
         It 'Should throw when Get-PatServerConfig fails' {
-            Mock Get-PatServerConfig {
+            Mock Get-PatServerConfig -ModuleName PlexAutomationToolkit {
                 throw 'Config read failed'
             }
-            { Get-PatClientIdentifier } | Should -Throw '*Failed to get client identifier*'
+            { InModuleScope PlexAutomationToolkit { Get-PatClientIdentifier } } | Should -Throw '*Failed to get client identifier*'
         }
 
         It 'Should throw when Set-PatServerConfig fails' {
-            Mock Set-PatServerConfig {
+            Mock Set-PatServerConfig -ModuleName PlexAutomationToolkit {
                 throw 'Config write failed'
             }
-            { Get-PatClientIdentifier } | Should -Throw '*Failed to get client identifier*'
+            { InModuleScope PlexAutomationToolkit { Get-PatClientIdentifier } } | Should -Throw '*Failed to get client identifier*'
         }
     }
 }

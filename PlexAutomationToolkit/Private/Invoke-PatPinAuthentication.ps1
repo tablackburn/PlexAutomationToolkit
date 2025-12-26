@@ -14,16 +14,24 @@ function Invoke-PatPinAuthentication {
     .PARAMETER TimeoutSeconds
         Maximum time to wait for authorization in seconds (default: 300 / 5 minutes).
 
+    .PARAMETER Force
+        Suppresses the interactive prompt to open the browser. When specified,
+        automatically opens the browser. Use for non-interactive automation.
+
     .OUTPUTS
         System.String
         Returns the authentication token if successful
     #>
-    [CmdletBinding()]
+    [CmdletBinding(SupportsShouldProcess)]
     param (
         [Parameter(Mandatory = $false)]
         [ValidateRange(1, 1800)]
         [int]
-        $TimeoutSeconds = 300
+        $TimeoutSeconds = 300,
+
+        [Parameter(Mandatory = $false)]
+        [switch]
+        $Force
     )
 
     try {
@@ -49,26 +57,11 @@ function Invoke-PatPinAuthentication {
         # Copy code to clipboard
         Set-Clipboard -Value $pin.code
 
-        # Prompt to open browser
-        $choices = @(
-            [System.Management.Automation.Host.ChoiceDescription]::new(
-                '&Yes',
-                'Open the Plex link page in your default browser'
-            )
-            [System.Management.Automation.Host.ChoiceDescription]::new(
-                '&No',
-                'I will open the link manually'
-            )
-        )
-
-        $decision = $Host.UI.PromptForChoice(
-            '',
-            "`nOpen $plexLinkUrl in your browser?",
-            $choices,
-            0
-        )
-
-        if ($decision -eq 0) {
+        # Open browser if -Force or user confirms
+        if ($Force -or $PSCmdlet.ShouldContinue(
+            "Open $plexLinkUrl in your browser?",
+            'Plex Authentication'
+        )) {
             Start-Process $plexLinkUrl
         }
 

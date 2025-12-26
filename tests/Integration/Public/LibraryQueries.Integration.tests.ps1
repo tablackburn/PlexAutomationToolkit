@@ -17,20 +17,12 @@ BeforeDiscovery {
 }
 
 BeforeAll {
-    # Build module if needed
-    if ($null -eq $Env:BHBuildOutput) {
-        $buildFilePath = Join-Path -Path $PSScriptRoot -ChildPath '..\..\build.psake.ps1'
-        $invokePsakeParameters = @{
-            TaskList  = 'Build'
-            BuildFile = $buildFilePath
-        }
-        Invoke-psake @invokePsakeParameters
-    }
+    # Import the module from source
+    $ProjectRoot = Split-Path -Parent (Split-Path -Parent (Split-Path -Parent $PSScriptRoot))
+    $ModuleRoot = Join-Path $ProjectRoot 'PlexAutomationToolkit'
+    $moduleManifestPath = Join-Path $ModuleRoot 'PlexAutomationToolkit.psd1'
 
-    # Import module
-    $moduleManifestFilename = $Env:BHProjectName + '.psd1'
-    $moduleManifestPath = Join-Path -Path $Env:BHBuildOutput -ChildPath $moduleManifestFilename
-    Get-Module $Env:BHProjectName | Remove-Module -Force -ErrorAction 'Ignore'
+    Get-Module PlexAutomationToolkit | Remove-Module -Force -ErrorAction 'Ignore'
     Import-Module -Name $moduleManifestPath -Verbose:$false -ErrorAction 'Stop'
 
     # Import helpers
@@ -50,6 +42,7 @@ Describe 'Get-PatServer Integration Tests' -Skip:(-not $script:integrationEnable
             -ServerUri $env:PLEX_SERVER_URI `
             -Token $env:PLEX_TOKEN `
             -Default `
+            -SkipValidation `
             -Confirm:$false
     }
 
@@ -120,6 +113,7 @@ Describe 'Get-PatLibrary Integration Tests' -Skip:(-not $script:integrationEnabl
             -ServerUri $env:PLEX_SERVER_URI `
             -Token $env:PLEX_TOKEN `
             -Default `
+            -SkipValidation `
             -Confirm:$false
     }
 
@@ -229,11 +223,13 @@ Describe 'Get-PatStoredServer Integration Tests' -Skip:(-not $script:integration
                 -ServerUri $env:PLEX_SERVER_URI `
                 -Token $env:PLEX_TOKEN `
                 -Default `
+                -SkipValidation `
                 -Confirm:$false
 
             Add-PatServer -Name 'IntegrationTest-Second' `
                 -ServerUri $env:PLEX_SERVER_URI `
                 -Token $env:PLEX_TOKEN `
+                -SkipValidation `
                 -Confirm:$false
         }
 

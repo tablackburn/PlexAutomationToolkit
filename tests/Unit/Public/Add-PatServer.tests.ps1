@@ -1,18 +1,10 @@
 BeforeAll {
-    # Import the module
-    if ($null -eq $Env:BHBuildOutput) {
-        $buildFilePath = Join-Path -Path $PSScriptRoot -ChildPath '..\..\..\build.psake.ps1'
-        $invokePsakeParameters = @{
-            TaskList  = 'Build'
-            BuildFile = $buildFilePath
-        }
-        Invoke-psake @invokePsakeParameters
-    }
+    # Import the module from source
+    $ProjectRoot = Split-Path -Parent (Split-Path -Parent (Split-Path -Parent $PSScriptRoot))
+    $ModuleRoot = Join-Path $ProjectRoot 'PlexAutomationToolkit'
+    $moduleManifestPath = Join-Path $ModuleRoot 'PlexAutomationToolkit.psd1'
 
-    $moduleManifestFilename = $Env:BHProjectName + '.psd1'
-    $moduleManifestPath = Join-Path -Path $Env:BHBuildOutput -ChildPath $moduleManifestFilename
-
-    Get-Module $Env:BHProjectName | Remove-Module -Force -ErrorAction 'Ignore'
+    Get-Module PlexAutomationToolkit | Remove-Module -Force -ErrorAction 'Ignore'
     Import-Module -Name $moduleManifestPath -Verbose:$false -ErrorAction 'Stop'
 }
 
@@ -227,16 +219,25 @@ Describe 'Add-PatServer' {
             $script:mockConfig.servers.Count | Should -Be 1
         }
 
-        It 'Should warn when token is required but not provided' {
+        It 'Should attempt authentication with -Force when server requires auth' {
+            # When server requires auth (401) and -Force is specified,
+            # automatically attempts Connect-PatAccount.
+            # Mock Connect-PatAccount to simulate failed auth (since we can't actually auth in tests)
             Mock -CommandName Invoke-PatApi -ModuleName PlexAutomationToolkit -MockWith {
                 throw 'Error invoking Plex API: 401 Unauthorized'
             }
+            Mock -CommandName Connect-PatAccount -ModuleName PlexAutomationToolkit -MockWith {
+                throw 'Authentication failed in test'
+            }
 
             $warnings = @()
-            Add-PatServer -Name 'NeedsAuth' -ServerUri 'http://test:32400' -WarningVariable warnings 3>$null
+            Add-PatServer -Name 'NeedsAuth' -ServerUri 'http://auth:32400' -Force -WarningVariable warnings -Confirm:$false 3>$null
 
+            # With -Force, Connect-PatAccount is called automatically
+            Should -Invoke Connect-PatAccount -ModuleName PlexAutomationToolkit -Times 1
+            # Since auth failed, server saved without token with warning
             $warnings | Should -Not -BeNullOrEmpty
-            $warnings -join ' ' | Should -Match 'requires authentication but no token was provided'
+            $warnings -join ' ' | Should -Match 'Authentication failed'
             $script:mockConfig.servers.Count | Should -Be 1
         }
 

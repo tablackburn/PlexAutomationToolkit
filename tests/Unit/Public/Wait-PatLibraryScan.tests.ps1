@@ -1,18 +1,10 @@
 BeforeAll {
-    # Import the module
-    if ($null -eq $Env:BHBuildOutput) {
-        $buildFilePath = Join-Path -Path $PSScriptRoot -ChildPath '..\..\..\build.psake.ps1'
-        $invokePsakeParameters = @{
-            TaskList  = 'Build'
-            BuildFile = $buildFilePath
-        }
-        Invoke-psake @invokePsakeParameters
-    }
+    # Import the module from source
+    $ProjectRoot = Split-Path -Parent (Split-Path -Parent (Split-Path -Parent $PSScriptRoot))
+    $ModuleRoot = Join-Path $ProjectRoot 'PlexAutomationToolkit'
+    $moduleManifestPath = Join-Path $ModuleRoot 'PlexAutomationToolkit.psd1'
 
-    $moduleManifestFilename = $Env:BHProjectName + '.psd1'
-    $moduleManifestPath = Join-Path -Path $Env:BHBuildOutput -ChildPath $moduleManifestFilename
-
-    Get-Module $Env:BHProjectName | Remove-Module -Force -ErrorAction 'Ignore'
+    Get-Module PlexAutomationToolkit | Remove-Module -Force -ErrorAction 'Ignore'
     Import-Module -Name $moduleManifestPath -Verbose:$false -ErrorAction 'Stop'
 }
 
@@ -46,7 +38,7 @@ Describe 'Wait-PatLibraryScan' {
 
     Context 'When scan completes immediately' {
         BeforeAll {
-            Mock -ModuleName $Env:BHProjectName Get-PatActivity {
+            Mock -ModuleName PlexAutomationToolkit Get-PatActivity {
                 return $null  # No activity = scan complete
             }
         }
@@ -57,7 +49,7 @@ Describe 'Wait-PatLibraryScan' {
 
         It 'Checks for scan activity' {
             Wait-PatLibraryScan -SectionId 2 -ServerUri 'http://plex.local:32400'
-            Should -Invoke -ModuleName $Env:BHProjectName Get-PatActivity -ParameterFilter {
+            Should -Invoke -ModuleName PlexAutomationToolkit Get-PatActivity -ParameterFilter {
                 $Type -eq 'library.update.section' -and $SectionId -eq 2
             }
         }
@@ -66,7 +58,7 @@ Describe 'Wait-PatLibraryScan' {
     Context 'When scan is in progress then completes' {
         BeforeAll {
             $script:callCount = 0
-            Mock -ModuleName $Env:BHProjectName Get-PatActivity {
+            Mock -ModuleName PlexAutomationToolkit Get-PatActivity {
                 $script:callCount++
                 if ($script:callCount -lt 3) {
                     return $script:mockScanActivity
@@ -81,24 +73,24 @@ Describe 'Wait-PatLibraryScan' {
 
         It 'Polls until scan completes' {
             Wait-PatLibraryScan -SectionId 2 -ServerUri 'http://plex.local:32400' -PollingInterval 1
-            Should -Invoke -ModuleName $Env:BHProjectName Get-PatActivity -Times 3
+            Should -Invoke -ModuleName PlexAutomationToolkit Get-PatActivity -Times 3
         }
     }
 
     Context 'When using SectionName' {
         BeforeAll {
-            Mock -ModuleName $Env:BHProjectName Get-PatLibraryPath {
+            Mock -ModuleName PlexAutomationToolkit Get-PatLibraryPath {
                 return $script:mockLibraryPaths
             }
 
-            Mock -ModuleName $Env:BHProjectName Get-PatActivity {
+            Mock -ModuleName PlexAutomationToolkit Get-PatActivity {
                 return $null
             }
         }
 
         It 'Resolves section name to ID' {
             Wait-PatLibraryScan -SectionName 'Movies' -ServerUri 'http://plex.local:32400'
-            Should -Invoke -ModuleName $Env:BHProjectName Get-PatLibraryPath -ParameterFilter {
+            Should -Invoke -ModuleName PlexAutomationToolkit Get-PatLibraryPath -ParameterFilter {
                 $SectionName -eq 'Movies'
             }
         }
@@ -107,7 +99,7 @@ Describe 'Wait-PatLibraryScan' {
     Context 'When using -PassThru' {
         BeforeAll {
             $script:callCount = 0
-            Mock -ModuleName $Env:BHProjectName Get-PatActivity {
+            Mock -ModuleName PlexAutomationToolkit Get-PatActivity {
                 $script:callCount++
                 if ($script:callCount -lt 2) {
                     return $script:mockScanActivity
@@ -129,7 +121,7 @@ Describe 'Wait-PatLibraryScan' {
 
     Context 'When timeout is exceeded' {
         BeforeAll {
-            Mock -ModuleName $Env:BHProjectName Get-PatActivity {
+            Mock -ModuleName PlexAutomationToolkit Get-PatActivity {
                 return $script:mockScanActivity  # Always return activity (never complete)
             }
         }
