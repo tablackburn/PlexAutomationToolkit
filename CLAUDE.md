@@ -8,39 +8,56 @@ PlexAutomationToolkit is a PowerShell module for managing Plex servers. It provi
 
 ## Build and Test Commands
 
+### Running PowerShell Commands (Important for Claude Code)
+
+When executing PowerShell scripts from a bash/sh shell environment (which Claude Code uses by default), always invoke `pwsh` explicitly:
+
+```bash
+# Correct - explicitly invoke PowerShell
+pwsh -File ./build.ps1 -Task Test
+pwsh -Command "Import-Module ./PlexAutomationToolkit/PlexAutomationToolkit.psd1 -Force"
+
+# Incorrect - will fail with syntax errors in bash
+./build.ps1 -Task Test  # ❌ Bash interprets PowerShell syntax as shell script
+```
+
+Running `./build.ps1` directly in bash causes syntax errors like:
+```
+syntax error near unexpected token `newline'
+```
+
+This happens because bash tries to parse PowerShell attributes (e.g., `[CmdletBinding()]`) as shell syntax.
+
 ### Initial Setup
 ```powershell
-./build.ps1 -Bootstrap
+pwsh -File ./build.ps1 -Bootstrap
 ```
 This installs all build dependencies (PSDepend, Pester 5, psake, BuildHelpers, PowerShellBuild, PSScriptAnalyzer) to the current user scope.
 
 ### Primary Development Loop
 ```powershell
-./build.ps1 -Task Test
+pwsh -File ./build.ps1 -Task Test
 ```
 Default task that builds the module and runs all tests (Manifest, Help, Meta tests).
 
 ### List Available Tasks
 ```powershell
-./build.ps1 -Help
+pwsh -File ./build.ps1 -Help
 ```
 
 ### Run Single Test File
 ```powershell
-# First set build environment
-Set-BuildEnvironment -Force
-
-# Then run specific test
-Invoke-Pester -Path tests/Help.tests.ps1
+# First set build environment, then run specific test
+pwsh -Command "Set-BuildEnvironment -Force; Invoke-Pester -Path tests/Help.tests.ps1"
 ```
 
 ### Import Module Locally
 ```powershell
 # Import from built output
-Import-Module ./Output/PlexAutomationToolkit/<version>/PlexAutomationToolkit.psd1 -Force
+pwsh -Command "Import-Module ./Output/PlexAutomationToolkit/<version>/PlexAutomationToolkit.psd1 -Force"
 
 # Or import from source during iteration
-Import-Module ./PlexAutomationToolkit/PlexAutomationToolkit.psd1 -Force
+pwsh -Command "Import-Module ./PlexAutomationToolkit/PlexAutomationToolkit.psd1 -Force"
 ```
 
 ## Module Architecture
@@ -128,7 +145,7 @@ Integration tests verify PlexAutomationToolkit against a real Plex server. They 
 
 1. Create local configuration:
    ```powershell
-   Copy-Item tests/local.settings.example.ps1 tests/local.settings.ps1
+   pwsh -Command "Copy-Item tests/local.settings.example.ps1 tests/local.settings.ps1"
    ```
 
 2. Edit `tests/local.settings.ps1`:
@@ -137,13 +154,12 @@ Integration tests verify PlexAutomationToolkit against a real Plex server. They 
 
 3. Run tests (settings are automatically loaded by the Test task):
    ```powershell
-   ./build.ps1 -Task Test  # Test task automatically loads local.settings.ps1
+   pwsh -File ./build.ps1 -Task Test  # Test task automatically loads local.settings.ps1
    ```
 
-   The psake Test task depends on the LoadIntegrationSettings task, which automatically loads `tests/local.settings.ps1` if it exists. This follows the psake task dependency pattern. You can also manually load settings for ad-hoc testing:
+   The psake Test task depends on the Init_Integration task, which automatically loads `tests/local.settings.ps1` if it exists. This follows the psake task dependency pattern. You can also manually load settings for ad-hoc testing:
    ```powershell
-   . ./tests/local.settings.ps1
-   Invoke-Pester -Path tests/Integration/
+   pwsh -Command ". ./tests/local.settings.ps1; Invoke-Pester -Path tests/Integration/"
    ```
 
 ### Integration Test Categories
