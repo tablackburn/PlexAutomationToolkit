@@ -36,13 +36,42 @@ function Invoke-PatPinAuthentication {
         $pin = New-PatPin -ClientIdentifier $clientIdentifier
 
         # Display instructions to user
+        $plexLinkUrl = 'https://plex.tv/link'
+
         Write-Host "`nPlex Authentication" -ForegroundColor Cyan
         Write-Host "===================" -ForegroundColor Cyan
-        Write-Host "`nTo authenticate, please visit:" -ForegroundColor White
-        Write-Host "  https://plex.tv/link" -ForegroundColor Yellow
-        Write-Host "`nEnter this code when prompted:" -ForegroundColor White
-        Write-Host "  $($pin.code)" -ForegroundColor Green -NoNewline
-        Write-Host " (case-insensitive)" -ForegroundColor Gray
+        Write-Host "`nEnter this code at " -ForegroundColor White -NoNewline
+        Write-Host $plexLinkUrl -ForegroundColor Yellow -NoNewline
+        Write-Host ":" -ForegroundColor White
+        Write-Host "`n  $($pin.code)" -ForegroundColor Green -NoNewline
+        Write-Host " (case-insensitive, copied to clipboard)" -ForegroundColor Gray
+
+        # Copy code to clipboard
+        Set-Clipboard -Value $pin.code
+
+        # Prompt to open browser
+        $choices = @(
+            [System.Management.Automation.Host.ChoiceDescription]::new(
+                '&Yes',
+                'Open the Plex link page in your default browser'
+            )
+            [System.Management.Automation.Host.ChoiceDescription]::new(
+                '&No',
+                'I will open the link manually'
+            )
+        )
+
+        $decision = $Host.UI.PromptForChoice(
+            '',
+            "`nOpen $plexLinkUrl in your browser?",
+            $choices,
+            0
+        )
+
+        if ($decision -eq 0) {
+            Start-Process $plexLinkUrl
+        }
+
         Write-Host "`nWaiting for authorization..." -ForegroundColor White
 
         # Wait for authorization

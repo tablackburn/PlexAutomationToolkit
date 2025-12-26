@@ -99,9 +99,59 @@ function Add-PatServer {
     )
 
     try {
-        # Warn if using unencrypted HTTP
-        if ($ServerUri -match '^http://') {
-            Write-Warning "Using unencrypted HTTP connection to '$ServerUri'. Authentication tokens will be transmitted in clear text. Consider using HTTPS for secure communication."
+        # Check if HTTPS is available when HTTP is specified
+        if ($ServerUri -match '^http://' -and -not $SkipValidation) {
+            $httpsUri = $ServerUri -replace '^http://', 'https://'
+            Write-Verbose "Checking if HTTPS is available at $httpsUri"
+
+            $httpsAvailable = $false
+            try {
+                $testUri = Join-PatUri -BaseUri $httpsUri -Endpoint '/'
+                # Use SkipCertificateCheck for self-signed certs (common with Plex)
+                $null = Invoke-RestMethod -Uri $testUri -TimeoutSec 5 -SkipCertificateCheck -ErrorAction Stop
+                $httpsAvailable = $true
+            }
+            catch {
+                # 401/403 means HTTPS works, just needs auth - that's fine
+                if ($_.Exception.Response.StatusCode.value__ -in @(401, 403)) {
+                    $httpsAvailable = $true
+                }
+                else {
+                    Write-Verbose "HTTPS not available: $($_.Exception.Message)"
+                }
+            }
+
+            if ($httpsAvailable) {
+                # HTTPS is available, prompt user
+                $choices = @(
+                    [System.Management.Automation.Host.ChoiceDescription]::new(
+                        '&Yes',
+                        'Use HTTPS for secure communication (recommended)'
+                    )
+                    [System.Management.Automation.Host.ChoiceDescription]::new(
+                        '&No',
+                        'Use HTTP (tokens transmitted in clear text)'
+                    )
+                )
+
+                $decision = $Host.UI.PromptForChoice(
+                    'HTTPS Available',
+                    "Server supports HTTPS. Use $httpsUri instead?",
+                    $choices,
+                    0
+                )
+
+                if ($decision -eq 0) {
+                    $ServerUri = $httpsUri
+                    Write-Host "Using HTTPS: $ServerUri" -ForegroundColor Green
+                }
+                else {
+                    Write-Warning "Using unencrypted HTTP. Authentication tokens will be transmitted in clear text."
+                }
+            }
+            else {
+                Write-Warning "Using unencrypted HTTP connection to '$ServerUri'. Authentication tokens will be transmitted in clear text. Consider using HTTPS for secure communication."
+            }
         }
 
         $config = Get-PatServerConfig -ErrorAction Stop

@@ -75,6 +75,7 @@ FunctionsToExport = @(
     'Connect-PatAccount'
     'Get-PatLibrary'
     'Get-PatLibraryChildItem'
+    'Get-PatLibraryItem'
     'Get-PatLibraryPath'
     'Get-PatServer'
     'Get-PatStoredServer'
