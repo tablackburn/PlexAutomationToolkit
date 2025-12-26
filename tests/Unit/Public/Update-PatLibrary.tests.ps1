@@ -150,7 +150,7 @@ Describe 'Update-PatLibrary' {
 
         It 'Includes the path parameter in the request' {
             $testPath = '/mnt/media/Movies/Action'
-            Update-PatLibrary -ServerUri 'http://plex-test-server.local:32400' -SectionId 2 -Path $testPath -Confirm:$false
+            Update-PatLibrary -ServerUri 'http://plex-test-server.local:32400' -SectionId 2 -Path $testPath -SkipPathValidation -Confirm:$false
 
             Should -Invoke -ModuleName $Env:BHProjectName Join-PatUri -ParameterFilter {
                 $QueryString -like "*path=*"
@@ -159,7 +159,7 @@ Describe 'Update-PatLibrary' {
 
         It 'URL-encodes the path parameter' {
             $testPath = '/mnt/media/Movies With Spaces'
-            Update-PatLibrary -ServerUri 'http://plex-test-server.local:32400' -SectionId 2 -Path $testPath -Confirm:$false
+            Update-PatLibrary -ServerUri 'http://plex-test-server.local:32400' -SectionId 2 -Path $testPath -SkipPathValidation -Confirm:$false
 
             Should -Invoke -ModuleName $Env:BHProjectName Join-PatUri -ParameterFilter {
                 $QueryString -match 'path=.*%20.*'

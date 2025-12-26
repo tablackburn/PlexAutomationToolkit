@@ -12,16 +12,18 @@ Refreshes a Plex library section.
 
 ## SYNTAX
 
-### ById (Default)
+### ByName (Default)
 ```
-Update-PatLibrary [-ServerUri <String>] -SectionId <Int32> [-Path <String>] [-PassThru]
- [-ProgressAction <ActionPreference>] [-WhatIf] [-Confirm] [<CommonParameters>]
+Update-PatLibrary -SectionName <String> [-Path <String>] [-PassThru] [-SkipPathValidation] [-Wait]
+ [-Timeout <Int32>] [-ReportChanges] [-ServerUri <String>] [-ProgressAction <ActionPreference>] [-WhatIf]
+ [-Confirm] [<CommonParameters>]
 ```
 
-### ByName
+### ById
 ```
-Update-PatLibrary [-ServerUri <String>] -SectionName <String> [-Path <String>] [-PassThru]
- [-ProgressAction <ActionPreference>] [-WhatIf] [-Confirm] [<CommonParameters>]
+Update-PatLibrary -SectionId <Int32> [-Path <String>] [-PassThru] [-SkipPathValidation] [-Wait]
+ [-Timeout <Int32>] [-ReportChanges] [-ServerUri <String>] [-ProgressAction <ActionPreference>] [-WhatIf]
+ [-Confirm] [<CommonParameters>]
 ```
 
 ## DESCRIPTION
@@ -90,16 +92,15 @@ Combine with -Verbose to inspect the request without triggering a scan.
 
 ## PARAMETERS
 
-### -ServerUri
-The base URI of the Plex server (e.g., http://plex.example.com:32400)
-If not specified, uses the default stored server.
+### -SectionName
+The friendly name of the library section to refresh (e.g., "Movies", "TV Shows")
 
 ```yaml
 Type: String
-Parameter Sets: (All)
+Parameter Sets: ByName
 Aliases:
 
-Required: False
+Required: True
 Position: Named
 Default value: None
 Accept pipeline input: False
@@ -117,21 +118,6 @@ Aliases:
 Required: True
 Position: Named
 Default value: 0
-Accept pipeline input: False
-Accept wildcard characters: False
-```
-
-### -SectionName
-The friendly name of the library section to refresh (e.g., "Movies", "TV Shows")
-
-```yaml
-Type: String
-Parameter Sets: ByName
-Aliases:
-
-Required: True
-Position: Named
-Default value: None
 Accept pipeline input: False
 Accept wildcard characters: False
 ```
@@ -163,6 +149,82 @@ Aliases:
 Required: False
 Position: Named
 Default value: False
+Accept pipeline input: False
+Accept wildcard characters: False
+```
+
+### -SkipPathValidation
+{{ Fill SkipPathValidation Description }}
+
+```yaml
+Type: SwitchParameter
+Parameter Sets: (All)
+Aliases:
+
+Required: False
+Position: Named
+Default value: False
+Accept pipeline input: False
+Accept wildcard characters: False
+```
+
+### -Wait
+{{ Fill Wait Description }}
+
+```yaml
+Type: SwitchParameter
+Parameter Sets: (All)
+Aliases:
+
+Required: False
+Position: Named
+Default value: False
+Accept pipeline input: False
+Accept wildcard characters: False
+```
+
+### -Timeout
+{{ Fill Timeout Description }}
+
+```yaml
+Type: Int32
+Parameter Sets: (All)
+Aliases:
+
+Required: False
+Position: Named
+Default value: 300
+Accept pipeline input: False
+Accept wildcard characters: False
+```
+
+### -ReportChanges
+{{ Fill ReportChanges Description }}
+
+```yaml
+Type: SwitchParameter
+Parameter Sets: (All)
+Aliases:
+
+Required: False
+Position: Named
+Default value: False
+Accept pipeline input: False
+Accept wildcard characters: False
+```
+
+### -ServerUri
+The base URI of the Plex server (e.g., http://plex.example.com:32400)
+If not specified, uses the default stored server.
+
+```yaml
+Type: String
+Parameter Sets: (All)
+Aliases:
+
+Required: False
+Position: Named
+Default value: None
 Accept pipeline input: False
 Accept wildcard characters: False
 ```

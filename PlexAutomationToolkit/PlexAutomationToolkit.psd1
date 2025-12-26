@@ -72,7 +72,9 @@ RequiredAssemblies = @()
 FunctionsToExport = @(
     'Add-PatServer'
     'Clear-PatDefaultServer'
+    'Compare-PatLibraryContent'
     'Connect-PatAccount'
+    'Get-PatActivity'
     'Get-PatLibrary'
     'Get-PatLibraryChildItem'
     'Get-PatLibraryItem'
@@ -82,7 +84,9 @@ FunctionsToExport = @(
     'Get-PatToken'
     'Remove-PatServer'
     'Set-PatDefaultServer'
+    'Test-PatLibraryPath'
     'Update-PatLibrary'
+    'Wait-PatLibraryScan'
 )
 
 # Cmdlets to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no cmdlets to export.

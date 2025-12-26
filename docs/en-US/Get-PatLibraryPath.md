@@ -17,15 +17,15 @@ Retrieves library section paths from a Plex server.
 Get-PatLibraryPath [-ServerUri <String>] [-ProgressAction <ActionPreference>] [<CommonParameters>]
 ```
 
-### ById
+### ByName
 ```
-Get-PatLibraryPath [-ServerUri <String>] [-SectionId <Int32>] [-ProgressAction <ActionPreference>]
+Get-PatLibraryPath [-SectionName <String>] [-ServerUri <String>] [-ProgressAction <ActionPreference>]
  [<CommonParameters>]
 ```
 
-### ByName
+### ById
 ```
-Get-PatLibraryPath [-ServerUri <String>] [-SectionName <String>] [-ProgressAction <ActionPreference>]
+Get-PatLibraryPath [-SectionId <Int32>] [-ServerUri <String>] [-ProgressAction <ActionPreference>]
  [<CommonParameters>]
 ```
 
@@ -51,13 +51,12 @@ Retrieves all configured paths for library section 2 from the default stored ser
 
 ## PARAMETERS
 
-### -ServerUri
-The base URI of the Plex server (e.g., http://plex.example.com:32400)
-If not specified, uses the default stored server.
+### -SectionName
+The friendly name of the library section (e.g., "Movies", "TV Shows")
 
 ```yaml
 Type: String
-Parameter Sets: (All)
+Parameter Sets: ByName
 Aliases:
 
 Required: False
@@ -83,12 +82,13 @@ Accept pipeline input: False
 Accept wildcard characters: False
 ```
 
-### -SectionName
-The friendly name of the library section (e.g., "Movies", "TV Shows")
+### -ServerUri
+The base URI of the Plex server (e.g., http://plex.example.com:32400)
+If not specified, uses the default stored server.
 
 ```yaml
 Type: String
-Parameter Sets: ByName
+Parameter Sets: (All)
 Aliases:
 
 Required: False

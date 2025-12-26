@@ -5,79 +5,94 @@ online version:
 schema: 2.0.0
 ---
 
-# Get-PatLibraryChildItem
+# Test-PatLibraryPath
 
 ## SYNOPSIS
-Lists directories and files at a given path on the Plex server.
+Tests whether a path exists on the Plex server's filesystem.
 
 ## SYNTAX
 
 ### PathOnly (Default)
 ```
-Get-PatLibraryChildItem [-Path <String>] [-ServerUri <String>] [-ProgressAction <ActionPreference>]
+Test-PatLibraryPath [-Path] <String> [-ServerUri <String>] [-ProgressAction <ActionPreference>]
  [<CommonParameters>]
-```
-
-### ById
-```
-Get-PatLibraryChildItem [-Path <String>] [-SectionId <Int32>] [-ServerUri <String>]
- [-ProgressAction <ActionPreference>] [<CommonParameters>]
 ```
 
 ### ByName
 ```
-Get-PatLibraryChildItem [-Path <String>] [-SectionName <String>] [-ServerUri <String>]
+Test-PatLibraryPath [-Path] <String> [-SectionName <String>] [-ServerUri <String>]
+ [-ProgressAction <ActionPreference>] [<CommonParameters>]
+```
+
+### ById
+```
+Test-PatLibraryPath [-Path] <String> [-SectionId <Int32>] [-ServerUri <String>]
  [-ProgressAction <ActionPreference>] [<CommonParameters>]
 ```
 
 ## DESCRIPTION
-Browses the filesystem on the Plex server, listing subdirectories and files
-at a specified path.
-Uses the Plex internal browse service endpoint.
+Validates that a specified filesystem path exists and is accessible
+to the Plex server.
+Optionally validates that the path falls within
+a library section's configured root paths.
+
+This cmdlet is useful for pre-validating paths before calling
+Update-PatLibrary to ensure the path exists and will be scanned.
 
 ## EXAMPLES
 
 ### EXAMPLE 1
 ```
-Get-PatLibraryChildItem -ServerUri "http://plex.example.com:32400" -Path "/mnt/media"
+Test-PatLibraryPath -Path '/mnt/media/Movies/NewMovie'
 ```
 
-Lists directories and files under /mnt/media
+Tests whether the path exists on the Plex server.
 
 ### EXAMPLE 2
 ```
-Get-PatLibraryChildItem
+Test-PatLibraryPath -Path '/mnt/media/Movies/NewMovie' -SectionName 'Movies'
 ```
 
-Lists root-level paths from the default stored server
+Tests whether the path exists AND is under one of the Movies library's
+configured root paths.
 
 ### EXAMPLE 3
 ```
-Get-PatLibraryChildItem -Path "/mnt/smb/nas5/movies"
+if (Test-PatLibraryPath -Path $path -SectionName 'Movies') {
+    Update-PatLibrary -SectionName 'Movies' -Path $path
+}
 ```
 
-Lists all items (directories and files) under the movies path
+Pre-validates a path before triggering a library scan.
+
+### EXAMPLE 4
+```
+Test-PatLibraryPath -Path '/mnt/wrong/path' -ErrorAction Stop
+```
+
+Throws an error if the path doesn't exist, useful in scripts.
 
 ## PARAMETERS
 
 ### -Path
-The absolute filesystem path to browse (e.g., /mnt/media, /var/lib/plexmediaserver)
-If omitted, lists root-level accessible paths.
+The absolute filesystem path to test (e.g., /mnt/media/Movies/NewMovie).
 
 ```yaml
 Type: String
 Parameter Sets: (All)
 Aliases:
 
-Required: False
-Position: Named
+Required: True
+Position: 1
 Default value: None
 Accept pipeline input: False
 Accept wildcard characters: False
 ```
 
 ### -SectionName
-{{ Fill SectionName Description }}
+Optional library section name (e.g., "Movies").
+When provided, also
+validates that the path is under one of the section's configured root paths.
 
 ```yaml
 Type: String
@@ -92,7 +107,9 @@ Accept wildcard characters: False
 ```
 
 ### -SectionId
-{{ Fill SectionId Description }}
+Optional library section ID.
+When provided, also validates that the
+path is under one of the section's configured root paths.
 
 ```yaml
 Type: Int32
@@ -144,7 +161,10 @@ This cmdlet supports the common parameters: -Debug, -ErrorAction, -ErrorVariable
 
 ## OUTPUTS
 
-### PSCustomObject
+### System.Boolean
 ## NOTES
+Returns $true if the path exists (and optionally is within library bounds).
+Returns $false if the path doesn't exist or is outside library bounds.
+Use -ErrorAction Stop to throw on validation failure instead of returning $false.
 
 ## RELATED LINKS

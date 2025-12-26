@@ -12,15 +12,15 @@ Retrieves media items from a Plex library.
 
 ## SYNTAX
 
-### ById (Default)
+### ByName (Default)
 ```
-Get-PatLibraryItem [-ServerUri <String>] -SectionId <Int32> [-ProgressAction <ActionPreference>]
+Get-PatLibraryItem -SectionName <String> [-ServerUri <String>] [-ProgressAction <ActionPreference>]
  [<CommonParameters>]
 ```
 
-### ByName
+### ById
 ```
-Get-PatLibraryItem [-ServerUri <String>] -SectionName <String> [-ProgressAction <ActionPreference>]
+Get-PatLibraryItem -SectionId <Int32> [-ServerUri <String>] [-ProgressAction <ActionPreference>]
  [<CommonParameters>]
 ```
 
@@ -53,16 +53,15 @@ Gets the Movies library and retrieves all items from it.
 
 ## PARAMETERS
 
-### -ServerUri
-The base URI of the Plex server (e.g., http://plex.example.com:32400)
-If not specified, uses the default stored server.
+### -SectionName
+The name of the library section to retrieve items from (e.g., "Movies", "TV Shows").
 
 ```yaml
 Type: String
-Parameter Sets: (All)
+Parameter Sets: ByName
 Aliases:
 
-Required: False
+Required: True
 Position: Named
 Default value: None
 Accept pipeline input: False
@@ -84,15 +83,16 @@ Accept pipeline input: True (ByPropertyName, ByValue)
 Accept wildcard characters: False
 ```
 
-### -SectionName
-The name of the library section to retrieve items from (e.g., "Movies", "TV Shows").
+### -ServerUri
+The base URI of the Plex server (e.g., http://plex.example.com:32400)
+If not specified, uses the default stored server.
 
 ```yaml
 Type: String
-Parameter Sets: ByName
+Parameter Sets: (All)
 Aliases:
 
-Required: True
+Required: False
 Position: Named
 Default value: None
 Accept pipeline input: False

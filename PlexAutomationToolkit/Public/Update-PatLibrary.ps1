@@ -63,6 +63,34 @@ function Update-PatLibrary {
         Update-PatLibrary -SectionId 2 -PassThru
 
         Refreshes library section 2 and returns the library object.
+
+    .EXAMPLE
+        Update-PatLibrary -SectionName 'Movies' -Path '/mnt/media/Movies/NewMovie'
+
+        Validates that the path exists (default behavior), then triggers the refresh.
+        Throws an error if the path is invalid or not within the library's configured paths.
+
+    .EXAMPLE
+        Update-PatLibrary -SectionName 'Movies' -Path '/mnt/media/Movies/NewMovie' -SkipPathValidation
+
+        Skips path validation and triggers the refresh directly. Use when you know the
+        path is valid or want to scan a path that may not be browsable.
+
+    .EXAMPLE
+        Update-PatLibrary -SectionName 'Movies' -Path '/mnt/media/Movies/NewMovie' -Wait
+
+        Validates the path, triggers the refresh, and waits for the scan to complete.
+
+    .EXAMPLE
+        Update-PatLibrary -SectionName 'Movies' -Path '/mnt/media/Movies/NewMovie' -Wait -Timeout 60
+
+        Validates the path, triggers the refresh, and waits up to 60 seconds for completion.
+
+    .EXAMPLE
+        $changes = Update-PatLibrary -SectionName 'Movies' -Path '/mnt/media/Movies/NewMovie' -ReportChanges
+        $changes | Where-Object ChangeType -eq 'Added'
+
+        Returns a list of items that were added or removed by the scan.
     #>
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
         'PSReviewUnusedParameter',
@@ -281,6 +309,27 @@ function Update-PatLibrary {
         [switch]
         $PassThru,
 
+        [Parameter(Mandatory = $false, ParameterSetName = 'ById')]
+        [Parameter(Mandatory = $false, ParameterSetName = 'ByName')]
+        [switch]
+        $SkipPathValidation,
+
+        [Parameter(Mandatory = $false, ParameterSetName = 'ById')]
+        [Parameter(Mandatory = $false, ParameterSetName = 'ByName')]
+        [switch]
+        $Wait,
+
+        [Parameter(Mandatory = $false, ParameterSetName = 'ById')]
+        [Parameter(Mandatory = $false, ParameterSetName = 'ByName')]
+        [ValidateRange(1, 3600)]
+        [int]
+        $Timeout = 300,
+
+        [Parameter(Mandatory = $false, ParameterSetName = 'ById')]
+        [Parameter(Mandatory = $false, ParameterSetName = 'ByName')]
+        [switch]
+        $ReportChanges,
+
         [Parameter(Mandatory = $false, ParameterSetName = 'ByName')]
         [Parameter(Mandatory = $false, ParameterSetName = 'ById')]
         [ValidateNotNullOrEmpty()]
@@ -338,6 +387,30 @@ function Update-PatLibrary {
         }
     }
 
+    # Pre-validation: Check if path exists (default behavior, skip with -SkipPathValidation)
+    if ($Path -and -not $SkipPathValidation) {
+        Write-Verbose "Validating path: $Path"
+        $testParams = @{ Path = $Path }
+        if ($ServerUri) { $testParams['ServerUri'] = $ServerUri }
+        if ($SectionId) { $testParams['SectionId'] = $SectionId }
+
+        $pathValid = Test-PatLibraryPath @testParams
+        if (-not $pathValid) {
+            throw "Path validation failed: '$Path' does not exist or is not within the library's configured paths. Use -SkipPathValidation to bypass this check."
+        }
+        Write-Verbose "Path validation passed"
+    }
+
+    # Capture before state if we need to report changes
+    $beforeItems = $null
+    if ($ReportChanges) {
+        Write-Verbose "Capturing library state before scan"
+        $getItemParams = @{ SectionId = $SectionId }
+        if ($ServerUri) { $getItemParams['ServerUri'] = $ServerUri }
+        $beforeItems = @(Get-PatLibraryItem @getItemParams -ErrorAction 'SilentlyContinue')
+        Write-Verbose "Captured $($beforeItems.Count) items before scan"
+    }
+
     $endpoint = "/library/sections/$SectionId/refresh"
     $queryString = $null
 
@@ -366,7 +439,32 @@ function Update-PatLibrary {
         try {
             Invoke-PatApi -Uri $uri -Method 'Post' -Headers $headers -ErrorAction 'Stop'
 
-            if ($PassThru) {
+            # Wait for scan to complete if requested
+            if ($Wait -or $ReportChanges) {
+                Write-Verbose "Waiting for scan to complete (timeout: ${Timeout}s)"
+                $waitParams = @{
+                    SectionId       = $SectionId
+                    Timeout         = $Timeout
+                    PollingInterval = 2
+                }
+                if ($ServerUri) { $waitParams['ServerUri'] = $ServerUri }
+
+                Wait-PatLibraryScan @waitParams
+                Write-Verbose "Scan completed"
+            }
+
+            # Report changes if requested
+            if ($ReportChanges) {
+                Write-Verbose "Capturing library state after scan"
+                $getItemParams = @{ SectionId = $SectionId }
+                if ($ServerUri) { $getItemParams['ServerUri'] = $ServerUri }
+                $afterItems = @(Get-PatLibraryItem @getItemParams -ErrorAction 'SilentlyContinue')
+                Write-Verbose "Captured $($afterItems.Count) items after scan"
+
+                $changes = Compare-PatLibraryContent -Before $beforeItems -After $afterItems
+                $changes
+            }
+            elseif ($PassThru) {
                 # Return the refreshed library section
                 if ($usingDefaultServer) {
                     Get-PatLibrary -SectionId $SectionId -ErrorAction 'Stop'
