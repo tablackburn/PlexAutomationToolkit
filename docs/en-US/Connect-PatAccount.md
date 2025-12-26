@@ -13,7 +13,8 @@ Authenticates with Plex and retrieves an authentication token.
 ## SYNTAX
 
 ```
-Connect-PatAccount [[-TimeoutSeconds] <Int32>] [-ProgressAction <ActionPreference>] [<CommonParameters>]
+Connect-PatAccount [[-TimeoutSeconds] <Int32>] [-Force] [-ProgressAction <ActionPreference>]
+ [<CommonParameters>]
 ```
 
 ## DESCRIPTION
@@ -73,6 +74,22 @@ Aliases:
 Required: False
 Position: 1
 Default value: 300
+Accept pipeline input: False
+Accept wildcard characters: False
+```
+
+### -Force
+Suppresses interactive prompts. When specified, automatically opens the browser
+to the Plex authentication page. Use for non-interactive scripts.
+
+```yaml
+Type: SwitchParameter
+Parameter Sets: (All)
+Aliases:
+
+Required: False
+Position: Named
+Default value: False
 Accept pipeline input: False
 Accept wildcard characters: False
 ```

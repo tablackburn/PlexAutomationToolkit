@@ -14,7 +14,7 @@ Adds a Plex server to the configuration.
 
 ```
 Add-PatServer [-Name] <String> [-ServerUri] <String> [-Default] [[-Token] <String>] [-PassThru]
- [-SkipValidation] [-ProgressAction <ActionPreference>] [-WhatIf] [-Confirm] [<CommonParameters>]
+ [-SkipValidation] [-Force] [-ProgressAction <ActionPreference>] [-WhatIf] [-Confirm] [<CommonParameters>]
 ```
 
 ## DESCRIPTION
@@ -129,6 +129,24 @@ Accept wildcard characters: False
 ### -SkipValidation
 If specified, skips validation of server connectivity and token authentication.
 Use this when adding a server that is temporarily offline or not yet configured.
+
+```yaml
+Type: SwitchParameter
+Parameter Sets: (All)
+Aliases:
+
+Required: False
+Position: Named
+Default value: False
+Accept pipeline input: False
+Accept wildcard characters: False
+```
+
+### -Force
+Suppresses all interactive prompts. When specified:
+- Automatically accepts HTTPS upgrade if available
+- Automatically attempts authentication if server requires it
+Use this parameter for non-interactive scripts and automation.
 
 ```yaml
 Type: SwitchParameter
