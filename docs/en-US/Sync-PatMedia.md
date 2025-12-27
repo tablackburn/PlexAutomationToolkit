@@ -14,14 +14,14 @@ Syncs media from a Plex playlist to a destination folder.
 
 ### ByName (Default)
 ```
-Sync-PatMedia -PlaylistName <String> -Destination <String> [-IncludeSubtitles] [-SkipRemoval] [-Force]
+Sync-PatMedia [-PlaylistName <String>] -Destination <String> [-SkipSubtitles] [-SkipRemoval] [-Force]
  [-PassThru] [-ServerUri <String>] [-ProgressAction <ActionPreference>] [-WhatIf] [-Confirm]
  [<CommonParameters>]
 ```
 
 ### ById
 ```
-Sync-PatMedia -PlaylistId <Int32> -Destination <String> [-IncludeSubtitles] [-SkipRemoval] [-Force] [-PassThru]
+Sync-PatMedia -PlaylistId <Int32> -Destination <String> [-SkipSubtitles] [-SkipRemoval] [-Force] [-PassThru]
  [-ServerUri <String>] [-ProgressAction <ActionPreference>] [-WhatIf] [-Confirm] [<CommonParameters>]
 ```
 
@@ -56,6 +56,22 @@ Shows what would be synced without making any changes.
 
 ## PARAMETERS
 
+### -PlaylistName
+The name of the playlist to sync.
+Supports tab completion.
+
+```yaml
+Type: String
+Parameter Sets: ByName
+Aliases:
+
+Required: False
+Position: Named
+Default value: None
+Accept pipeline input: False
+Accept wildcard characters: False
+```
+
 ### -PlaylistId
 The unique identifier of the playlist to sync.
 
@@ -67,22 +83,6 @@ Aliases:
 Required: True
 Position: Named
 Default value: 0
-Accept pipeline input: False
-Accept wildcard characters: False
-```
-
-### -PlaylistName
-The name of the playlist to sync.
-Supports tab completion.
-
-```yaml
-Type: String
-Parameter Sets: ByName
-Aliases:
-
-Required: True
-Position: Named
-Default value: None
 Accept pipeline input: False
 Accept wildcard characters: False
 ```
@@ -102,8 +102,9 @@ Accept pipeline input: False
 Accept wildcard characters: False
 ```
 
-### -IncludeSubtitles
-When specified, also downloads external subtitle files.
+### -SkipSubtitles
+When specified, does not download external subtitle files. By default, subtitles
+are included in the sync.
 
 ```yaml
 Type: SwitchParameter

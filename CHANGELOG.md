@@ -7,6 +7,41 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [0.6.0] - 2025-12-27
+
+### Added
+
+- New collection management cmdlets for organizing media items into collections:
+  - `Get-PatCollection` - Retrieve collections from a Plex library
+    - List all collections in a library or filter by ID/name
+    - `-IncludeItems` switch to fetch collection contents
+    - Tab completion for `-CollectionName` parameter
+    - Returns `PlexAutomationToolkit.Collection` objects
+  - `New-PatCollection` - Create new collections
+    - Requires at least one item to create (Plex API limitation)
+    - Automatically detects library type for proper collection type
+    - Pipeline support for rating keys
+    - `-PassThru` to return created collection
+  - `Remove-PatCollection` - Delete collections
+    - Remove by ID or name (with tab completion)
+    - Pipeline support from Get-PatCollection
+    - High confirm impact for safety
+    - `-PassThru` for auditing
+  - `Add-PatCollectionItem` - Add items to existing collections
+    - Add by collection ID or name
+    - Accepts multiple rating keys
+    - Pipeline support for batch additions
+  - `Remove-PatCollectionItem` - Remove items from collections
+    - Uses `RatingKey` to identify items (simpler than playlists)
+    - Pipeline support for batch removals
+    - Works with output from `Get-PatCollection -IncludeItems`
+
+### Notes
+
+- Collections are library-scoped, so `LibraryId` is required when listing or searching by name
+- Collection API uses simpler URI format than playlists (no machine identifier required)
+- Only regular collections supported; smart collections with filters are not supported via API
+
 ## [0.5.0] - 2025-12-27
 
 ### Added

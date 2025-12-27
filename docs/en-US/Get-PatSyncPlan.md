@@ -14,7 +14,7 @@ Generates a sync plan for transferring media from a Plex playlist to a destinati
 
 ### ByName (Default)
 ```
-Get-PatSyncPlan -PlaylistName <String> -Destination <String> [-ServerUri <String>]
+Get-PatSyncPlan [-PlaylistName <String>] -Destination <String> [-ServerUri <String>]
  [-ProgressAction <ActionPreference>] [<CommonParameters>]
 ```
 
@@ -48,6 +48,22 @@ Shows the sync plan for playlist 12345.
 
 ## PARAMETERS
 
+### -PlaylistName
+The name of the playlist to sync.
+Supports tab completion.
+
+```yaml
+Type: String
+Parameter Sets: ByName
+Aliases:
+
+Required: False
+Position: Named
+Default value: None
+Accept pipeline input: False
+Accept wildcard characters: False
+```
+
 ### -PlaylistId
 The unique identifier of the playlist to sync.
 
@@ -59,22 +75,6 @@ Aliases:
 Required: True
 Position: Named
 Default value: 0
-Accept pipeline input: False
-Accept wildcard characters: False
-```
-
-### -PlaylistName
-The name of the playlist to sync.
-Supports tab completion.
-
-```yaml
-Type: String
-Parameter Sets: ByName
-Aliases:
-
-Required: True
-Position: Named
-Default value: None
 Accept pipeline input: False
 Accept wildcard characters: False
 ```
