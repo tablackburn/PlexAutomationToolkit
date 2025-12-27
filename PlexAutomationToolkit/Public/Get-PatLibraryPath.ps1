@@ -84,7 +84,7 @@ function Get-PatLibraryPath {
                     }
                 }
                 catch {
-                    # Silently fail if server is unavailable
+                    Write-Debug "Tab completion failed for SectionName: $($_.Exception.Message)"
                 }
             }
             else {
@@ -101,7 +101,7 @@ function Get-PatLibraryPath {
                     }
                 }
                 catch {
-                    # Silently fail if default server retrieval fails
+                    Write-Debug "Tab completion failed for SectionName (default server): $($_.Exception.Message)"
                 }
             }
         })]
@@ -128,7 +128,7 @@ function Get-PatLibraryPath {
                     }
                 }
                 catch {
-                    # Silently fail if server is unavailable
+                    Write-Debug "Tab completion failed for SectionId: $($_.Exception.Message)"
                 }
             }
             else {
@@ -143,7 +143,7 @@ function Get-PatLibraryPath {
                     }
                 }
                 catch {
-                    # Silently fail if default server retrieval fails
+                    Write-Debug "Tab completion failed for SectionId (default server): $($_.Exception.Message)"
                 }
             }
         })]

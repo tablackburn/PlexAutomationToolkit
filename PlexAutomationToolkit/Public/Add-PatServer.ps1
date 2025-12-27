@@ -136,7 +136,7 @@ function Add-PatServer {
                     'HTTPS Available'
                 )) {
                     $effectiveUri = $httpsUri
-                    Write-Host "Using HTTPS: $effectiveUri" -ForegroundColor Green
+                    Write-Information "Using HTTPS: $effectiveUri" -InformationAction Continue
                 }
                 else {
                     Write-Warning "Using unencrypted HTTP. Authentication tokens will be transmitted in clear text."
@@ -182,7 +182,7 @@ function Add-PatServer {
                 $validationUri = Join-PatUri -BaseUri $effectiveUri -Endpoint '/'
 
                 # Build headers with authentication if token provided
-                $validationHeaders = Get-PatAuthHeaders -Server $newServer
+                $validationHeaders = Get-PatAuthHeader -Server $newServer
 
                 # Attempt to connect to server
                 $null = Invoke-PatApi -Uri $validationUri -Headers $validationHeaders -ErrorAction Stop
@@ -198,7 +198,7 @@ function Add-PatServer {
                         Write-Warning "Authentication with provided token failed for '$effectiveUri'. Verify your token is correct. The server configuration has been saved but may not work until corrected."
                     }
                     else {
-                        Write-Host "Server '$effectiveUri' requires authentication." -ForegroundColor Yellow
+                        Write-Information "Server '$effectiveUri' requires authentication." -InformationAction Continue
 
                         # Authenticate if -Force or user confirms
                         if ($Force -or $PSCmdlet.ShouldContinue(
@@ -208,7 +208,7 @@ function Add-PatServer {
                             try {
                                 $authToken = Connect-PatAccount -Force:$Force
                                 $newServer | Add-Member -NotePropertyName 'token' -NotePropertyValue $authToken -Force
-                                Write-Host "Authentication successful. Token added to server configuration." -ForegroundColor Green
+                                Write-Information "Authentication successful. Token added to server configuration." -InformationAction Continue
                             }
                             catch {
                                 Write-Warning "Authentication failed: $($_.Exception.Message). Server saved without token."

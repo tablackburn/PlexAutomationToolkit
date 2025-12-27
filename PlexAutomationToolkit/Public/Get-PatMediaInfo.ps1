@@ -85,7 +85,7 @@ function Get-PatMediaInfo {
 
         # Build headers with authentication if we have server object
         $headers = if ($server) {
-            Get-PatAuthHeaders -Server $server
+            Get-PatAuthHeader -Server $server
         }
         else {
             @{ Accept = 'application/json' }

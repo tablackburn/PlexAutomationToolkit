@@ -83,7 +83,7 @@ Describe 'Get-PatLibraryChildItem' {
             }
         }
 
-        Mock -CommandName Get-PatAuthHeaders -ModuleName PlexAutomationToolkit -MockWith {
+        Mock -CommandName Get-PatAuthHeader -ModuleName PlexAutomationToolkit -MockWith {
             return @{ 'X-Plex-Token' = 'test-token'; 'Accept' = 'application/json' }
         }
 
@@ -129,7 +129,7 @@ Describe 'Get-PatLibraryChildItem' {
         It 'Should use authentication headers when using default server' {
             Get-PatLibraryChildItem -Path '/mnt/media/movies'
 
-            Should -Invoke Get-PatAuthHeaders -ModuleName PlexAutomationToolkit -Times 1
+            Should -Invoke Get-PatAuthHeader -ModuleName PlexAutomationToolkit -Times 1
         }
     }
 

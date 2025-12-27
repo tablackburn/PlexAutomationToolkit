@@ -4,7 +4,7 @@ BeforeAll {
 
     # Import the function directly for testing
     . (Join-Path $ModuleRoot 'Private\Resolve-PatServerContext.ps1')
-    . (Join-Path $ModuleRoot 'Private\Get-PatAuthHeaders.ps1')
+    . (Join-Path $ModuleRoot 'Private\Get-PatAuthHeader.ps1')
 }
 
 Describe 'Resolve-PatServerContext' {

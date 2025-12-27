@@ -46,13 +46,10 @@ function Invoke-PatPinAuthentication {
         # Display instructions to user
         $plexLinkUrl = 'https://plex.tv/link'
 
-        Write-Host "`nPlex Authentication" -ForegroundColor Cyan
-        Write-Host "===================" -ForegroundColor Cyan
-        Write-Host "`nEnter this code at " -ForegroundColor White -NoNewline
-        Write-Host $plexLinkUrl -ForegroundColor Yellow -NoNewline
-        Write-Host ":" -ForegroundColor White
-        Write-Host "`n  $($pin.code)" -ForegroundColor Green -NoNewline
-        Write-Host " (case-insensitive, copied to clipboard)" -ForegroundColor Gray
+        Write-Information "`nPlex Authentication" -InformationAction Continue
+        Write-Information "===================" -InformationAction Continue
+        Write-Information "`nEnter this code at $plexLinkUrl`:" -InformationAction Continue
+        Write-Information "`n  $($pin.code)  (case-insensitive, copied to clipboard)" -InformationAction Continue
 
         # Copy code to clipboard
         Set-Clipboard -Value $pin.code
@@ -65,7 +62,7 @@ function Invoke-PatPinAuthentication {
             Start-Process $plexLinkUrl
         }
 
-        Write-Host "`nWaiting for authorization..." -ForegroundColor White
+        Write-Information "`nWaiting for authorization..." -InformationAction Continue
 
         # Wait for authorization
         $token = Wait-PatPinAuthorization -PinId $pin.id `
@@ -73,7 +70,7 @@ function Invoke-PatPinAuthentication {
             -TimeoutSeconds $TimeoutSeconds
 
         if ($token) {
-            Write-Host "`nAuthentication successful!" -ForegroundColor Green
+            Write-Information "`nAuthentication successful!" -InformationAction Continue
             return $token
         }
         else {

@@ -15,7 +15,7 @@ function Set-PatServerConfig {
         $config.servers += [PSCustomObject]@{ name = 'Main'; uri = 'http://plex:32400'; default = $true }
         Set-PatServerConfig -Config $config
     #>
-    [CmdletBinding()]
+    [CmdletBinding(SupportsShouldProcess)]
     param (
         [Parameter(Mandatory = $true)]
         [ValidateNotNull()]
@@ -24,6 +24,10 @@ function Set-PatServerConfig {
     )
 
     $configPath = Get-PatConfigPath
+
+    if (-not $PSCmdlet.ShouldProcess($configPath, 'Write server configuration')) {
+        return
+    }
 
     try {
         # Validate required properties

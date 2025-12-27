@@ -164,14 +164,6 @@ function Sync-PatMedia {
                 throw "Failed to get default server: $($_.Exception.Message)"
             }
         }
-
-        # Build auth headers for downloads
-        $headers = if ($server) {
-            Get-PatAuthHeaders -Server $server
-        }
-        else {
-            @{ Accept = 'application/json' }
-        }
     }
 
     process {

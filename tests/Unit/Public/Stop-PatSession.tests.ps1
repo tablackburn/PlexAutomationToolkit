@@ -211,7 +211,7 @@ Describe 'Stop-PatSession' {
                 return 'http://plex-test-server.local:32400/status/sessions/terminate'
             }
 
-            Mock -ModuleName PlexAutomationToolkit Get-PatAuthHeaders {
+            Mock -ModuleName PlexAutomationToolkit Get-PatAuthHeader {
                 return @{ Accept = 'application/json'; 'X-Plex-Token' = 'test-token' }
             }
 

@@ -46,6 +46,7 @@ function Get-PatLibraryChildItem {
     .OUTPUTS
         PSCustomObject
     #>
+    [OutputType([PSCustomObject[]])]
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
         'PSReviewUnusedParameter',
         'commandName',
@@ -240,7 +241,7 @@ function Get-PatLibraryChildItem {
 
         # Build headers with authentication if we have server object
         $headers = if ($server) {
-            Get-PatAuthHeaders -Server $server
+            Get-PatAuthHeader -Server $server
         }
         else {
             @{ Accept = 'application/json' }

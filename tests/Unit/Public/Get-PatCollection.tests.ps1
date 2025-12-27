@@ -249,7 +249,7 @@ Describe 'Get-PatCollection' {
                 return "$BaseUri$Endpoint"
             }
 
-            Mock -ModuleName PlexAutomationToolkit Get-PatAuthHeaders {
+            Mock -ModuleName PlexAutomationToolkit Get-PatAuthHeader {
                 return @{ Accept = 'application/json'; 'X-Plex-Token' = 'test-token' }
             }
         }
@@ -263,7 +263,7 @@ Describe 'Get-PatCollection' {
 
         It 'Uses authentication headers from stored server' {
             Get-PatCollection -LibraryId 1
-            Should -Invoke -ModuleName PlexAutomationToolkit Get-PatAuthHeaders
+            Should -Invoke -ModuleName PlexAutomationToolkit Get-PatAuthHeader
         }
     }
 

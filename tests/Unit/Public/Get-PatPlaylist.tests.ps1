@@ -276,7 +276,7 @@ Describe 'Get-PatPlaylist' {
                 return "$BaseUri$Endpoint"
             }
 
-            Mock -ModuleName PlexAutomationToolkit Get-PatAuthHeaders {
+            Mock -ModuleName PlexAutomationToolkit Get-PatAuthHeader {
                 return @{ Accept = 'application/json'; 'X-Plex-Token' = 'test-token' }
             }
         }
@@ -290,7 +290,7 @@ Describe 'Get-PatPlaylist' {
 
         It 'Uses authentication headers from stored server' {
             Get-PatPlaylist
-            Should -Invoke -ModuleName PlexAutomationToolkit Get-PatAuthHeaders
+            Should -Invoke -ModuleName PlexAutomationToolkit Get-PatAuthHeader
         }
     }
 

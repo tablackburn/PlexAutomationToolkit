@@ -31,7 +31,7 @@ Describe 'Add-PatServer' {
             return "$BaseUri$Endpoint"
         }
 
-        Mock -CommandName Get-PatAuthHeaders -ModuleName PlexAutomationToolkit -MockWith {
+        Mock -CommandName Get-PatAuthHeader -ModuleName PlexAutomationToolkit -MockWith {
             param($Server)
             $headers = @{ Accept = 'application/json' }
             if ($Server.PSObject.Properties['token']) {
@@ -188,7 +188,7 @@ Describe 'Add-PatServer' {
         It 'Should include token in validation headers when token is provided' {
             Add-PatServer -Name 'Auth' -ServerUri 'http://auth:32400' -Token 'ABC123'
 
-            Should -Invoke Get-PatAuthHeaders -ModuleName PlexAutomationToolkit -Times 1 -ParameterFilter {
+            Should -Invoke Get-PatAuthHeader -ModuleName PlexAutomationToolkit -Times 1 -ParameterFilter {
                 $Server.token -eq 'ABC123'
             }
         }

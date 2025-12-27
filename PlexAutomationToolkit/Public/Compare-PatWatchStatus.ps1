@@ -51,6 +51,7 @@ function Compare-PatWatchStatus {
         - TargetRatingKey: Rating key on target server
     #>
     [CmdletBinding()]
+    [OutputType([PSCustomObject[]])]
     param (
         [Parameter(Mandatory = $true)]
         [ValidateNotNullOrEmpty()]
@@ -154,7 +155,7 @@ function Compare-PatWatchStatus {
 
                         # Get all episodes for this show
                         $episodesUri = Join-PatUri -BaseUri $targetServer.uri -Endpoint "/library/metadata/$showRatingKey/allLeaves"
-                        $headers = Get-PatAuthHeaders -Server $targetServer
+                        $headers = Get-PatAuthHeader -Server $targetServer
                         $episodesResult = Invoke-PatApi -Uri $episodesUri -Headers $headers -ErrorAction SilentlyContinue
 
                         if ($episodesResult.Metadata) {
@@ -233,7 +234,7 @@ function Compare-PatWatchStatus {
 
                         # Get all episodes for this show
                         $episodesUri = Join-PatUri -BaseUri $sourceServer.uri -Endpoint "/library/metadata/$showRatingKey/allLeaves"
-                        $headers = Get-PatAuthHeaders -Server $sourceServer
+                        $headers = Get-PatAuthHeader -Server $sourceServer
                         $episodesResult = Invoke-PatApi -Uri $episodesUri -Headers $headers -ErrorAction SilentlyContinue
 
                         if ($episodesResult.Metadata) {

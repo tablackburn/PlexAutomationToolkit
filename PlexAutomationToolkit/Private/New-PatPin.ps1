@@ -15,13 +15,17 @@ function New-PatPin {
         PSCustomObject
         Returns an object with 'id' and 'code' properties
     #>
-    [CmdletBinding()]
+    [CmdletBinding(SupportsShouldProcess)]
     param (
         [Parameter(Mandatory = $true)]
         [ValidateNotNullOrEmpty()]
         [string]
         $ClientIdentifier
     )
+
+    if (-not $PSCmdlet.ShouldProcess('Plex API', 'Request new PIN')) {
+        return
+    }
 
     $headers = @{
         'Accept'                   = 'application/json'

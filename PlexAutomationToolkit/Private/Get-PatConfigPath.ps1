@@ -31,10 +31,10 @@ function Get-PatConfigPath {
             return $configPath
         }
         catch [System.IO.IOException] {
-            # OneDrive path not accessible, continue to fallback
+            Write-Debug "OneDrive path not accessible (IOException), using fallback"
         }
         catch {
-            # Other errors, continue to fallback
+            Write-Debug "OneDrive path not accessible ($($_.Exception.GetType().Name)), using fallback"
         }
     }
 

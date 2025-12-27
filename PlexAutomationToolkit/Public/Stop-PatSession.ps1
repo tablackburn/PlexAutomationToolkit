@@ -105,7 +105,7 @@ function Stop-PatSession {
 
         # Build headers with authentication
         $headers = if ($server) {
-            Get-PatAuthHeaders -Server $server
+            Get-PatAuthHeader -Server $server
         }
         else {
             @{ Accept = 'application/json' }

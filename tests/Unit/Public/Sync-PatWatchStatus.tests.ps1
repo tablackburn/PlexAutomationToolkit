@@ -26,7 +26,7 @@ Describe 'Sync-PatWatchStatus' {
             return $null
         }
 
-        Mock -ModuleName PlexAutomationToolkit Get-PatAuthHeaders {
+        Mock -ModuleName PlexAutomationToolkit Get-PatAuthHeader {
             return @{
                 Accept         = 'application/json'
                 'X-Plex-Token' = 'test-token'

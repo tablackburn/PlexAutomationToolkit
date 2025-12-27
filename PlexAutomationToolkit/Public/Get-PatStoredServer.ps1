@@ -56,6 +56,7 @@ function Get-PatStoredServer {
                 $server
             }
             'Default' {
+                Write-Debug "Default switch specified: $($Default.IsPresent)"
                 $defaultServers = @($config.servers | Where-Object { $_.default -eq $true })
                 if ($defaultServers.Count -eq 0) {
                     throw "No default server configured"
