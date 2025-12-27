@@ -2,7 +2,7 @@
 
 AI agents working in this repository must follow these instructions.
 
-Template Version: 0.2.2
+Template Version: 0.3.0
 
 Last sync: 2025-12-27
 
@@ -21,6 +21,7 @@ Use this matrix to determine which instruction files to read based on your task:
 | Task Type | Required Instructions |
 |-----------|----------------------|
 | Any task | `agent-workflow.instructions.md` |
+| Any code or documentation | `shorthand.instructions.md` |
 | PowerShell code | `powershell.instructions.md` |
 | Documentation | `markdown.instructions.md` |
 | GitHub CLI usage | `github-cli.instructions.md` |
@@ -30,6 +31,7 @@ Use this matrix to determine which instruction files to read based on your task:
 ## Available Instruction Files
 
 - `agent-workflow.instructions.md` - Pre-flight protocol and task workflow
+- `shorthand.instructions.md` - Avoid shorthand and abbreviations
 - `powershell.instructions.md` - PowerShell coding standards
 - `markdown.instructions.md` - Markdown formatting standards
 - `github-cli.instructions.md` - GitHub CLI usage guidelines
