@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- New cmdlet `Get-PatSession` to retrieve active playback sessions from a Plex server
+  - Lists all active streaming sessions with detailed information
+  - Properties include: SessionId, MediaTitle, Username, PlayerName, Progress, Bandwidth, etc.
+  - Filter by `-Username` or `-Player` parameters
+  - Returns `PlexAutomationToolkit.Session` objects
+- New cmdlet `Stop-PatSession` to terminate an active playback session
+  - Terminates streaming sessions by SessionId
+  - Supports `-Reason` parameter to display a message to the disconnected user
+  - Pipeline support: accepts input from `Get-PatSession`
+  - `ConfirmImpact = 'High'` - prompts for confirmation by default
+  - Supports `-WhatIf` and `-Confirm` for safe execution
+  - Supports `-PassThru` to return session info before termination
+- New private helper function `Test-PatServerUri` for centralized URI validation
+  - Validates HTTP/HTTPS URL format for Plex server URIs
+  - Provides consistent error messages across cmdlets
+  - Designed for use with `ValidateScript` attribute
+
 ## [0.2.0] - 2025-12-26
 
 ### Added
