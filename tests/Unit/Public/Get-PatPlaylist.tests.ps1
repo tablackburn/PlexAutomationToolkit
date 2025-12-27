@@ -127,12 +127,16 @@ Describe 'Get-PatPlaylist' {
         BeforeAll {
             Mock -ModuleName PlexAutomationToolkit Invoke-PatApi {
                 return @{
-                    ratingKey    = '12345'
-                    title        = 'My Favorites'
-                    playlistType = 'video'
-                    leafCount    = 10
-                    duration     = 36000000
-                    smart        = '0'
+                    Metadata = @(
+                        @{
+                            ratingKey    = '12345'
+                            title        = 'My Favorites'
+                            playlistType = 'video'
+                            leafCount    = 10
+                            duration     = 36000000
+                            smart        = '0'
+                        }
+                    )
                 }
             }
 
