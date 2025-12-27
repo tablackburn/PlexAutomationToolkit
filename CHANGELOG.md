@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [0.3.0] - 2025-12-26
+
 ### Added
 
 - New cmdlet `Get-PatSession` to retrieve active playback sessions from a Plex server
