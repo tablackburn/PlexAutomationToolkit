@@ -7,6 +7,51 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [0.5.0] - 2025-12-27
+
+### Added
+
+- Media sync functionality for transferring content between Plex servers via API downloads:
+  - `Get-PatMediaInfo` - Retrieve detailed media metadata including file paths, sizes, and streams
+    - Returns nested Media[], Part[], Streams[] structure
+    - Pipeline support for rating keys
+    - Identifies external subtitle streams
+  - `Get-PatSyncPlan` - Analyze playlist and generate sync operations
+    - Compares playlist content against destination folder
+    - Calculates AddOperations[], RemoveOperations[], and space requirements
+    - Detects existing files by size to skip re-downloads
+    - Default playlist name is 'Travel'
+    - Returns `PlexAutomationToolkit.SyncPlan` objects
+  - `Sync-PatMedia` - Execute media sync from playlist to destination
+    - Downloads media files with Plex-compatible folder structure
+    - Subtitles included by default (use `-SkipSubtitles` to exclude)
+    - Default playlist name is 'Travel' - just specify `-Destination`
+    - Progress reporting for both download and removal operations
+    - Space sufficiency check (override with `-Force`)
+    - Supports `-WhatIf`, `-Confirm`, and `-PassThru`
+    - Resume support for interrupted downloads
+- Watch status synchronization between Plex servers:
+  - `Compare-PatWatchStatus` - Compare watch status between two servers
+    - Matches movies by title and year
+    - Matches TV episodes by show name, season, and episode number
+    - Filter with `-WatchedOnSourceOnly` or `-WatchedOnTargetOnly`
+    - Returns `PlexAutomationToolkit.WatchStatusDiff` objects
+  - `Sync-PatWatchStatus` - Apply watched status from source to target server
+    - Uses Plex scrobble endpoint to mark items as watched
+    - Supports `-SectionId` filter for targeted sync
+    - Supports `-WhatIf`, `-Confirm`, and `-PassThru`
+    - Returns `PlexAutomationToolkit.WatchStatusSyncResult` objects
+- New private helper functions:
+  - `Get-PatSafeFilename` - Sanitize strings for filesystem compatibility
+  - `Get-PatMediaPath` - Generate Plex-compatible destination paths
+  - `Invoke-PatFileDownload` - Binary file download with progress and resume support
+
+### Notes
+
+- Media sync uses Plex API for downloads (no SMB/path mapping required)
+- Folder structure follows Plex conventions: `Movies/Title (Year)/` and `TV Shows/Show/Season ##/`
+- Server configurations stored with `Add-PatServer` are used for cross-server operations
+
 ## [0.4.0] - 2025-12-26
 
 ### Added

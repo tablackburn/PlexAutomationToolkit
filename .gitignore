@@ -9,3 +9,6 @@ out/
 
 # Don't check in local integration test settings (contains tokens)
 tests/local.settings.ps1
+
+# Claude Code local settings
+.claude/
