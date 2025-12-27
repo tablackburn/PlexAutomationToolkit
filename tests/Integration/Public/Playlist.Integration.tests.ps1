@@ -137,6 +137,29 @@ Describe 'Playlist CRUD Integration Tests' -Skip:(-not $script:mutationTestsEnab
 
         # Track created playlists for cleanup
         $script:createdPlaylistIds = [System.Collections.ArrayList]::new()
+
+        # Discover a test media item for creating playlists (required by Plex API)
+        $script:testRatingKey = $null
+        try {
+            $libraries = Get-PatLibrary -ErrorAction SilentlyContinue
+            if ($libraries -and $libraries.Directory) {
+                foreach ($lib in $libraries.Directory) {
+                    $items = Get-PatLibraryItem -SectionId $lib.key -ErrorAction SilentlyContinue | Select-Object -First 1
+                    if ($items -and $items.ratingKey) {
+                        $script:testRatingKey = [int]$items.ratingKey
+                        Write-Verbose "Using test rating key: $($script:testRatingKey)"
+                        break
+                    }
+                }
+            }
+        }
+        catch {
+            Write-Warning "Could not find test media item: $($_.Exception.Message)"
+        }
+
+        if (-not $script:testRatingKey) {
+            throw "No media items available for playlist integration tests"
+        }
     }
 
     AfterAll {
@@ -160,11 +183,12 @@ Describe 'Playlist CRUD Integration Tests' -Skip:(-not $script:mutationTestsEnab
         It 'Creates a new playlist with New-PatPlaylist' {
             $testTitle = "IntegrationTest-Playlist-$(Get-Date -Format 'yyyyMMddHHmmss')"
 
-            $result = New-PatPlaylist -Title $testTitle -PassThru -Confirm:$false
+            $result = New-PatPlaylist -Title $testTitle -RatingKey $script:testRatingKey -PassThru -Confirm:$false
 
             $result | Should -Not -BeNullOrEmpty
             $result.Title | Should -Be $testTitle
             $result.PlaylistId | Should -BeGreaterThan 0
+            $result.ItemCount | Should -Be 1
 
             # Track for cleanup
             $null = $script:createdPlaylistIds.Add($result.PlaylistId)
@@ -173,7 +197,7 @@ Describe 'Playlist CRUD Integration Tests' -Skip:(-not $script:mutationTestsEnab
         It 'Created playlist is retrievable via Get-PatPlaylist' {
             $testTitle = "IntegrationTest-Playlist-Get-$(Get-Date -Format 'yyyyMMddHHmmss')"
 
-            $created = New-PatPlaylist -Title $testTitle -PassThru -Confirm:$false
+            $created = New-PatPlaylist -Title $testTitle -RatingKey $script:testRatingKey -PassThru -Confirm:$false
             $null = $script:createdPlaylistIds.Add($created.PlaylistId)
 
             $retrieved = Get-PatPlaylist -PlaylistId $created.PlaylistId
@@ -185,7 +209,7 @@ Describe 'Playlist CRUD Integration Tests' -Skip:(-not $script:mutationTestsEnab
         It 'Creates playlist with specified type' {
             $testTitle = "IntegrationTest-Playlist-Video-$(Get-Date -Format 'yyyyMMddHHmmss')"
 
-            $result = New-PatPlaylist -Title $testTitle -Type 'video' -PassThru -Confirm:$false
+            $result = New-PatPlaylist -Title $testTitle -Type 'video' -RatingKey $script:testRatingKey -PassThru -Confirm:$false
 
             $result | Should -Not -BeNullOrEmpty
             $result.Type | Should -Be 'video'
@@ -199,7 +223,7 @@ Describe 'Playlist CRUD Integration Tests' -Skip:(-not $script:mutationTestsEnab
             $testTitle = "IntegrationTest-Playlist-Delete-$(Get-Date -Format 'yyyyMMddHHmmss')"
 
             # Create a playlist to delete
-            $created = New-PatPlaylist -Title $testTitle -PassThru -Confirm:$false
+            $created = New-PatPlaylist -Title $testTitle -RatingKey $script:testRatingKey -PassThru -Confirm:$false
 
             # Delete it
             { Remove-PatPlaylist -PlaylistId $created.PlaylistId -Confirm:$false } | Should -Not -Throw
@@ -211,7 +235,7 @@ Describe 'Playlist CRUD Integration Tests' -Skip:(-not $script:mutationTestsEnab
         It 'PassThru returns removed playlist info' {
             $testTitle = "IntegrationTest-Playlist-PassThru-$(Get-Date -Format 'yyyyMMddHHmmss')"
 
-            $created = New-PatPlaylist -Title $testTitle -PassThru -Confirm:$false
+            $created = New-PatPlaylist -Title $testTitle -RatingKey $script:testRatingKey -PassThru -Confirm:$false
 
             $removed = Remove-PatPlaylist -PlaylistId $created.PlaylistId -PassThru -Confirm:$false
 
@@ -222,52 +246,45 @@ Describe 'Playlist CRUD Integration Tests' -Skip:(-not $script:mutationTestsEnab
 
     Context 'Add and remove playlist items' {
         BeforeAll {
-            # Create a test playlist for item operations
+            # Create a test playlist for item operations (using the testRatingKey discovered at parent level)
             $testTitle = "IntegrationTest-Playlist-Items-$(Get-Date -Format 'yyyyMMddHHmmss')"
-            $script:itemTestPlaylist = New-PatPlaylist -Title $testTitle -PassThru -Confirm:$false
+            $script:itemTestPlaylist = New-PatPlaylist -Title $testTitle -RatingKey $script:testRatingKey -PassThru -Confirm:$false
             $null = $script:createdPlaylistIds.Add($script:itemTestPlaylist.PlaylistId)
 
-            # Try to get a media item to add to the playlist
-            $script:testMediaItem = $null
+            # Get a different media item to add (to avoid duplicates)
+            $script:additionalRatingKey = $null
             try {
                 $libraries = Get-PatLibrary -ErrorAction SilentlyContinue
                 if ($libraries -and $libraries.Directory) {
                     foreach ($lib in $libraries.Directory) {
-                        $items = Get-PatLibraryItem -SectionId $lib.key -ErrorAction SilentlyContinue | Select-Object -First 1
-                        if ($items -and $items.ratingKey) {
-                            $script:testMediaItem = $items
+                        $items = Get-PatLibraryItem -SectionId $lib.key -ErrorAction SilentlyContinue | Select-Object -First 2
+                        if ($items -and $items.Count -ge 2) {
+                            $script:additionalRatingKey = [int]$items[1].ratingKey
                             break
                         }
                     }
                 }
             }
             catch {
-                Write-Warning "Could not find test media item: $($_.Exception.Message)"
+                Write-Warning "Could not find additional test media item: $($_.Exception.Message)"
             }
         }
 
         It 'Adds item to playlist with Add-PatPlaylistItem' {
-            if (-not $script:testMediaItem) {
-                Set-ItResult -Skipped -Because 'No media items available for testing'
+            if (-not $script:additionalRatingKey) {
+                Set-ItResult -Skipped -Because 'No additional media items available for testing'
                 return
             }
 
-            $ratingKey = [int]$script:testMediaItem.ratingKey
-
-            { Add-PatPlaylistItem -PlaylistId $script:itemTestPlaylist.PlaylistId -RatingKey $ratingKey -Confirm:$false } |
+            { Add-PatPlaylistItem -PlaylistId $script:itemTestPlaylist.PlaylistId -RatingKey $script:additionalRatingKey -Confirm:$false } |
                 Should -Not -Throw
 
-            # Verify item was added
+            # Verify item was added (should have 2 items now: initial + added)
             $playlist = Get-PatPlaylist -PlaylistId $script:itemTestPlaylist.PlaylistId -IncludeItems
-            $playlist.ItemCount | Should -BeGreaterThan 0
+            $playlist.ItemCount | Should -Be 2
         }
 
         It 'Removes item from playlist with Remove-PatPlaylistItem' {
-            if (-not $script:testMediaItem) {
-                Set-ItResult -Skipped -Because 'No media items available for testing'
-                return
-            }
-
             # Get current playlist items
             $playlist = Get-PatPlaylist -PlaylistId $script:itemTestPlaylist.PlaylistId -IncludeItems
 
@@ -301,6 +318,24 @@ Describe 'Playlist WhatIf Integration Tests' -Skip:(-not $script:integrationEnab
             -Default `
             -SkipValidation `
             -Confirm:$false
+
+        # Discover a test media item for creating playlists (required by Plex API)
+        $script:whatIfRatingKey = $null
+        try {
+            $libraries = Get-PatLibrary -ErrorAction SilentlyContinue
+            if ($libraries -and $libraries.Directory) {
+                foreach ($lib in $libraries.Directory) {
+                    $items = Get-PatLibraryItem -SectionId $lib.key -ErrorAction SilentlyContinue | Select-Object -First 1
+                    if ($items -and $items.ratingKey) {
+                        $script:whatIfRatingKey = [int]$items.ratingKey
+                        break
+                    }
+                }
+            }
+        }
+        catch {
+            Write-Warning "Could not find test media item for WhatIf tests: $($_.Exception.Message)"
+        }
     }
 
     AfterAll {
@@ -313,9 +348,14 @@ Describe 'Playlist WhatIf Integration Tests' -Skip:(-not $script:integrationEnab
     Context 'WhatIf behavior (safe to run)' {
 
         It 'New-PatPlaylist WhatIf does not create playlist' {
+            if (-not $script:whatIfRatingKey) {
+                Set-ItResult -Skipped -Because 'No media items available for testing'
+                return
+            }
+
             $countBefore = (Get-PatPlaylist).Count
 
-            New-PatPlaylist -Title 'WhatIf-Test-Playlist' -WhatIf
+            New-PatPlaylist -Title 'WhatIf-Test-Playlist' -RatingKey $script:whatIfRatingKey -WhatIf
 
             $countAfter = (Get-PatPlaylist).Count
             $countAfter | Should -Be $countBefore

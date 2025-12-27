@@ -4,9 +4,9 @@ function New-PatPlaylist {
         Creates a new playlist on a Plex server.
 
     .DESCRIPTION
-        Creates a new regular (non-smart) playlist on the Plex server. You can specify
-        the playlist title, type (video, audio, or photo), and optionally add initial
-        items during creation.
+        Creates a new regular (non-smart) playlist on the Plex server. You must specify
+        the playlist title and at least one initial item. The Plex API does not support
+        creating empty playlists.
 
     .PARAMETER Title
         The title/name of the new playlist. Must be unique on the server.
@@ -19,7 +19,8 @@ function New-PatPlaylist {
 
     .PARAMETER RatingKey
         One or more media item rating keys to add to the playlist upon creation.
-        Rating keys can be obtained from library browsing commands.
+        At least one rating key is required. Rating keys can be obtained from
+        library browsing commands like Get-PatLibraryItem.
 
     .PARAMETER ServerUri
         The base URI of the Plex server (e.g., http://plex.example.com:32400).
@@ -29,14 +30,14 @@ function New-PatPlaylist {
         If specified, returns the created playlist object.
 
     .EXAMPLE
-        New-PatPlaylist -Title 'My Favorites'
+        New-PatPlaylist -Title 'My Favorites' -RatingKey 12345
 
-        Creates a new empty video playlist named 'My Favorites'.
+        Creates a new video playlist named 'My Favorites' with one item.
 
     .EXAMPLE
-        New-PatPlaylist -Title 'Road Trip Music' -Type audio
+        New-PatPlaylist -Title 'Road Trip Music' -Type audio -RatingKey 67890
 
-        Creates a new empty audio playlist named 'Road Trip Music'.
+        Creates a new audio playlist named 'Road Trip Music' with one item.
 
     .EXAMPLE
         New-PatPlaylist -Title 'Weekend Watchlist' -RatingKey 12345, 67890 -PassThru
@@ -45,7 +46,7 @@ function New-PatPlaylist {
 
     .EXAMPLE
         Get-PatLibraryItem -SectionId 1 | Select-Object -First 5 -ExpandProperty ratingKey |
-            ForEach-Object { New-PatPlaylist -Title 'Top 5' -RatingKey $_ }
+            New-PatPlaylist -Title 'Top 5' -PassThru
 
         Creates a playlist from the first 5 items in library section 1.
 
@@ -71,7 +72,7 @@ function New-PatPlaylist {
         [string]
         $Type = 'video',
 
-        [Parameter(Mandatory = $false, ValueFromPipeline, ValueFromPipelineByPropertyName)]
+        [Parameter(Mandatory = $true, ValueFromPipeline, ValueFromPipelineByPropertyName)]
         [ValidateRange(1, [int]::MaxValue)]
         [int[]]
         $RatingKey,
@@ -88,37 +89,17 @@ function New-PatPlaylist {
     )
 
     begin {
-        # Use default server if ServerUri not specified
-        $server = $null
-        $effectiveUri = $ServerUri
-        $machineIdentifier = $null
-
-        if (-not $ServerUri) {
-            try {
-                $server = Get-PatStoredServer -Default -ErrorAction 'Stop'
-                if (-not $server) {
-                    throw "No default server configured. Use Add-PatServer with -Default or specify -ServerUri."
-                }
-                $effectiveUri = $server.uri
-                Write-Verbose "Using default server: $effectiveUri"
-            }
-            catch {
-                throw "Failed to get default server: $($_.Exception.Message)"
-            }
+        try {
+            $script:serverContext = Resolve-PatServerContext -ServerUri $ServerUri
         }
-        else {
-            Write-Verbose "Using specified server: $effectiveUri"
+        catch {
+            throw "Failed to resolve server: $($_.Exception.Message)"
         }
 
-        # Build headers with authentication
-        $headers = if ($server) {
-            Get-PatAuthHeaders -Server $server
-        }
-        else {
-            @{ Accept = 'application/json' }
-        }
+        $effectiveUri = $script:serverContext.Uri
+        $headers = $script:serverContext.Headers
 
-        # Get machine identifier for URI construction (needed for adding items)
+        # Get machine identifier for URI construction (required for playlist creation)
         try {
             $serverInfoUri = Join-PatUri -BaseUri $effectiveUri -Endpoint '/'
             $serverInfo = Invoke-PatApi -Uri $serverInfoUri -Headers $headers -ErrorAction 'Stop'
@@ -126,7 +107,7 @@ function New-PatPlaylist {
             Write-Verbose "Server machine identifier: $machineIdentifier"
         }
         catch {
-            Write-Warning "Could not retrieve server machine identifier. Adding items during creation may fail."
+            throw "Failed to retrieve server machine identifier: $($_.Exception.Message)"
         }
 
         # Collect all rating keys from pipeline
@@ -155,19 +136,18 @@ function New-PatPlaylist {
                 'smart=0'
             )
 
-            # Add items URI if we have rating keys and a machine identifier
-            if ($allRatingKeys.Count -gt 0 -and $machineIdentifier) {
-                # Build the library URI format Plex expects
-                # Format: server://machineIdentifier/com.plexapp.plugins.library/library/metadata/ratingKey
-                $itemUris = foreach ($key in $allRatingKeys) {
-                    "server://$machineIdentifier/com.plexapp.plugins.library/library/metadata/$key"
-                }
-                $uriParam = $itemUris -join ','
-                $queryParts += "uri=$([System.Uri]::EscapeDataString($uriParam))"
+            # RatingKey is mandatory, so we always have items to add
+            if (-not $machineIdentifier) {
+                throw "Cannot create playlist: server machine identifier not available."
             }
-            elseif ($allRatingKeys.Count -gt 0 -and -not $machineIdentifier) {
-                Write-Warning "Cannot add items during creation: server machine identifier not available. Use Add-PatPlaylistItem after creation."
+
+            # Build the library URI format Plex expects
+            # Format: server://machineIdentifier/com.plexapp.plugins.library/library/metadata/ratingKey
+            $itemUris = foreach ($key in $allRatingKeys) {
+                "server://$machineIdentifier/com.plexapp.plugins.library/library/metadata/$key"
             }
+            $uriParam = $itemUris -join ','
+            $queryParts += "uri=$([System.Uri]::EscapeDataString($uriParam))"
 
             $queryString = $queryParts -join '&'
             $uri = Join-PatUri -BaseUri $effectiveUri -Endpoint '/playlists' -QueryString $queryString

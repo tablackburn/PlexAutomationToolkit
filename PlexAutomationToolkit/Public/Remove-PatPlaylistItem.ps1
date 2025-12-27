@@ -82,49 +82,34 @@ function Remove-PatPlaylistItem {
     )
 
     begin {
-        # Use default server if ServerUri not specified (will be set per-item in process block)
-        $defaultServer = $null
-        $defaultUri = $null
-
-        try {
-            $defaultServer = Get-PatStoredServer -Default -ErrorAction 'SilentlyContinue'
-            if ($defaultServer) {
-                $defaultUri = $defaultServer.uri
-            }
-        }
-        catch {
-            Write-Verbose "No default server configured"
-        }
+        # Cache for server context (will be set per-item in process block if ServerUri varies)
+        $script:cachedServerContext = $null
+        $script:cachedServerUri = $null
     }
 
     process {
         try {
-            # Determine effective URI for this item
-            $effectiveUri = $ServerUri
-            $server = $null
-
-            if (-not $ServerUri) {
-                if (-not $defaultUri) {
-                    throw "No default server configured. Use Add-PatServer with -Default or specify -ServerUri."
+            # Resolve server context (cache if ServerUri is the same)
+            if ($ServerUri -ne $script:cachedServerUri) {
+                try {
+                    $script:cachedServerContext = Resolve-PatServerContext -ServerUri $ServerUri
+                    $script:cachedServerUri = $ServerUri
                 }
-                $effectiveUri = $defaultUri
-                $server = $defaultServer
+                catch {
+                    throw "Failed to resolve server: $($_.Exception.Message)"
+                }
             }
 
-            Write-Verbose "Using server: $effectiveUri"
-
-            # Build headers with authentication
-            $headers = if ($server) {
-                Get-PatAuthHeaders -Server $server
-            }
-            else {
-                @{ Accept = 'application/json' }
-            }
+            $effectiveUri = $script:cachedServerContext.Uri
+            $headers = $script:cachedServerContext.Headers
 
             # Get item info for ShouldProcess message
             $itemTitle = "Item $PlaylistItemId"
             try {
-                $playlist = Get-PatPlaylist -PlaylistId $PlaylistId -IncludeItems -ServerUri $effectiveUri -ErrorAction 'SilentlyContinue'
+                # Only pass ServerUri if explicitly specified
+                $getParams = @{ PlaylistId = $PlaylistId; IncludeItems = $true; ErrorAction = 'SilentlyContinue' }
+                if ($script:cachedServerContext.WasExplicitUri) { $getParams['ServerUri'] = $effectiveUri }
+                $playlist = Get-PatPlaylist @getParams
                 if ($playlist -and $playlist.Items) {
                     $item = $playlist.Items | Where-Object { $_.PlaylistItemId -eq $PlaylistItemId }
                     if ($item) {
@@ -147,7 +132,10 @@ function Remove-PatPlaylistItem {
                 $null = Invoke-PatApi -Uri $uri -Method 'DELETE' -Headers $headers -ErrorAction 'Stop'
 
                 if ($PassThru) {
-                    Get-PatPlaylist -PlaylistId $PlaylistId -ServerUri $effectiveUri -ErrorAction 'Stop'
+                    # Only pass ServerUri if explicitly specified
+                    $getParams = @{ PlaylistId = $PlaylistId; ErrorAction = 'Stop' }
+                    if ($script:cachedServerContext.WasExplicitUri) { $getParams['ServerUri'] = $effectiveUri }
+                    Get-PatPlaylist @getParams
                 }
             }
         }

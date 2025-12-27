@@ -139,33 +139,15 @@ function Get-PatPlaylist {
     )
 
     begin {
-        # Use default server if ServerUri not specified
-        $server = $null
-        $effectiveUri = $ServerUri
-        if (-not $ServerUri) {
-            try {
-                $server = Get-PatStoredServer -Default -ErrorAction 'Stop'
-                if (-not $server) {
-                    throw "No default server configured. Use Add-PatServer with -Default or specify -ServerUri."
-                }
-                $effectiveUri = $server.uri
-                Write-Verbose "Using default server: $effectiveUri"
-            }
-            catch {
-                throw "Failed to get default server: $($_.Exception.Message)"
-            }
+        try {
+            $script:serverContext = Resolve-PatServerContext -ServerUri $ServerUri
         }
-        else {
-            Write-Verbose "Using specified server: $effectiveUri"
+        catch {
+            throw "Failed to resolve server: $($_.Exception.Message)"
         }
 
-        # Build headers with authentication
-        $headers = if ($server) {
-            Get-PatAuthHeaders -Server $server
-        }
-        else {
-            @{ Accept = 'application/json' }
-        }
+        $effectiveUri = $script:serverContext.Uri
+        $headers = $script:serverContext.Headers
     }
 
     process {
@@ -189,19 +171,12 @@ function Get-PatPlaylist {
                 return
             }
 
-            # Normalize to array of playlist metadata
-            $playlistData = if ($PSCmdlet.ParameterSetName -eq 'ById') {
-                # Single playlist query returns the playlist directly
-                @($result)
+            # Extract playlist data from Metadata array (both single and multiple queries return this structure)
+            $playlistData = if ($result.Metadata) {
+                $result.Metadata
             }
             else {
-                # All playlists query returns Metadata array
-                if ($result.Metadata) {
-                    $result.Metadata
-                }
-                else {
-                    @()
-                }
+                @()
             }
 
             # Filter by name if specified

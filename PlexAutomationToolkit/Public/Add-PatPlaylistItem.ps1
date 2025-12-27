@@ -135,37 +135,18 @@ function Add-PatPlaylistItem {
     )
 
     begin {
-        # Use default server if ServerUri not specified
-        $server = $null
-        $effectiveUri = $ServerUri
-        $machineIdentifier = $null
-
-        if (-not $ServerUri) {
-            try {
-                $server = Get-PatStoredServer -Default -ErrorAction 'Stop'
-                if (-not $server) {
-                    throw "No default server configured. Use Add-PatServer with -Default or specify -ServerUri."
-                }
-                $effectiveUri = $server.uri
-                Write-Verbose "Using default server: $effectiveUri"
-            }
-            catch {
-                throw "Failed to get default server: $($_.Exception.Message)"
-            }
+        try {
+            $script:serverContext = Resolve-PatServerContext -ServerUri $ServerUri
         }
-        else {
-            Write-Verbose "Using specified server: $effectiveUri"
+        catch {
+            throw "Failed to resolve server: $($_.Exception.Message)"
         }
 
-        # Build headers with authentication
-        $headers = if ($server) {
-            Get-PatAuthHeaders -Server $server
-        }
-        else {
-            @{ Accept = 'application/json' }
-        }
+        $effectiveUri = $script:serverContext.Uri
+        $headers = $script:serverContext.Headers
 
         # Get machine identifier for URI construction
+        $machineIdentifier = $null
         try {
             $serverInfoUri = Join-PatUri -BaseUri $effectiveUri -Endpoint '/'
             $serverInfo = Invoke-PatApi -Uri $serverInfoUri -Headers $headers -ErrorAction 'Stop'
@@ -181,7 +162,10 @@ function Add-PatPlaylistItem {
         $playlistInfo = $null
 
         if ($PSCmdlet.ParameterSetName -eq 'ByName') {
-            $playlist = Get-PatPlaylist -PlaylistName $PlaylistName -ServerUri $effectiveUri -ErrorAction 'Stop'
+            # Only pass ServerUri if explicitly specified
+            $getParams = @{ PlaylistName = $PlaylistName; ErrorAction = 'Stop' }
+            if ($script:serverContext.WasExplicitUri) { $getParams['ServerUri'] = $effectiveUri }
+            $playlist = Get-PatPlaylist @getParams
             if (-not $playlist) {
                 throw "No playlist found with name '$PlaylistName'"
             }
@@ -190,7 +174,10 @@ function Add-PatPlaylistItem {
         }
         else {
             try {
-                $playlistInfo = Get-PatPlaylist -PlaylistId $PlaylistId -ServerUri $effectiveUri -ErrorAction 'Stop'
+                # Only pass ServerUri if explicitly specified
+                $getParams = @{ PlaylistId = $PlaylistId; ErrorAction = 'Stop' }
+                if ($script:serverContext.WasExplicitUri) { $getParams['ServerUri'] = $effectiveUri }
+                $playlistInfo = Get-PatPlaylist @getParams
             }
             catch {
                 Write-Verbose "Could not retrieve playlist info for ID $PlaylistId"
@@ -244,7 +231,10 @@ function Add-PatPlaylistItem {
             $null = Invoke-PatApi -Uri $uri -Method 'PUT' -Headers $headers -ErrorAction 'Stop'
 
             if ($PassThru) {
-                Get-PatPlaylist -PlaylistId $resolvedId -ServerUri $effectiveUri -ErrorAction 'Stop'
+                # Only pass ServerUri if explicitly specified
+                $getParams = @{ PlaylistId = $resolvedId; ErrorAction = 'Stop' }
+                if ($script:serverContext.WasExplicitUri) { $getParams['ServerUri'] = $effectiveUri }
+                Get-PatPlaylist @getParams
             }
         }
         catch {

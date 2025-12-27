@@ -129,33 +129,15 @@ function Remove-PatPlaylist {
     )
 
     begin {
-        # Use default server if ServerUri not specified
-        $server = $null
-        $effectiveUri = $ServerUri
-        if (-not $ServerUri) {
-            try {
-                $server = Get-PatStoredServer -Default -ErrorAction 'Stop'
-                if (-not $server) {
-                    throw "No default server configured. Use Add-PatServer with -Default or specify -ServerUri."
-                }
-                $effectiveUri = $server.uri
-                Write-Verbose "Using default server: $effectiveUri"
-            }
-            catch {
-                throw "Failed to get default server: $($_.Exception.Message)"
-            }
+        try {
+            $script:serverContext = Resolve-PatServerContext -ServerUri $ServerUri
         }
-        else {
-            Write-Verbose "Using specified server: $effectiveUri"
+        catch {
+            throw "Failed to resolve server: $($_.Exception.Message)"
         }
 
-        # Build headers with authentication
-        $headers = if ($server) {
-            Get-PatAuthHeaders -Server $server
-        }
-        else {
-            @{ Accept = 'application/json' }
-        }
+        $effectiveUri = $script:serverContext.Uri
+        $headers = $script:serverContext.Headers
     }
 
     process {
@@ -165,7 +147,10 @@ function Remove-PatPlaylist {
             $playlistInfo = $null
 
             if ($PSCmdlet.ParameterSetName -eq 'ByName') {
-                $playlist = Get-PatPlaylist -PlaylistName $PlaylistName -ServerUri $effectiveUri -ErrorAction 'Stop'
+                # Only pass ServerUri if explicitly specified
+                $getParams = @{ PlaylistName = $PlaylistName; ErrorAction = 'Stop' }
+                if ($script:serverContext.WasExplicitUri) { $getParams['ServerUri'] = $effectiveUri }
+                $playlist = Get-PatPlaylist @getParams
                 if (-not $playlist) {
                     throw "No playlist found with name '$PlaylistName'"
                 }
@@ -175,7 +160,10 @@ function Remove-PatPlaylist {
             else {
                 # Get playlist info for ShouldProcess message and PassThru
                 try {
-                    $playlistInfo = Get-PatPlaylist -PlaylistId $PlaylistId -ServerUri $effectiveUri -ErrorAction 'Stop'
+                    # Only pass ServerUri if explicitly specified
+                    $getParams = @{ PlaylistId = $PlaylistId; ErrorAction = 'Stop' }
+                    if ($script:serverContext.WasExplicitUri) { $getParams['ServerUri'] = $effectiveUri }
+                    $playlistInfo = Get-PatPlaylist @getParams
                 }
                 catch {
                     Write-Verbose "Could not retrieve playlist info for ID $PlaylistId"
