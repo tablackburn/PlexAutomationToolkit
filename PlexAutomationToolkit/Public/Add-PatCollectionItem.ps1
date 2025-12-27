@@ -212,6 +212,17 @@ function Add-PatCollectionItem {
         $effectiveUri = $script:serverContext.Uri
         $headers = $script:serverContext.Headers
 
+        # Get machine identifier for URI construction
+        try {
+            $serverInfoUri = Join-PatUri -BaseUri $effectiveUri -Endpoint '/'
+            $serverInfo = Invoke-PatApi -Uri $serverInfoUri -Headers $headers -ErrorAction 'Stop'
+            $machineIdentifier = $serverInfo.machineIdentifier
+            Write-Verbose "Server machine identifier: $machineIdentifier"
+        }
+        catch {
+            throw "Failed to retrieve server machine identifier: $($_.Exception.Message)"
+        }
+
         $resolvedId = $CollectionId
         $collectionInfo = $null
 
@@ -277,18 +288,20 @@ function Add-PatCollectionItem {
         }
 
         try {
-            # Build the URI parameter for items
-            # Format: /library/metadata/ratingKey1,ratingKey2,...
-            $ratingKeyList = $allRatingKeys -join ','
-            $itemUri = "/library/metadata/$ratingKeyList"
-
-            $queryString = "uri=$([System.Uri]::EscapeDataString($itemUri))"
+            # Add each item individually (collections require separate API calls per item)
+            # Format: server://machineIdentifier/com.plexapp.plugins.library/library/metadata/ratingKey
             $endpoint = "/library/collections/$resolvedId/items"
-            $uri = Join-PatUri -BaseUri $effectiveUri -Endpoint $endpoint -QueryString $queryString
 
             Write-Verbose "Adding $($allRatingKeys.Count) item(s) to collection $resolvedId"
 
-            $null = Invoke-PatApi -Uri $uri -Method 'PUT' -Headers $headers -ErrorAction 'Stop'
+            foreach ($key in $allRatingKeys) {
+                $itemUri = "server://$machineIdentifier/com.plexapp.plugins.library/library/metadata/$key"
+                $queryString = "uri=$([System.Uri]::EscapeDataString($itemUri))"
+                $uri = Join-PatUri -BaseUri $effectiveUri -Endpoint $endpoint -QueryString $queryString
+
+                Write-Verbose "Adding item $key to collection $resolvedId"
+                $null = Invoke-PatApi -Uri $uri -Method 'PUT' -Headers $headers -ErrorAction 'Stop'
+            }
 
             if ($PassThru) {
                 # Only pass ServerUri if explicitly specified

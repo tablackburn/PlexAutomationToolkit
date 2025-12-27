@@ -119,11 +119,15 @@ Describe 'Get-PatCollection' {
         BeforeAll {
             Mock -ModuleName PlexAutomationToolkit Invoke-PatApi {
                 return @{
-                    ratingKey        = '12345'
-                    title            = 'Marvel Movies'
                     librarySectionID = '1'
-                    childCount       = 10
-                    thumb            = '/library/collections/12345/thumb'
+                    Metadata         = @(
+                        @{
+                            ratingKey  = '12345'
+                            title      = 'Marvel Movies'
+                            childCount = 10
+                            thumb      = '/library/collections/12345/thumb'
+                        }
+                    )
                 }
             }
 

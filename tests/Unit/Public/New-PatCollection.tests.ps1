@@ -39,6 +39,10 @@ Describe 'New-PatCollection' {
         BeforeAll {
             Mock -ModuleName PlexAutomationToolkit Invoke-PatApi {
                 param($Uri, $Method, $Headers)
+                # Return machine identifier for server info call
+                if ($Uri -match '/$' -or $Uri -match ':32400$') {
+                    return @{ machineIdentifier = 'test-machine-id' }
+                }
                 if ($Method -eq 'POST') {
                     return $script:mockCreatedCollection
                 }
@@ -52,6 +56,14 @@ Describe 'New-PatCollection' {
                 }
                 return "$BaseUri$Endpoint"
             }
+
+            Mock -ModuleName PlexAutomationToolkit Get-PatLibrary {
+                return @{
+                    Directory = @(
+                        @{ key = '1'; title = 'Movies'; type = 'movie' }
+                    )
+                }
+            }
         }
 
         It 'Creates collection without error' {
@@ -59,10 +71,10 @@ Describe 'New-PatCollection' {
                 Should -Not -Throw
         }
 
-        It 'Calls library endpoint to get type' {
+        It 'Gets server info for machine identifier' {
             New-PatCollection -Title 'New Collection' -LibraryId 1 -RatingKey 1001 -ServerUri 'http://plex.local:32400'
             Should -Invoke -ModuleName PlexAutomationToolkit Join-PatUri -ParameterFilter {
-                $Endpoint -eq '/library/sections/1'
+                $Endpoint -eq '/'
             }
         }
 
@@ -96,6 +108,9 @@ Describe 'New-PatCollection' {
         BeforeAll {
             Mock -ModuleName PlexAutomationToolkit Invoke-PatApi {
                 param($Uri, $Method)
+                if ($Uri -match '/$' -or $Uri -match ':32400$') {
+                    return @{ machineIdentifier = 'test-machine-id' }
+                }
                 if ($Method -eq 'POST') {
                     return $script:mockCreatedCollection
                 }
@@ -108,6 +123,14 @@ Describe 'New-PatCollection' {
                     return "$BaseUri$Endpoint`?$QueryString"
                 }
                 return "$BaseUri$Endpoint"
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Get-PatLibrary {
+                return @{
+                    Directory = @(
+                        @{ key = '1'; title = 'Movies'; type = 'movie' }
+                    )
+                }
             }
         }
 
@@ -125,6 +148,9 @@ Describe 'New-PatCollection' {
 
             Mock -ModuleName PlexAutomationToolkit Invoke-PatApi {
                 param($Uri, $Method)
+                if ($Uri -match '/$' -or $Uri -match ':32400$') {
+                    return @{ machineIdentifier = 'test-machine-id' }
+                }
                 if ($Method -eq 'POST') {
                     return $script:mockCreatedCollection
                 }
@@ -141,6 +167,14 @@ Describe 'New-PatCollection' {
 
             Mock -ModuleName PlexAutomationToolkit Get-PatAuthHeaders {
                 return @{ Accept = 'application/json'; 'X-Plex-Token' = 'test-token' }
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Get-PatLibrary {
+                return @{
+                    Directory = @(
+                        @{ key = '1'; title = 'Movies'; type = 'movie' }
+                    )
+                }
             }
         }
 
@@ -168,6 +202,10 @@ Describe 'New-PatCollection' {
         BeforeAll {
             Mock -ModuleName PlexAutomationToolkit Invoke-PatApi {
                 param($Uri, $Method)
+                # Return machine identifier for server info call
+                if ($Uri -match '/$' -or $Uri -match ':32400$') {
+                    return @{ machineIdentifier = 'test-machine-id' }
+                }
                 if ($Method -eq 'POST') {
                     throw 'Connection refused'
                 }
@@ -198,6 +236,10 @@ Describe 'New-PatCollection' {
         BeforeAll {
             Mock -ModuleName PlexAutomationToolkit Invoke-PatApi {
                 param($Uri, $Method)
+                # Return machine identifier for server info call
+                if ($Uri -match '/$' -or $Uri -match ':32400$') {
+                    return @{ machineIdentifier = 'test-machine-id' }
+                }
                 if ($Method -eq 'POST') {
                     return $script:mockCreatedCollection
                 }
@@ -207,6 +249,14 @@ Describe 'New-PatCollection' {
             Mock -ModuleName PlexAutomationToolkit Join-PatUri {
                 param($BaseUri, $Endpoint, $QueryString)
                 return "$BaseUri$Endpoint"
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Get-PatLibrary {
+                return @{
+                    Directory = @(
+                        @{ key = '1'; title = 'Movies'; type = 'movie' }
+                    )
+                }
             }
         }
 

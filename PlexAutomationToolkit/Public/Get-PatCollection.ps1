@@ -238,16 +238,19 @@ function Get-PatCollection {
                 Write-Verbose "Retrieving collection $CollectionId from $effectiveUri"
 
                 $uri = Join-PatUri -BaseUri $effectiveUri -Endpoint $endpoint
-                $result = Invoke-PatApi -Uri $uri -Headers $headers -ErrorAction 'Stop'
+                $apiResult = Invoke-PatApi -Uri $uri -Headers $headers -ErrorAction 'Stop'
 
-                if (-not $result) {
+                if (-not $apiResult -or -not $apiResult.Metadata) {
                     Write-Verbose "No collection found with ID $CollectionId"
                     return
                 }
 
+                # Extract collection from Metadata array
+                $result = $apiResult.Metadata | Select-Object -First 1
+
                 # Get library name for output
                 $libName = $null
-                $libId = [int]$result.librarySectionID
+                $libId = [int]$apiResult.librarySectionID
                 if (-not $script:libraryCache) {
                     $libParams = @{ ErrorAction = 'SilentlyContinue' }
                     if ($script:serverContext.WasExplicitUri) { $libParams['ServerUri'] = $effectiveUri }

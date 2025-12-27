@@ -37,6 +37,11 @@ Describe 'Add-PatCollectionItem' {
     Context 'When adding items by collection ID' {
         BeforeAll {
             Mock -ModuleName PlexAutomationToolkit Invoke-PatApi {
+                param($Uri)
+                # Return machine identifier for server info call
+                if ($Uri -match '/$' -or $Uri -match ':32400$') {
+                    return @{ machineIdentifier = 'test-machine-id' }
+                }
                 return $null
             }
 
@@ -85,6 +90,10 @@ Describe 'Add-PatCollectionItem' {
     Context 'When adding items by collection name with LibraryId' {
         BeforeAll {
             Mock -ModuleName PlexAutomationToolkit Invoke-PatApi {
+                param($Uri)
+                if ($Uri -match '/$' -or $Uri -match ':32400$') {
+                    return @{ machineIdentifier = 'test-machine-id' }
+                }
                 return $null
             }
 
@@ -122,6 +131,10 @@ Describe 'Add-PatCollectionItem' {
     Context 'When adding items by collection name with LibraryName' {
         BeforeAll {
             Mock -ModuleName PlexAutomationToolkit Invoke-PatApi {
+                param($Uri)
+                if ($Uri -match '/$' -or $Uri -match ':32400$') {
+                    return @{ machineIdentifier = 'test-machine-id' }
+                }
                 return $null
             }
 
@@ -159,6 +172,10 @@ Describe 'Add-PatCollectionItem' {
     Context 'When using pipeline input' {
         BeforeAll {
             Mock -ModuleName PlexAutomationToolkit Invoke-PatApi {
+                param($Uri)
+                if ($Uri -match '/$' -or $Uri -match ':32400$') {
+                    return @{ machineIdentifier = 'test-machine-id' }
+                }
                 return $null
             }
 
@@ -180,9 +197,10 @@ Describe 'Add-PatCollectionItem' {
                 Should -Not -Throw
         }
 
-        It 'Batches all pipeline items into single API call' {
+        It 'Makes separate API calls for each item' {
             1001, 1002, 1003 | Add-PatCollectionItem -CollectionId 12345 -ServerUri 'http://plex.local:32400'
-            Should -Invoke -ModuleName PlexAutomationToolkit Invoke-PatApi -Times 1 -ParameterFilter {
+            # Collections require one API call per item (unlike playlists which can batch)
+            Should -Invoke -ModuleName PlexAutomationToolkit Invoke-PatApi -Times 3 -ParameterFilter {
                 $Method -eq 'PUT'
             }
         }
@@ -209,6 +227,10 @@ Describe 'Add-PatCollectionItem' {
             }
 
             Mock -ModuleName PlexAutomationToolkit Invoke-PatApi {
+                param($Uri)
+                if ($Uri -match '/$' -or $Uri -match ':32400$') {
+                    return @{ machineIdentifier = 'test-machine-id' }
+                }
                 return $null
             }
 
@@ -248,7 +270,14 @@ Describe 'Add-PatCollectionItem' {
 
     Context 'When API call fails' {
         BeforeAll {
+            $script:apiCallCount = 0
             Mock -ModuleName PlexAutomationToolkit Invoke-PatApi {
+                $script:apiCallCount++
+                if ($script:apiCallCount -eq 1) {
+                    # First call is for machine identifier - return valid response
+                    return @{ machineIdentifier = 'test-machine-id' }
+                }
+                # Subsequent calls fail
                 throw 'Connection refused'
             }
 
@@ -262,6 +291,10 @@ Describe 'Add-PatCollectionItem' {
             }
         }
 
+        BeforeEach {
+            $script:apiCallCount = 0
+        }
+
         It 'Throws an error with context' {
             { Add-PatCollectionItem -CollectionId 12345 -RatingKey 1001 -ServerUri 'http://plex.local:32400' } |
                 Should -Throw '*Failed to add items to collection*'
@@ -271,6 +304,10 @@ Describe 'Add-PatCollectionItem' {
     Context 'When using WhatIf' {
         BeforeAll {
             Mock -ModuleName PlexAutomationToolkit Invoke-PatApi {
+                param($Uri)
+                if ($Uri -match '/$' -or $Uri -match ':32400$') {
+                    return @{ machineIdentifier = 'test-machine-id' }
+                }
                 return $null
             }
 

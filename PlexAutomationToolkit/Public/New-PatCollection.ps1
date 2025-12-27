@@ -157,9 +157,21 @@ function New-PatCollection {
         $effectiveUri = $script:serverContext.Uri
         $headers = $script:serverContext.Headers
 
+        # Get machine identifier for URI construction
+        try {
+            $serverInfoUri = Join-PatUri -BaseUri $effectiveUri -Endpoint '/'
+            $serverInfo = Invoke-PatApi -Uri $serverInfoUri -Headers $headers -ErrorAction 'Stop'
+            $machineIdentifier = $serverInfo.machineIdentifier
+            Write-Verbose "Server machine identifier: $machineIdentifier"
+        }
+        catch {
+            throw "Failed to retrieve server machine identifier: $($_.Exception.Message)"
+        }
+
         # Resolve LibraryName to LibraryId if needed
         $resolvedLibraryId = $LibraryId
         $resolvedLibraryName = $null
+        $resolvedLibraryType = $null
 
         if ($PSCmdlet.ParameterSetName -eq 'ByLibraryName') {
             $libParams = @{ ErrorAction = 'Stop' }
@@ -171,7 +183,8 @@ function New-PatCollection {
             }
             $resolvedLibraryId = [int]$matchedLib.key
             $resolvedLibraryName = $matchedLib.title
-            Write-Verbose "Resolved library '$LibraryName' to ID $resolvedLibraryId"
+            $resolvedLibraryType = $matchedLib.type
+            Write-Verbose "Resolved library '$LibraryName' to ID $resolvedLibraryId (type: $resolvedLibraryType)"
         }
         else {
             $libParams = @{ ErrorAction = 'SilentlyContinue' }
@@ -181,6 +194,7 @@ function New-PatCollection {
                 $matchedLib = $libraries.Directory | Where-Object { [int]$_.key -eq $LibraryId }
                 if ($matchedLib) {
                     $resolvedLibraryName = $matchedLib.title
+                    $resolvedLibraryType = $matchedLib.type
                 }
             }
         }
@@ -206,32 +220,28 @@ function New-PatCollection {
         }
 
         try {
-            # Get the library type for the type parameter
-            $libraryUri = Join-PatUri -BaseUri $effectiveUri -Endpoint "/library/sections/$resolvedLibraryId"
-            $libraryInfo = Invoke-PatApi -Uri $libraryUri -Headers $headers -ErrorAction 'Stop'
-
-            $libraryType = $libraryInfo.type
-            Write-Verbose "Library type: $libraryType"
-
             # Map library type to collection type number
             # movie = 1, show = 2, artist = 8, photo = 13
+            Write-Verbose "Library type: $resolvedLibraryType"
             $typeMap = @{
                 'movie'  = 1
                 'show'   = 2
                 'artist' = 8
                 'photo'  = 13
             }
-            $collectionType = if ($typeMap.ContainsKey($libraryType)) {
-                $typeMap[$libraryType]
+            $collectionType = if ($resolvedLibraryType -and $typeMap.ContainsKey($resolvedLibraryType)) {
+                $typeMap[$resolvedLibraryType]
             }
             else {
                 1
             }
 
-            # Build the URI parameter for items
-            # Format: /library/metadata/ratingKey1,ratingKey2,...
-            $ratingKeyList = $allRatingKeys -join ','
-            $itemUri = "/library/metadata/$ratingKeyList"
+            # Build the URI with items
+            # Format: server://machineIdentifier/com.plexapp.plugins.library/library/metadata/ratingKey
+            $itemUris = foreach ($key in $allRatingKeys) {
+                "server://$machineIdentifier/com.plexapp.plugins.library/library/metadata/$key"
+            }
+            $uriParam = $itemUris -join ','
 
             # Build query string
             $queryParts = @(
@@ -239,7 +249,7 @@ function New-PatCollection {
                 "title=$([System.Uri]::EscapeDataString($Title))",
                 'smart=0',
                 "sectionId=$resolvedLibraryId",
-                "uri=$([System.Uri]::EscapeDataString($itemUri))"
+                "uri=$([System.Uri]::EscapeDataString($uriParam))"
             )
             $queryString = $queryParts -join '&'
 
