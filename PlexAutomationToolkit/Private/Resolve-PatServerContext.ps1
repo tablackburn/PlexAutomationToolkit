@@ -65,7 +65,7 @@ function Resolve-PatServerContext {
     Write-Verbose "Using default server: $($server.uri)"
     return [PSCustomObject]@{
         Uri            = $server.uri
-        Headers        = Get-PatAuthHeader -Server $server
+        Headers        = Get-PatAuthenticationHeader -Server $server
         WasExplicitUri = $false
         Server         = $server
     }

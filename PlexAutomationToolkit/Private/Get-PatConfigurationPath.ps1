@@ -1,4 +1,4 @@
-function Get-PatConfigPath {
+function Get-PatConfigurationPath {
     <#
     .SYNOPSIS
         Gets the configuration file path for PlexAutomationToolkit.
@@ -16,19 +16,19 @@ function Get-PatConfigPath {
 
     # Try OneDrive location first (syncs across machines)
     if ($env:OneDrive) {
-        $configDir = Join-Path $env:OneDrive 'Documents\PlexAutomationToolkit'
-        $configPath = Join-Path $configDir 'servers.json'
+        $configurationDirectory = Join-Path $env:OneDrive 'Documents\PlexAutomationToolkit'
+        $configurationPath = Join-Path $configurationDirectory 'servers.json'
 
         # Test if OneDrive location is writable
         try {
             # Create directory if needed (Force handles race condition)
-            $null = New-Item -Path $configDir -ItemType Directory -Force -ErrorAction Stop
+            $null = New-Item -Path $configurationDirectory -ItemType Directory -Force -ErrorAction Stop
 
             # Test write access
-            $testFile = Join-Path $configDir '.test'
+            $testFile = Join-Path $configurationDirectory '.test'
             [IO.File]::WriteAllText($testFile, 'test')
             Remove-Item $testFile -Force
-            return $configPath
+            return $configurationPath
         }
         catch [System.IO.IOException] {
             Write-Debug "OneDrive path not accessible (IOException), using fallback"
@@ -39,19 +39,19 @@ function Get-PatConfigPath {
     }
 
     # Fallback to user Documents
-    $configDir = Join-Path $env:USERPROFILE 'Documents\PlexAutomationToolkit'
-    $configPath = Join-Path $configDir 'servers.json'
+    $configurationDirectory = Join-Path $env:USERPROFILE 'Documents\PlexAutomationToolkit'
+    $configurationPath = Join-Path $configurationDirectory 'servers.json'
 
     try {
         # Create directory if needed (Force handles race condition)
-        $null = New-Item -Path $configDir -ItemType Directory -Force -ErrorAction Stop
-        return $configPath
+        $null = New-Item -Path $configurationDirectory -ItemType Directory -Force -ErrorAction Stop
+        return $configurationPath
     }
     catch {
         # Documents not accessible, use LocalAppData as last resort
-        $configDir = Join-Path $env:LOCALAPPDATA 'PlexAutomationToolkit'
+        $configurationDirectory = Join-Path $env:LOCALAPPDATA 'PlexAutomationToolkit'
         # Create directory if needed (Force handles race condition)
-        $null = New-Item -Path $configDir -ItemType Directory -Force -ErrorAction Stop
-        return Join-Path $configDir 'servers.json'
+        $null = New-Item -Path $configurationDirectory -ItemType Directory -Force -ErrorAction Stop
+        return Join-Path $configurationDirectory 'servers.json'
     }
 }

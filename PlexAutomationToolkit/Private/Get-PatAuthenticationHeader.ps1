@@ -1,4 +1,4 @@
-function Get-PatAuthHeader {
+function Get-PatAuthenticationHeader {
     <#
     .SYNOPSIS
         Builds HTTP headers for Plex API requests with optional authentication.
@@ -17,11 +17,11 @@ function Get-PatAuthHeader {
         Returns a hashtable of HTTP headers to pass to Invoke-RestMethod
 
     .EXAMPLE
-        $headers = Get-PatAuthHeader -Server $serverObject
+        $headers = Get-PatAuthenticationHeader -Server $serverObject
         Returns headers with X-Plex-Token if server has token
 
     .EXAMPLE
-        $headers = Get-PatAuthHeader
+        $headers = Get-PatAuthenticationHeader
         Returns default headers without authentication
     #>
     [CmdletBinding()]

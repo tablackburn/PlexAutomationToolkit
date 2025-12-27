@@ -74,7 +74,7 @@ When implementing new cmdlets, use these private helper functions:
 - Handles query string parameters
 - Use for all endpoint construction to ensure consistent URI formatting
 
-**Get-PatServerConfig.ps1 / Set-PatServerConfig.ps1**
+**Get-PatServerConfiguration.ps1 / Set-PatServerConfiguration.ps1**
 
 - Server configuration persistence in JSON format at user profile location
 - Schema: `{ version: "1.0", servers: [...] }`

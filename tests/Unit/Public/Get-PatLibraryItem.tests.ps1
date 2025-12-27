@@ -224,7 +224,7 @@ Describe 'Get-PatLibraryItem' {
                 return $script:mockDefaultServer
             }
 
-            Mock -ModuleName PlexAutomationToolkit Get-PatAuthHeader {
+            Mock -ModuleName PlexAutomationToolkit Get-PatAuthenticationHeader {
                 return @{
                     Accept             = 'application/json'
                     'X-Plex-Token'     = 'test-token-12345'
@@ -250,7 +250,7 @@ Describe 'Get-PatLibraryItem' {
 
         It 'Uses authentication headers from default server' {
             Get-PatLibraryItem -SectionId 2
-            Should -Invoke -ModuleName PlexAutomationToolkit Get-PatAuthHeader -Exactly 1
+            Should -Invoke -ModuleName PlexAutomationToolkit Get-PatAuthenticationHeader -Exactly 1
         }
 
         It 'Calls Join-PatUri with default server URI' {

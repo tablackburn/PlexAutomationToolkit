@@ -31,7 +31,7 @@ Describe 'Get-PatStoredServer' {
 
     Context 'When retrieving all servers' {
         BeforeAll {
-            Mock -ModuleName PlexAutomationToolkit Get-PatServerConfig {
+            Mock -ModuleName PlexAutomationToolkit Get-PatServerConfiguration {
                 return $script:mockConfig
             }
         }
@@ -43,15 +43,15 @@ Describe 'Get-PatStoredServer' {
             $result[1].name | Should -Be 'Secondary Server'
         }
 
-        It 'Calls Get-PatServerConfig once' {
+        It 'Calls Get-PatServerConfiguration once' {
             Get-PatStoredServer
-            Should -Invoke -ModuleName PlexAutomationToolkit Get-PatServerConfig -Exactly 1
+            Should -Invoke -ModuleName PlexAutomationToolkit Get-PatServerConfiguration -Exactly 1
         }
     }
 
     Context 'When retrieving the default server' {
         BeforeAll {
-            Mock -ModuleName PlexAutomationToolkit Get-PatServerConfig {
+            Mock -ModuleName PlexAutomationToolkit Get-PatServerConfiguration {
                 return $script:mockConfig
             }
         }
@@ -64,7 +64,7 @@ Describe 'Get-PatStoredServer' {
         }
 
         It 'Throws when no default server is configured' {
-            Mock -ModuleName PlexAutomationToolkit Get-PatServerConfig {
+            Mock -ModuleName PlexAutomationToolkit Get-PatServerConfiguration {
                 return @{
                     version = '1.0'
                     servers = @(
@@ -83,7 +83,7 @@ Describe 'Get-PatStoredServer' {
 
     Context 'When retrieving a server by name' {
         BeforeAll {
-            Mock -ModuleName PlexAutomationToolkit Get-PatServerConfig {
+            Mock -ModuleName PlexAutomationToolkit Get-PatServerConfiguration {
                 return $script:mockConfig
             }
         }
@@ -100,9 +100,9 @@ Describe 'Get-PatStoredServer' {
         }
     }
 
-    Context 'When Get-PatServerConfig fails' {
+    Context 'When Get-PatServerConfiguration fails' {
         BeforeAll {
-            Mock -ModuleName PlexAutomationToolkit Get-PatServerConfig {
+            Mock -ModuleName PlexAutomationToolkit Get-PatServerConfiguration {
                 throw 'Config file not found'
             }
         }

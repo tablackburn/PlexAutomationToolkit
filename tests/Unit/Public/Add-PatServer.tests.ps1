@@ -16,13 +16,13 @@ Describe 'Add-PatServer' {
             servers = @()
         }
 
-        Mock -CommandName Get-PatServerConfig -ModuleName PlexAutomationToolkit -MockWith {
+        Mock -CommandName Get-PatServerConfiguration -ModuleName PlexAutomationToolkit -MockWith {
             return $script:mockConfig
         }
 
-        Mock -CommandName Set-PatServerConfig -ModuleName PlexAutomationToolkit -MockWith {
-            param($Config)
-            $script:mockConfig = $Config
+        Mock -CommandName Set-PatServerConfiguration -ModuleName PlexAutomationToolkit -MockWith {
+            param($configuration)
+            $script:mockConfig = $configuration
         }
 
         # Mock validation functions - default to success
@@ -31,7 +31,7 @@ Describe 'Add-PatServer' {
             return "$BaseUri$Endpoint"
         }
 
-        Mock -CommandName Get-PatAuthHeader -ModuleName PlexAutomationToolkit -MockWith {
+        Mock -CommandName Get-PatAuthenticationHeader -ModuleName PlexAutomationToolkit -MockWith {
             param($Server)
             $headers = @{ Accept = 'application/json' }
             if ($Server.PSObject.Properties['token']) {
@@ -143,28 +143,28 @@ Describe 'Add-PatServer' {
         It 'Should support WhatIf' {
             Add-PatServer -Name 'WhatIf Test' -ServerUri 'http://test:32400' -WhatIf
 
-            # WhatIf should prevent Set-PatServerConfig from being called
-            Should -Invoke Set-PatServerConfig -ModuleName PlexAutomationToolkit -Times 0
+            # WhatIf should prevent Set-PatServerConfiguration from being called
+            Should -Invoke Set-PatServerConfiguration -ModuleName PlexAutomationToolkit -Times 0
         }
 
         It 'Should call ShouldProcess with correct target' {
             Add-PatServer -Name 'Test' -ServerUri 'http://test:32400' -Confirm:$false
 
-            Should -Invoke Set-PatServerConfig -ModuleName PlexAutomationToolkit -Times 1
+            Should -Invoke Set-PatServerConfiguration -ModuleName PlexAutomationToolkit -Times 1
         }
     }
 
     Context 'Error handling' {
-        It 'Should throw when Get-PatServerConfig fails' {
-            Mock -CommandName Get-PatServerConfig -ModuleName PlexAutomationToolkit -MockWith {
+        It 'Should throw when Get-PatServerConfiguration fails' {
+            Mock -CommandName Get-PatServerConfiguration -ModuleName PlexAutomationToolkit -MockWith {
                 throw 'Config error'
             }
 
             { Add-PatServer -Name 'Test' -ServerUri 'http://test:32400' } | Should -Throw
         }
 
-        It 'Should throw when Set-PatServerConfig fails' {
-            Mock -CommandName Set-PatServerConfig -ModuleName PlexAutomationToolkit -MockWith {
+        It 'Should throw when Set-PatServerConfiguration fails' {
+            Mock -CommandName Set-PatServerConfiguration -ModuleName PlexAutomationToolkit -MockWith {
                 throw 'Write error'
             }
 
@@ -188,7 +188,7 @@ Describe 'Add-PatServer' {
         It 'Should include token in validation headers when token is provided' {
             Add-PatServer -Name 'Auth' -ServerUri 'http://auth:32400' -Token 'ABC123'
 
-            Should -Invoke Get-PatAuthHeader -ModuleName PlexAutomationToolkit -Times 1 -ParameterFilter {
+            Should -Invoke Get-PatAuthenticationHeader -ModuleName PlexAutomationToolkit -Times 1 -ParameterFilter {
                 $Server.token -eq 'ABC123'
             }
         }

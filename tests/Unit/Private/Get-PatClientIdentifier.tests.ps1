@@ -16,13 +16,13 @@ Describe 'Get-PatClientIdentifier' {
             servers = @()
         }
 
-        Mock Get-PatServerConfig -ModuleName PlexAutomationToolkit {
+        Mock Get-PatServerConfiguration -ModuleName PlexAutomationToolkit {
             return $script:mockConfig
         }
 
-        Mock Set-PatServerConfig -ModuleName PlexAutomationToolkit {
-            param($Config)
-            $script:mockConfig = $Config
+        Mock Set-PatServerConfiguration -ModuleName PlexAutomationToolkit {
+            param($configuration)
+            $script:mockConfig = $configuration
         }
     }
 
@@ -35,7 +35,7 @@ Describe 'Get-PatClientIdentifier' {
 
         It 'Should add identifier to config' {
             InModuleScope PlexAutomationToolkit { Get-PatClientIdentifier }
-            Should -Invoke Set-PatServerConfig -ModuleName PlexAutomationToolkit -Times 1
+            Should -Invoke Set-PatServerConfiguration -ModuleName PlexAutomationToolkit -Times 1
         }
 
         It 'Should save the identifier for future use' {
@@ -56,7 +56,7 @@ Describe 'Get-PatClientIdentifier' {
 
         It 'Should not generate new identifier' {
             InModuleScope PlexAutomationToolkit { Get-PatClientIdentifier }
-            Should -Invoke Set-PatServerConfig -ModuleName PlexAutomationToolkit -Times 0
+            Should -Invoke Set-PatServerConfiguration -ModuleName PlexAutomationToolkit -Times 0
         }
 
         It 'Should return same identifier on multiple calls' {
@@ -67,15 +67,15 @@ Describe 'Get-PatClientIdentifier' {
     }
 
     Context 'Error Handling' {
-        It 'Should throw when Get-PatServerConfig fails' {
-            Mock Get-PatServerConfig -ModuleName PlexAutomationToolkit {
+        It 'Should throw when Get-PatServerConfiguration fails' {
+            Mock Get-PatServerConfiguration -ModuleName PlexAutomationToolkit {
                 throw 'Config read failed'
             }
             { InModuleScope PlexAutomationToolkit { Get-PatClientIdentifier } } | Should -Throw '*Failed to get client identifier*'
         }
 
-        It 'Should throw when Set-PatServerConfig fails' {
-            Mock Set-PatServerConfig -ModuleName PlexAutomationToolkit {
+        It 'Should throw when Set-PatServerConfiguration fails' {
+            Mock Set-PatServerConfiguration -ModuleName PlexAutomationToolkit {
                 throw 'Config write failed'
             }
             { InModuleScope PlexAutomationToolkit { Get-PatClientIdentifier } } | Should -Throw '*Failed to get client identifier*'

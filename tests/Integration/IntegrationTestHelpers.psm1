@@ -108,7 +108,7 @@ function Get-IntegrationConfigPath {
         Gets the configuration file path for integration tests
 
     .DESCRIPTION
-        Determines the configuration file path using the same logic as Get-PatConfigPath.
+        Determines the configuration file path using the same logic as Get-PatConfigurationPath.
         This is a helper to avoid calling private module functions.
 
     .OUTPUTS
@@ -120,25 +120,25 @@ function Get-IntegrationConfigPath {
 
     # Try OneDrive location first
     if ($env:OneDrive) {
-        $configPath = Join-Path $env:OneDrive 'Documents\PlexAutomationToolkit\servers.json'
-        $configDir = Split-Path $configPath -Parent
+        $configurationPath = Join-Path $env:OneDrive 'Documents\PlexAutomationToolkit\servers.json'
+        $configurationDirectory = Split-Path $configurationPath -Parent
 
-        if ((Test-Path $configDir) -or (Test-Path $configPath)) {
-            return $configPath
+        if ((Test-Path $configurationDirectory) -or (Test-Path $configurationPath)) {
+            return $configurationPath
         }
     }
 
     # Fallback to user Documents
-    $configPath = Join-Path $env:USERPROFILE 'Documents\PlexAutomationToolkit\servers.json'
-    $configDir = Split-Path $configPath -Parent
+    $configurationPath = Join-Path $env:USERPROFILE 'Documents\PlexAutomationToolkit\servers.json'
+    $configurationDirectory = Split-Path $configurationPath -Parent
 
-    if ((Test-Path $configDir) -or (Test-Path $configPath)) {
-        return $configPath
+    if ((Test-Path $configurationDirectory) -or (Test-Path $configurationPath)) {
+        return $configurationPath
     }
 
     # Last resort: LocalAppData
-    $configPath = Join-Path $env:LOCALAPPDATA 'PlexAutomationToolkit\servers.json'
-    return $configPath
+    $configurationPath = Join-Path $env:LOCALAPPDATA 'PlexAutomationToolkit\servers.json'
+    return $configurationPath
 }
 
 function Backup-ServerConfiguration {
@@ -157,11 +157,11 @@ function Backup-ServerConfiguration {
     [CmdletBinding()]
     param()
 
-    $configPath = Get-IntegrationConfigPath
+    $configurationPath = Get-IntegrationConfigPath
 
-    if (Test-Path $configPath) {
-        $backupPath = "$configPath.integration-backup"
-        Copy-Item -Path $configPath -Destination $backupPath -Force
+    if (Test-Path $configurationPath) {
+        $backupPath = "$configurationPath.integration-backup"
+        Copy-Item -Path $configurationPath -Destination $backupPath -Force
         Write-Verbose "Server configuration backed up to: $backupPath"
         return $backupPath
     }
@@ -191,8 +191,8 @@ function Restore-ServerConfiguration {
     )
 
     if ($BackupPath -and (Test-Path $BackupPath)) {
-        $configPath = Get-IntegrationConfigPath
-        Copy-Item -Path $BackupPath -Destination $configPath -Force
+        $configurationPath = Get-IntegrationConfigPath
+        Copy-Item -Path $BackupPath -Destination $configurationPath -Force
         Remove-Item -Path $BackupPath -Force
         Write-Verbose "Server configuration restored from: $BackupPath"
     }

@@ -106,7 +106,7 @@ Describe 'Get-PatServer' {
                 return $script:mockDefaultServer
             }
 
-            Mock -CommandName Get-PatAuthHeader -ModuleName PlexAutomationToolkit -MockWith {
+            Mock -CommandName Get-PatAuthenticationHeader -ModuleName PlexAutomationToolkit -MockWith {
                 return @{ 'X-Plex-Token' = 'test-token'; 'Accept' = 'application/json' }
             }
         }
@@ -128,7 +128,7 @@ Describe 'Get-PatServer' {
         It 'Should include authentication headers from stored server' {
             Get-PatServer
 
-            Should -Invoke Get-PatAuthHeader -ModuleName PlexAutomationToolkit -Times 1 -ParameterFilter {
+            Should -Invoke Get-PatAuthenticationHeader -ModuleName PlexAutomationToolkit -Times 1 -ParameterFilter {
                 $Server.token -eq 'test-token'
             }
         }
@@ -210,13 +210,13 @@ Describe 'Get-PatServer' {
                 }
             }
 
-            Mock -CommandName Get-PatAuthHeader -ModuleName PlexAutomationToolkit -MockWith {
+            Mock -CommandName Get-PatAuthenticationHeader -ModuleName PlexAutomationToolkit -MockWith {
                 return @{ 'X-Plex-Token' = 'secret-token' }
             }
 
             Get-PatServer
 
-            Should -Invoke Get-PatAuthHeader -ModuleName PlexAutomationToolkit -Times 1
+            Should -Invoke Get-PatAuthenticationHeader -ModuleName PlexAutomationToolkit -Times 1
         }
     }
 }

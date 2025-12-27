@@ -40,9 +40,9 @@ function Remove-PatServer {
     )
 
     try {
-        $config = Get-PatServerConfig -ErrorAction Stop
+        $configuration = Get-PatServerConfiguration -ErrorAction Stop
 
-        $server = $config.servers | Where-Object { $_.name -eq $Name }
+        $server = $configuration.servers | Where-Object { $_.name -eq $Name }
         if (-not $server) {
             throw "No server found with name '$Name'"
         }
@@ -51,8 +51,8 @@ function Remove-PatServer {
             # Store server before removing for PassThru
             $removedServer = $server
 
-            $config.servers = @($config.servers | Where-Object { $_.name -ne $Name })
-            Set-PatServerConfig -Config $config -ErrorAction Stop
+            $configuration.servers = @($configuration.servers | Where-Object { $_.name -ne $Name })
+            Set-PatServerConfiguration -Configuration $configuration -ErrorAction Stop
             Write-Verbose "Removed server '$Name' from configuration"
 
             if ($PassThru) {

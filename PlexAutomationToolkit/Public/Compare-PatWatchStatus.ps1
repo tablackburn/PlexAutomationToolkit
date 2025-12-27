@@ -155,7 +155,7 @@ function Compare-PatWatchStatus {
 
                         # Get all episodes for this show
                         $episodesUri = Join-PatUri -BaseUri $targetServer.uri -Endpoint "/library/metadata/$showRatingKey/allLeaves"
-                        $headers = Get-PatAuthHeader -Server $targetServer
+                        $headers = Get-PatAuthenticationHeader -Server $targetServer
                         $episodesResult = Invoke-PatApi -Uri $episodesUri -Headers $headers -ErrorAction SilentlyContinue
 
                         if ($episodesResult.Metadata) {
@@ -234,7 +234,7 @@ function Compare-PatWatchStatus {
 
                         # Get all episodes for this show
                         $episodesUri = Join-PatUri -BaseUri $sourceServer.uri -Endpoint "/library/metadata/$showRatingKey/allLeaves"
-                        $headers = Get-PatAuthHeader -Server $sourceServer
+                        $headers = Get-PatAuthenticationHeader -Server $sourceServer
                         $episodesResult = Invoke-PatApi -Uri $episodesUri -Headers $headers -ErrorAction SilentlyContinue
 
                         if ($episodesResult.Metadata) {

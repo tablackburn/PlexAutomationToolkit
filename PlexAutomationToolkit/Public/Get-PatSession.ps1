@@ -104,7 +104,7 @@ function Get-PatSession {
 
     # Build headers with authentication
     $headers = if ($server) {
-        Get-PatAuthHeader -Server $server
+        Get-PatAuthenticationHeader -Server $server
     }
     else {
         @{ Accept = 'application/json' }

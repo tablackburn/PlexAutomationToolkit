@@ -16,12 +16,12 @@ function Get-PatClientIdentifier {
     param ()
 
     try {
-        $config = Get-PatServerConfig
+        $configuration = Get-PatServerConfiguration
 
         # Check if clientIdentifier already exists
-        if ($config.PSObject.Properties['clientIdentifier'] -and $config.clientIdentifier) {
-            Write-Verbose "Using existing client identifier: $($config.clientIdentifier)"
-            return $config.clientIdentifier
+        if ($configuration.PSObject.Properties['clientIdentifier'] -and $configuration.clientIdentifier) {
+            Write-Verbose "Using existing client identifier: $($configuration.clientIdentifier)"
+            return $configuration.clientIdentifier
         }
 
         # Generate new client identifier
@@ -29,8 +29,8 @@ function Get-PatClientIdentifier {
         Write-Verbose "Generated new client identifier: $clientIdentifier"
 
         # Add to config and save
-        $config | Add-Member -MemberType NoteProperty -Name 'clientIdentifier' -Value $clientIdentifier -Force
-        Set-PatServerConfig -Config $config
+        $configuration | Add-Member -MemberType NoteProperty -Name 'clientIdentifier' -Value $clientIdentifier -Force
+        Set-PatServerConfiguration -Configuration $configuration
 
         return $clientIdentifier
     }

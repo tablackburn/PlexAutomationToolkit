@@ -239,7 +239,7 @@ Describe 'Add-PatCollectionItem' {
                 return "$BaseUri$Endpoint"
             }
 
-            Mock -ModuleName PlexAutomationToolkit Get-PatAuthHeader {
+            Mock -ModuleName PlexAutomationToolkit Get-PatAuthenticationHeader {
                 return @{ Accept = 'application/json'; 'X-Plex-Token' = 'test-token' }
             }
 

@@ -131,7 +131,7 @@ function Sync-PatWatchStatus {
                         # Use scrobble endpoint to mark as watched
                         $scrobbleEndpoint = "/:/scrobble?key=$($item.TargetRatingKey)&identifier=com.plexapp.plugins.library"
                         $scrobbleUri = Join-PatUri -BaseUri $targetServer.uri -Endpoint $scrobbleEndpoint
-                        $headers = Get-PatAuthHeader -Server $targetServer
+                        $headers = Get-PatAuthenticationHeader -Server $targetServer
 
                         Invoke-PatApi -Uri $scrobbleUri -Headers $headers -ErrorAction Stop | Out-Null
 

@@ -3,10 +3,10 @@ BeforeAll {
     $ModuleRoot = Join-Path $ProjectRoot 'PlexAutomationToolkit'
 
     # Import the function directly for testing
-    . (Join-Path $ModuleRoot 'Private\Get-PatAuthHeader.ps1')
+    . (Join-Path $ModuleRoot 'Private\Get-PatAuthenticationHeader.ps1')
 }
 
-Describe 'Get-PatAuthHeader' {
+Describe 'Get-PatAuthenticationHeader' {
     Context 'When server has a token' {
         It 'Should include X-Plex-Token header when token is present' {
             $server = [PSCustomObject]@{
@@ -16,7 +16,7 @@ Describe 'Get-PatAuthHeader' {
                 default = $true
             }
 
-            $headers = Get-PatAuthHeader -Server $server
+            $headers = Get-PatAuthenticationHeader -Server $server
 
             $headers['X-Plex-Token'] | Should -Be 'ABC123xyz'
             $headers['Accept'] | Should -Be 'application/json'
@@ -30,7 +30,7 @@ Describe 'Get-PatAuthHeader' {
                 token = 'xyz123-ABC_456.789'
             }
 
-            $headers = Get-PatAuthHeader -Server $server
+            $headers = Get-PatAuthenticationHeader -Server $server
 
             $headers['X-Plex-Token'] | Should -Be 'xyz123-ABC_456.789'
         }
@@ -44,7 +44,7 @@ Describe 'Get-PatAuthHeader' {
                 default = $true
             }
 
-            $headers = Get-PatAuthHeader -Server $server
+            $headers = Get-PatAuthenticationHeader -Server $server
 
             $headers.ContainsKey('X-Plex-Token') | Should -Be $false
             $headers['Accept'] | Should -Be 'application/json'
@@ -59,7 +59,7 @@ Describe 'Get-PatAuthHeader' {
                 default = $true
             }
 
-            $headers = Get-PatAuthHeader -Server $server
+            $headers = Get-PatAuthenticationHeader -Server $server
 
             $headers.ContainsKey('X-Plex-Token') | Should -Be $false
         }
@@ -71,7 +71,7 @@ Describe 'Get-PatAuthHeader' {
                 token = ''
             }
 
-            $headers = Get-PatAuthHeader -Server $server
+            $headers = Get-PatAuthenticationHeader -Server $server
 
             $headers.ContainsKey('X-Plex-Token') | Should -Be $false
         }
@@ -83,7 +83,7 @@ Describe 'Get-PatAuthHeader' {
                 token = '   '
             }
 
-            $headers = Get-PatAuthHeader -Server $server
+            $headers = Get-PatAuthenticationHeader -Server $server
 
             $headers.ContainsKey('X-Plex-Token') | Should -Be $false
         }
@@ -91,7 +91,7 @@ Describe 'Get-PatAuthHeader' {
 
     Context 'When no server object is provided' {
         It 'Should return default headers when server parameter is null' {
-            $headers = Get-PatAuthHeader -Server $null
+            $headers = Get-PatAuthenticationHeader -Server $null
 
             $headers['Accept'] | Should -Be 'application/json'
             $headers.ContainsKey('X-Plex-Token') | Should -Be $false
@@ -99,7 +99,7 @@ Describe 'Get-PatAuthHeader' {
         }
 
         It 'Should return default headers when server parameter is omitted' {
-            $headers = Get-PatAuthHeader
+            $headers = Get-PatAuthenticationHeader
 
             $headers['Accept'] | Should -Be 'application/json'
             $headers.ContainsKey('X-Plex-Token') | Should -Be $false

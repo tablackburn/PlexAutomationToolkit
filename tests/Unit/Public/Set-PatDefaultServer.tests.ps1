@@ -20,13 +20,13 @@ Describe 'Set-PatDefaultServer' {
             )
         }
 
-        Mock -CommandName Get-PatServerConfig -ModuleName PlexAutomationToolkit -MockWith {
+        Mock -CommandName Get-PatServerConfiguration -ModuleName PlexAutomationToolkit -MockWith {
             return $script:mockConfig
         }
 
-        Mock -CommandName Set-PatServerConfig -ModuleName PlexAutomationToolkit -MockWith {
-            param($Config)
-            $script:mockConfig = $Config
+        Mock -CommandName Set-PatServerConfiguration -ModuleName PlexAutomationToolkit -MockWith {
+            param($configuration)
+            $script:mockConfig = $configuration
         }
     }
 
@@ -70,16 +70,16 @@ Describe 'Set-PatDefaultServer' {
             { Set-PatDefaultServer -Name 'NonExistent' } | Should -Throw "*No server found*"
         }
 
-        It 'Should throw when Get-PatServerConfig fails' {
-            Mock -CommandName Get-PatServerConfig -ModuleName PlexAutomationToolkit -MockWith {
+        It 'Should throw when Get-PatServerConfiguration fails' {
+            Mock -CommandName Get-PatServerConfiguration -ModuleName PlexAutomationToolkit -MockWith {
                 throw 'Config error'
             }
 
             { Set-PatDefaultServer -Name 'Server1' } | Should -Throw
         }
 
-        It 'Should throw when Set-PatServerConfig fails' {
-            Mock -CommandName Set-PatServerConfig -ModuleName PlexAutomationToolkit -MockWith {
+        It 'Should throw when Set-PatServerConfiguration fails' {
+            Mock -CommandName Set-PatServerConfiguration -ModuleName PlexAutomationToolkit -MockWith {
                 throw 'Write error'
             }
 

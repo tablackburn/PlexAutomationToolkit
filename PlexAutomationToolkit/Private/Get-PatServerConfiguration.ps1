@@ -1,4 +1,4 @@
-function Get-PatServerConfig {
+function Get-PatServerConfiguration {
     <#
     .SYNOPSIS
         Reads the server configuration file.
@@ -14,9 +14,9 @@ function Get-PatServerConfig {
     [CmdletBinding()]
     param ()
 
-    $configPath = Get-PatConfigPath
+    $configurationPath = Get-PatConfigurationPath
 
-    if (-not (Test-Path $configPath)) {
+    if (-not (Test-Path $configurationPath)) {
         # Return default empty config
         return [PSCustomObject]@{
             version = '1.0'
@@ -25,23 +25,23 @@ function Get-PatServerConfig {
     }
 
     try {
-        $content = Get-Content -Path $configPath -Raw -ErrorAction Stop
-        $config = $content | ConvertFrom-Json -ErrorAction Stop
+        $content = Get-Content -Path $configurationPath -Raw -ErrorAction Stop
+        $configuration = $content | ConvertFrom-Json -ErrorAction Stop
 
         # Validate schema
-        if (-not $config.PSObject.Properties['version']) {
+        if (-not $configuration.PSObject.Properties['version']) {
             throw "Configuration missing 'version' property"
         }
 
-        if (-not $config.PSObject.Properties['servers']) {
+        if (-not $configuration.PSObject.Properties['servers']) {
             throw "Configuration missing 'servers' property"
         }
 
-        if ($config.servers -isnot [array]) {
+        if ($configuration.servers -isnot [array]) {
             throw "Configuration 'servers' must be an array"
         }
 
-        return $config
+        return $configuration
     }
     catch {
         throw "Failed to read server configuration: $($_.Exception.Message)"

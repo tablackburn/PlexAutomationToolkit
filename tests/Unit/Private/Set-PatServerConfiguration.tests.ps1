@@ -3,20 +3,20 @@ BeforeAll {
     $ModuleRoot = Join-Path $ProjectRoot 'PlexAutomationToolkit'
 
     # Import the functions directly for testing
-    . (Join-Path $ModuleRoot 'Private\Get-PatConfigPath.ps1')
-    . (Join-Path $ModuleRoot 'Private\Set-PatServerConfig.ps1')
+    . (Join-Path $ModuleRoot 'Private\Get-PatConfigurationPath.ps1')
+    . (Join-Path $ModuleRoot 'Private\Set-PatServerConfiguration.ps1')
 }
 
-Describe 'Set-PatServerConfig' {
+Describe 'Set-PatServerConfiguration' {
     BeforeEach {
-        # Mock Get-PatConfigPath to use temp location
+        # Mock Get-PatConfigurationPath to use temp location
         $script:testConfigPath = Join-Path $TestDrive 'servers.json'
-        Mock Get-PatConfigPath { return $script:testConfigPath }
+        Mock Get-PatConfigurationPath { return $script:testConfigPath }
     }
 
     Context 'When writing valid config' {
         It 'Should create config file with correct content' {
-            $config = [PSCustomObject]@{
+            $configuration = [PSCustomObject]@{
                 version = '1.0'
                 servers = @(
                     [PSCustomObject]@{
@@ -27,7 +27,7 @@ Describe 'Set-PatServerConfig' {
                 )
             }
 
-            Set-PatServerConfig -Config $config
+            Set-PatServerConfiguration -Configuration $configuration
 
             Test-Path $script:testConfigPath | Should -Be $true
 
@@ -39,14 +39,14 @@ Describe 'Set-PatServerConfig' {
 
         It 'Should create parent directory if it does not exist' {
             $nestedPath = Join-Path $TestDrive 'nested\dir\servers.json'
-            Mock Get-PatConfigPath { return $nestedPath }
+            Mock Get-PatConfigurationPath { return $nestedPath }
 
-            $config = [PSCustomObject]@{
+            $configuration = [PSCustomObject]@{
                 version = '1.0'
                 servers = @()
             }
 
-            Set-PatServerConfig -Config $config
+            Set-PatServerConfiguration -Configuration $configuration
 
             Test-Path $nestedPath | Should -Be $true
             Test-Path (Split-Path $nestedPath -Parent) | Should -Be $true
@@ -60,7 +60,7 @@ Describe 'Set-PatServerConfig' {
                     [PSCustomObject]@{ name = 'Old'; uri = 'http://old:32400'; default = $true }
                 )
             }
-            Set-PatServerConfig -Config $initialConfig
+            Set-PatServerConfiguration -Configuration $initialConfig
 
             # Overwrite with new config
             $newConfig = [PSCustomObject]@{
@@ -69,7 +69,7 @@ Describe 'Set-PatServerConfig' {
                     [PSCustomObject]@{ name = 'New'; uri = 'http://new:32400'; default = $true }
                 )
             }
-            Set-PatServerConfig -Config $newConfig
+            Set-PatServerConfiguration -Configuration $newConfig
 
             $content = Get-Content $script:testConfigPath -Raw | ConvertFrom-Json
             $content.servers.Count | Should -Be 1
@@ -77,19 +77,19 @@ Describe 'Set-PatServerConfig' {
         }
 
         It 'Should handle empty servers array' {
-            $config = [PSCustomObject]@{
+            $configuration = [PSCustomObject]@{
                 version = '1.0'
                 servers = @()
             }
 
-            Set-PatServerConfig -Config $config
+            Set-PatServerConfiguration -Configuration $configuration
 
             $content = Get-Content $script:testConfigPath -Raw | ConvertFrom-Json
             $content.servers.Count | Should -Be 0
         }
 
         It 'Should preserve server tokens' {
-            $config = [PSCustomObject]@{
+            $configuration = [PSCustomObject]@{
                 version = '1.0'
                 servers = @(
                     [PSCustomObject]@{
@@ -101,19 +101,19 @@ Describe 'Set-PatServerConfig' {
                 )
             }
 
-            Set-PatServerConfig -Config $config
+            Set-PatServerConfiguration -Configuration $configuration
 
             $content = Get-Content $script:testConfigPath -Raw | ConvertFrom-Json
             $content.servers[0].token | Should -Be 'ABC123xyz'
         }
 
         It 'Should write UTF-8 without BOM' {
-            $config = [PSCustomObject]@{
+            $configuration = [PSCustomObject]@{
                 version = '1.0'
                 servers = @()
             }
 
-            Set-PatServerConfig -Config $config
+            Set-PatServerConfiguration -Configuration $configuration
 
             # Read raw bytes to check for BOM
             $bytes = [IO.File]::ReadAllBytes($script:testConfigPath)
@@ -127,29 +127,29 @@ Describe 'Set-PatServerConfig' {
 
     Context 'When config is invalid' {
         It 'Should throw on null config' {
-            { Set-PatServerConfig -Config $null } | Should -Throw
+            { Set-PatServerConfiguration -Configuration $null } | Should -Throw
         }
 
         It 'Should throw on missing version property' {
-            $config = [PSCustomObject]@{
+            $configuration = [PSCustomObject]@{
                 servers = @()
             }
 
-            { Set-PatServerConfig -Config $config } | Should -Throw "*version*"
+            { Set-PatServerConfiguration -Configuration $configuration } | Should -Throw "*version*"
         }
 
         It 'Should throw on missing servers property' {
-            $config = [PSCustomObject]@{
+            $configuration = [PSCustomObject]@{
                 version = '1.0'
             }
 
-            { Set-PatServerConfig -Config $config } | Should -Throw "*servers*"
+            { Set-PatServerConfiguration -Configuration $configuration } | Should -Throw "*servers*"
         }
     }
 
     Context 'JSON formatting' {
         It 'Should format JSON with proper indentation' {
-            $config = [PSCustomObject]@{
+            $configuration = [PSCustomObject]@{
                 version = '1.0'
                 servers = @(
                     [PSCustomObject]@{
@@ -160,7 +160,7 @@ Describe 'Set-PatServerConfig' {
                 )
             }
 
-            Set-PatServerConfig -Config $config
+            Set-PatServerConfiguration -Configuration $configuration
 
             $content = Get-Content $script:testConfigPath -Raw
             # Should be formatted JSON (contains newlines)

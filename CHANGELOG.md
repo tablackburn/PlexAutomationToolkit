@@ -171,7 +171,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Optional X-Plex-Token authentication support for Plex servers requiring authentication
 - New cmdlet `Get-PatToken` to help users obtain their Plex authentication token with detailed instructions
 - New parameter `-Token` on `Add-PatServer` to store authentication tokens with server configurations
-- Private helper function `Get-PatAuthHeader` for centralized authentication header management
+- Private helper function `Get-PatAuthenticationHeader` for centralized authentication header management
 - All API-calling cmdlets now support authenticated requests when tokens are configured
 
 ### Changed

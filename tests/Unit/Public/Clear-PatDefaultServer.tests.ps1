@@ -20,13 +20,13 @@ Describe 'Clear-PatDefaultServer' {
             )
         }
 
-        Mock -CommandName Get-PatServerConfig -ModuleName PlexAutomationToolkit -MockWith {
+        Mock -CommandName Get-PatServerConfiguration -ModuleName PlexAutomationToolkit -MockWith {
             return $script:mockConfig
         }
 
-        Mock -CommandName Set-PatServerConfig -ModuleName PlexAutomationToolkit -MockWith {
-            param($Config)
-            $script:mockConfig = $Config
+        Mock -CommandName Set-PatServerConfiguration -ModuleName PlexAutomationToolkit -MockWith {
+            param($configuration)
+            $script:mockConfig = $configuration
         }
     }
 
@@ -46,10 +46,10 @@ Describe 'Clear-PatDefaultServer' {
             }
         }
 
-        It 'Should call Set-PatServerConfig with updated config' {
+        It 'Should call Set-PatServerConfiguration with updated config' {
             Clear-PatDefaultServer
 
-            Should -Invoke -CommandName Set-PatServerConfig -ModuleName PlexAutomationToolkit -Times 1 -Exactly
+            Should -Invoke -CommandName Set-PatServerConfiguration -ModuleName PlexAutomationToolkit -Times 1 -Exactly
         }
 
         It 'Should preserve all server configurations' {
@@ -77,10 +77,10 @@ Describe 'Clear-PatDefaultServer' {
             { Clear-PatDefaultServer } | Should -Not -Throw
         }
 
-        It 'Should not call Set-PatServerConfig when no default exists' {
+        It 'Should not call Set-PatServerConfiguration when no default exists' {
             Clear-PatDefaultServer
 
-            Should -Invoke -CommandName Set-PatServerConfig -ModuleName PlexAutomationToolkit -Times 0 -Exactly
+            Should -Invoke -CommandName Set-PatServerConfiguration -ModuleName PlexAutomationToolkit -Times 0 -Exactly
         }
     }
 
@@ -104,24 +104,24 @@ Describe 'Clear-PatDefaultServer' {
             $warningMessages.Count | Should -BeGreaterThan 0
         }
 
-        It 'Should not call Set-PatServerConfig when no servers exist' {
+        It 'Should not call Set-PatServerConfiguration when no servers exist' {
             Clear-PatDefaultServer -WarningAction SilentlyContinue
 
-            Should -Invoke -CommandName Set-PatServerConfig -ModuleName PlexAutomationToolkit -Times 0 -Exactly
+            Should -Invoke -CommandName Set-PatServerConfiguration -ModuleName PlexAutomationToolkit -Times 0 -Exactly
         }
     }
 
     Context 'Error handling' {
-        It 'Should throw when Get-PatServerConfig fails' {
-            Mock -CommandName Get-PatServerConfig -ModuleName PlexAutomationToolkit -MockWith {
+        It 'Should throw when Get-PatServerConfiguration fails' {
+            Mock -CommandName Get-PatServerConfiguration -ModuleName PlexAutomationToolkit -MockWith {
                 throw 'Config error'
             }
 
             { Clear-PatDefaultServer } | Should -Throw
         }
 
-        It 'Should throw when Set-PatServerConfig fails' {
-            Mock -CommandName Set-PatServerConfig -ModuleName PlexAutomationToolkit -MockWith {
+        It 'Should throw when Set-PatServerConfiguration fails' {
+            Mock -CommandName Set-PatServerConfiguration -ModuleName PlexAutomationToolkit -MockWith {
                 throw 'Write error'
             }
 
@@ -129,7 +129,7 @@ Describe 'Clear-PatDefaultServer' {
         }
 
         It 'Should include error message in exception' {
-            Mock -CommandName Set-PatServerConfig -ModuleName PlexAutomationToolkit -MockWith {
+            Mock -CommandName Set-PatServerConfiguration -ModuleName PlexAutomationToolkit -MockWith {
                 throw 'Disk full'
             }
 
@@ -178,10 +178,10 @@ Describe 'Clear-PatDefaultServer' {
             $server1.default | Should -Be $true
         }
 
-        It 'Should not call Set-PatServerConfig with WhatIf' {
+        It 'Should not call Set-PatServerConfiguration with WhatIf' {
             Clear-PatDefaultServer -WhatIf
 
-            Should -Invoke -CommandName Set-PatServerConfig -ModuleName PlexAutomationToolkit -Times 0 -Exactly
+            Should -Invoke -CommandName Set-PatServerConfiguration -ModuleName PlexAutomationToolkit -Times 0 -Exactly
         }
 
         It 'Should have ConfirmImpact of Low' {

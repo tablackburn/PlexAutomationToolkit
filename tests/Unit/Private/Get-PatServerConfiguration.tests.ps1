@@ -3,27 +3,27 @@ BeforeAll {
     $ModuleRoot = Join-Path $ProjectRoot 'PlexAutomationToolkit'
 
     # Import the functions directly for testing
-    . (Join-Path $ModuleRoot 'Private\Get-PatConfigPath.ps1')
-    . (Join-Path $ModuleRoot 'Private\Get-PatServerConfig.ps1')
+    . (Join-Path $ModuleRoot 'Private\Get-PatConfigurationPath.ps1')
+    . (Join-Path $ModuleRoot 'Private\Get-PatServerConfiguration.ps1')
 }
 
-Describe 'Get-PatServerConfig' {
+Describe 'Get-PatServerConfiguration' {
     BeforeEach {
-        # Mock Get-PatConfigPath to use temp location
+        # Mock Get-PatConfigurationPath to use temp location
         $script:testConfigPath = Join-Path $TestDrive 'servers.json'
-        Mock Get-PatConfigPath { return $script:testConfigPath }
+        Mock Get-PatConfigurationPath { return $script:testConfigPath }
     }
 
     Context 'When config file does not exist' {
         It 'Should return default empty config' {
-            $result = Get-PatServerConfig
+            $result = Get-PatServerConfiguration
 
             $result.version | Should -Be '1.0'
             $result.servers.Count | Should -Be 0
         }
 
         It 'Should not create the file' {
-            Get-PatServerConfig
+            Get-PatServerConfiguration
             Test-Path $script:testConfigPath | Should -Be $false
         }
     }
@@ -43,7 +43,7 @@ Describe 'Get-PatServerConfig' {
 
             [IO.File]::WriteAllText($script:testConfigPath, $validConfig)
 
-            $result = Get-PatServerConfig
+            $result = Get-PatServerConfiguration
 
             $result.version | Should -Be '1.0'
             $result.servers.Count | Should -Be 1
@@ -64,7 +64,7 @@ Describe 'Get-PatServerConfig' {
 
             [IO.File]::WriteAllText($script:testConfigPath, $validConfig)
 
-            $result = Get-PatServerConfig
+            $result = Get-PatServerConfiguration
 
             $result.servers.Count | Should -Be 3
             $result.servers[0].name | Should -Be 'Server1'
@@ -87,7 +87,7 @@ Describe 'Get-PatServerConfig' {
 
             [IO.File]::WriteAllText($script:testConfigPath, $validConfig)
 
-            $result = Get-PatServerConfig
+            $result = Get-PatServerConfiguration
 
             $result.servers[0].token | Should -Be 'ABC123xyz'
         }
@@ -101,7 +101,7 @@ Describe 'Get-PatServerConfig' {
 
             [IO.File]::WriteAllText($script:testConfigPath, $invalidConfig)
 
-            { Get-PatServerConfig } | Should -Throw "*version*"
+            { Get-PatServerConfiguration } | Should -Throw "*version*"
         }
 
         It 'Should throw on missing servers property' {
@@ -111,7 +111,7 @@ Describe 'Get-PatServerConfig' {
 
             [IO.File]::WriteAllText($script:testConfigPath, $invalidConfig)
 
-            { Get-PatServerConfig } | Should -Throw "*servers*"
+            { Get-PatServerConfiguration } | Should -Throw "*servers*"
         }
 
         It 'Should throw when servers is not an array' {
@@ -122,19 +122,19 @@ Describe 'Get-PatServerConfig' {
 
             [IO.File]::WriteAllText($script:testConfigPath, $invalidConfig)
 
-            { Get-PatServerConfig } | Should -Throw "*array*"
+            { Get-PatServerConfiguration } | Should -Throw "*array*"
         }
 
         It 'Should throw on invalid JSON' {
             [IO.File]::WriteAllText($script:testConfigPath, '{invalid json')
 
-            { Get-PatServerConfig } | Should -Throw
+            { Get-PatServerConfiguration } | Should -Throw
         }
 
         It 'Should throw on empty file' {
             [IO.File]::WriteAllText($script:testConfigPath, '')
 
-            { Get-PatServerConfig } | Should -Throw
+            { Get-PatServerConfiguration } | Should -Throw
         }
     }
 }

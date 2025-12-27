@@ -36,23 +36,23 @@ function Set-PatDefaultServer {
     )
 
     try {
-        $config = Get-PatServerConfig -ErrorAction Stop
+        $configuration = Get-PatServerConfiguration -ErrorAction Stop
 
-        $server = $config.servers | Where-Object { $_.name -eq $Name }
+        $server = $configuration.servers | Where-Object { $_.name -eq $Name }
         if (-not $server) {
             throw "No server found with name '$Name'"
         }
 
         if ($PSCmdlet.ShouldProcess($Name, 'Set as default server')) {
             # Unset all defaults
-            foreach ($s in $config.servers) {
+            foreach ($s in $configuration.servers) {
                 $s.default = $false
             }
 
             # Set new default
             $server.default = $true
 
-            Set-PatServerConfig -Config $config -ErrorAction Stop
+            Set-PatServerConfiguration -Configuration $configuration -ErrorAction Stop
             Write-Verbose "Set '$Name' as default server"
 
             if ($PassThru) {

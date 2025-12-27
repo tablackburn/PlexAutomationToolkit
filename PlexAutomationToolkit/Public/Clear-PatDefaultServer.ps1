@@ -47,35 +47,35 @@ function Clear-PatDefaultServer {
     )
 
     try {
-        $config = Get-PatServerConfig -ErrorAction Stop
+        $configuration = Get-PatServerConfiguration -ErrorAction Stop
 
-        if ($config.servers.Count -eq 0) {
+        if ($configuration.servers.Count -eq 0) {
             Write-Warning "No servers configured. Use Add-PatServer to add a server."
             return
         }
 
         # Check if there's currently a default server
-        $currentDefault = $config.servers | Where-Object { $_.default -eq $true }
+        $currentDefault = $configuration.servers | Where-Object { $_.default -eq $true }
 
         if (-not $currentDefault) {
             Write-Verbose "No default server is currently set"
             if ($PassThru) {
-                $config.servers
+                $configuration.servers
             }
             return
         }
 
         if ($PSCmdlet.ShouldProcess("All servers", 'Clear default server designation')) {
             # Clear all defaults
-            foreach ($server in $config.servers) {
+            foreach ($server in $configuration.servers) {
                 $server.default = $false
             }
 
-            Set-PatServerConfig -Config $config -ErrorAction Stop
+            Set-PatServerConfiguration -Configuration $configuration -ErrorAction Stop
             Write-Verbose "Cleared default server designation from '$($currentDefault.name)'"
 
             if ($PassThru) {
-                $config.servers
+                $configuration.servers
             }
         }
     }

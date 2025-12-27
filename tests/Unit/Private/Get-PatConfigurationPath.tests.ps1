@@ -8,7 +8,7 @@ BeforeAll {
     Import-Module -Name $moduleManifestPath -Verbose:$false -ErrorAction 'Stop'
 }
 
-Describe 'Get-PatConfigPath' {
+Describe 'Get-PatConfigurationPath' {
     BeforeEach {
         # Store original environment variables
         $script:originalOneDrive = $env:OneDrive
@@ -31,7 +31,7 @@ Describe 'Get-PatConfigPath' {
                 return
             }
 
-            $result = InModuleScope PlexAutomationToolkit { Get-PatConfigPath }
+            $result = InModuleScope PlexAutomationToolkit { Get-PatConfigurationPath }
 
             # Should prefer OneDrive location
             $result | Should -BeLike "*OneDrive*PlexAutomationToolkit*servers.json"
@@ -49,7 +49,7 @@ Describe 'Get-PatConfigPath' {
             try {
                 # Create marker to identify test-created directory
                 if (-not (Test-Path $oneDriveDir)) {
-                    $result = InModuleScope PlexAutomationToolkit { Get-PatConfigPath }
+                    $result = InModuleScope PlexAutomationToolkit { Get-PatConfigurationPath }
                     # Function should have created the directory
                     Test-Path $oneDriveDir | Should -Be $true
                     # Mark it so we know we created it
@@ -78,7 +78,7 @@ Describe 'Get-PatConfigPath' {
             }
 
             # Function should test write access
-            $result = InModuleScope PlexAutomationToolkit { Get-PatConfigPath }
+            $result = InModuleScope PlexAutomationToolkit { Get-PatConfigurationPath }
 
             # Should have tested write access (no exception means test passed)
             $result | Should -Not -BeNullOrEmpty
@@ -90,7 +90,7 @@ Describe 'Get-PatConfigPath' {
             # Temporarily remove OneDrive env variable
             $env:OneDrive = $null
 
-            $result = InModuleScope PlexAutomationToolkit { Get-PatConfigPath }
+            $result = InModuleScope PlexAutomationToolkit { Get-PatConfigurationPath }
 
             $result | Should -BeLike "*Documents\PlexAutomationToolkit\servers.json"
             $result | Should -Not -BeLike "*OneDrive*"
@@ -103,7 +103,7 @@ Describe 'Get-PatConfigPath' {
 
             try {
                 if (-not (Test-Path $docsDir)) {
-                    $result = InModuleScope PlexAutomationToolkit { Get-PatConfigPath }
+                    $result = InModuleScope PlexAutomationToolkit { Get-PatConfigurationPath }
                     # Function should have created the directory
                     Test-Path $docsDir | Should -Be $true
                     [IO.File]::WriteAllText($testMarker, 'test')
@@ -119,7 +119,7 @@ Describe 'Get-PatConfigPath' {
         It 'Should return Documents path when available' {
             $env:OneDrive = $null
 
-            $result = InModuleScope PlexAutomationToolkit { Get-PatConfigPath }
+            $result = InModuleScope PlexAutomationToolkit { Get-PatConfigurationPath }
 
             $expectedPath = Join-Path $env:USERPROFILE 'Documents\PlexAutomationToolkit\servers.json'
             $result | Should -Be $expectedPath
@@ -130,7 +130,7 @@ Describe 'Get-PatConfigPath' {
         It 'Should use LocalAppData when OneDrive and Documents are not available' {
             # This test is difficult to simulate without breaking the environment
             # We'll just verify the path format is correct
-            $result = InModuleScope PlexAutomationToolkit { Get-PatConfigPath }
+            $result = InModuleScope PlexAutomationToolkit { Get-PatConfigurationPath }
 
             # Should return a valid path
             $result | Should -Not -BeNullOrEmpty
@@ -138,7 +138,7 @@ Describe 'Get-PatConfigPath' {
         }
 
         It 'Should return a path ending with servers.json' {
-            $result = InModuleScope PlexAutomationToolkit { Get-PatConfigPath }
+            $result = InModuleScope PlexAutomationToolkit { Get-PatConfigurationPath }
 
             $result | Should -BeLike "*servers.json"
         }
@@ -146,27 +146,27 @@ Describe 'Get-PatConfigPath' {
 
     Context 'Path validation' {
         It 'Should return a valid file path' {
-            $result = InModuleScope PlexAutomationToolkit { Get-PatConfigPath }
+            $result = InModuleScope PlexAutomationToolkit { Get-PatConfigurationPath }
 
             $result | Should -Not -BeNullOrEmpty
             [System.IO.Path]::IsPathRooted($result) | Should -Be $true
         }
 
         It 'Should return a path with .json extension' {
-            $result = InModuleScope PlexAutomationToolkit { Get-PatConfigPath }
+            $result = InModuleScope PlexAutomationToolkit { Get-PatConfigurationPath }
 
             $result | Should -BeLike "*.json"
         }
 
         It 'Should return a path containing PlexAutomationToolkit' {
-            $result = InModuleScope PlexAutomationToolkit { Get-PatConfigPath }
+            $result = InModuleScope PlexAutomationToolkit { Get-PatConfigurationPath }
 
             $result | Should -BeLike "*PlexAutomationToolkit*"
         }
 
         It 'Should return consistent path when called multiple times' {
-            $result1 = InModuleScope PlexAutomationToolkit { Get-PatConfigPath }
-            $result2 = InModuleScope PlexAutomationToolkit { Get-PatConfigPath }
+            $result1 = InModuleScope PlexAutomationToolkit { Get-PatConfigurationPath }
+            $result2 = InModuleScope PlexAutomationToolkit { Get-PatConfigurationPath }
 
             $result1 | Should -Be $result2
         }
@@ -174,7 +174,7 @@ Describe 'Get-PatConfigPath' {
 
     Context 'Directory creation' {
         It 'Should create necessary directories' {
-            $result = InModuleScope PlexAutomationToolkit { Get-PatConfigPath }
+            $result = InModuleScope PlexAutomationToolkit { Get-PatConfigurationPath }
 
             $directory = Split-Path -Path $result -Parent
             Test-Path $directory | Should -Be $true
@@ -182,10 +182,10 @@ Describe 'Get-PatConfigPath' {
 
         It 'Should not throw when directory already exists' {
             # First call creates directory
-            $result1 = InModuleScope PlexAutomationToolkit { Get-PatConfigPath }
+            $result1 = InModuleScope PlexAutomationToolkit { Get-PatConfigurationPath }
 
             # Second call should succeed without error
-            { InModuleScope PlexAutomationToolkit { Get-PatConfigPath } } | Should -Not -Throw
+            { InModuleScope PlexAutomationToolkit { Get-PatConfigurationPath } } | Should -Not -Throw
         }
     }
 }

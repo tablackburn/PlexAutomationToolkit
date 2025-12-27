@@ -147,16 +147,16 @@ function Add-PatServer {
             }
         }
 
-        $config = Get-PatServerConfig -ErrorAction Stop
+        $configuration = Get-PatServerConfiguration -ErrorAction Stop
 
         # Check for duplicate name
-        if ($config.servers | Where-Object { $_.name -eq $Name }) {
+        if ($configuration.servers | Where-Object { $_.name -eq $Name }) {
             throw "A server with name '$Name' already exists"
         }
 
         # If marking as default, unset other defaults
         if ($Default) {
-            foreach ($server in $config.servers) {
+            foreach ($server in $configuration.servers) {
                 $server.default = $false
             }
         }
@@ -182,7 +182,7 @@ function Add-PatServer {
                 $validationUri = Join-PatUri -BaseUri $effectiveUri -Endpoint '/'
 
                 # Build headers with authentication if token provided
-                $validationHeaders = Get-PatAuthHeader -Server $newServer
+                $validationHeaders = Get-PatAuthenticationHeader -Server $newServer
 
                 # Attempt to connect to server
                 $null = Invoke-PatApi -Uri $validationUri -Headers $validationHeaders -ErrorAction Stop
@@ -206,8 +206,8 @@ function Add-PatServer {
                             'Authentication Required'
                         )) {
                             try {
-                                $authToken = Connect-PatAccount -Force:$Force
-                                $newServer | Add-Member -NotePropertyName 'token' -NotePropertyValue $authToken -Force
+                                $authenticationToken = Connect-PatAccount -Force:$Force
+                                $newServer | Add-Member -NotePropertyName 'token' -NotePropertyValue $authenticationToken -Force
                                 Write-Information "Authentication successful. Token added to server configuration." -InformationAction Continue
                             }
                             catch {
@@ -233,10 +233,10 @@ function Add-PatServer {
             Write-Verbose "Skipping server validation as requested"
         }
 
-        $config.servers += $newServer
+        $configuration.servers += $newServer
 
         if ($PSCmdlet.ShouldProcess($Name, 'Add server to configuration')) {
-            Set-PatServerConfig -Config $config -ErrorAction Stop
+            Set-PatServerConfiguration -Configuration $configuration -ErrorAction Stop
             Write-Verbose "Added server '$Name' to configuration"
 
             if ($PassThru) {

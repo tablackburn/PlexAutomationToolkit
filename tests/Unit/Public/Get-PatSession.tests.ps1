@@ -250,7 +250,7 @@ Describe 'Get-PatSession' {
                 return 'http://plex-test-server.local:32400/status/sessions'
             }
 
-            Mock -ModuleName PlexAutomationToolkit Get-PatAuthHeader {
+            Mock -ModuleName PlexAutomationToolkit Get-PatAuthenticationHeader {
                 return @{ Accept = 'application/json'; 'X-Plex-Token' = 'test-token' }
             }
         }
@@ -264,7 +264,7 @@ Describe 'Get-PatSession' {
 
         It 'Uses authentication headers from stored server' {
             Get-PatSession
-            Should -Invoke -ModuleName PlexAutomationToolkit Get-PatAuthHeader
+            Should -Invoke -ModuleName PlexAutomationToolkit Get-PatAuthenticationHeader
         }
     }
 

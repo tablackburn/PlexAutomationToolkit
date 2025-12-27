@@ -441,7 +441,7 @@ function Update-PatLibrary {
 
     # Build headers with authentication if we have server object
     $headers = if ($server) {
-        Get-PatAuthHeader -Server $server
+        Get-PatAuthenticationHeader -Server $server
     }
     else {
         @{ Accept = 'application/json' }

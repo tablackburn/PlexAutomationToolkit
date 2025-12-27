@@ -45,11 +45,11 @@ function Get-PatStoredServer {
     )
 
     try {
-        $config = Get-PatServerConfig -ErrorAction Stop
+        $configuration = Get-PatServerConfiguration -ErrorAction Stop
 
         switch ($PSCmdlet.ParameterSetName) {
             'ByName' {
-                $server = $config.servers | Where-Object { $_.name -eq $Name }
+                $server = $configuration.servers | Where-Object { $_.name -eq $Name }
                 if (-not $server) {
                     throw "No server found with name '$Name'"
                 }
@@ -57,7 +57,7 @@ function Get-PatStoredServer {
             }
             'Default' {
                 Write-Debug "Default switch specified: $($Default.IsPresent)"
-                $defaultServers = @($config.servers | Where-Object { $_.default -eq $true })
+                $defaultServers = @($configuration.servers | Where-Object { $_.default -eq $true })
                 if ($defaultServers.Count -eq 0) {
                     throw "No default server configured"
                 }
@@ -68,8 +68,8 @@ function Get-PatStoredServer {
             }
             'All' {
                 # Return servers if any exist, otherwise return nothing (not $null)
-                if ($config.servers) {
-                    $config.servers
+                if ($configuration.servers) {
+                    $configuration.servers
                 }
             }
         }
