@@ -51,7 +51,7 @@ function Compare-PatWatchStatus {
         - TargetRatingKey: Rating key on target server
     #>
     [CmdletBinding()]
-    [OutputType([PSCustomObject[]])]
+    [OutputType([PSCustomObject], [object[]])]
     param (
         [Parameter(Mandatory = $true)]
         [ValidateNotNullOrEmpty()]

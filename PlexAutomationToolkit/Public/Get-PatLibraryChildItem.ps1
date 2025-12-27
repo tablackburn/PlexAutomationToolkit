@@ -46,7 +46,7 @@ function Get-PatLibraryChildItem {
     .OUTPUTS
         PSCustomObject
     #>
-    [OutputType([PSCustomObject[]])]
+    [OutputType([PSCustomObject], [object[]])]
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
         'PSReviewUnusedParameter',
         'commandName',
