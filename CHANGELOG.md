@@ -9,6 +9,21 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [0.6.0] - 2025-12-27
 
+### Changed
+
+- Renamed cmdlets and parameters to use full words instead of abbreviations:
+  - `Get-PatServerConfig` → `Get-PatServerConfiguration`
+  - `Set-PatServerConfig` → `Set-PatServerConfiguration`
+  - `Get-PatConfigPath` → `Get-PatConfigurationPath`
+  - `Get-PatAuthHeader` → `Get-PatAuthenticationHeader`
+  - `-Config` parameter → `-Configuration`
+- Fixed PSScriptAnalyzer violations for improved code quality:
+  - Added `SupportsShouldProcess` to `New-PatPin` and `Set-PatServerConfiguration`
+  - Added `OutputType` attributes to `Compare-PatWatchStatus` and `Get-PatLibraryChildItem`
+  - Replaced `Write-Host` with `Write-Information` for proper output streams
+  - Fixed empty catch blocks with `Write-Debug` statements
+- Updated AIM framework from 0.2.2 to 0.3.0
+
 ### Added
 
 - New collection management cmdlets for organizing media items into collections:
