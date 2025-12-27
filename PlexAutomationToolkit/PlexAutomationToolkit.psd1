@@ -12,7 +12,7 @@
 RootModule = 'PlexAutomationToolkit.psm1'
 
 # Version number of this module.
-ModuleVersion = '0.3.0'
+ModuleVersion = '0.4.0'
 
 # Supported PSEditions
 # CompatiblePSEditions = @()
@@ -70,6 +70,7 @@ RequiredAssemblies = @()
 
 # Functions to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no functions to export.
 FunctionsToExport = @(
+    'Add-PatPlaylistItem'
     'Add-PatServer'
     'Clear-PatDefaultServer'
     'Compare-PatLibraryContent'
@@ -79,10 +80,14 @@ FunctionsToExport = @(
     'Get-PatLibraryChildItem'
     'Get-PatLibraryItem'
     'Get-PatLibraryPath'
+    'Get-PatPlaylist'
     'Get-PatServer'
     'Get-PatSession'
     'Get-PatStoredServer'
     'Get-PatToken'
+    'New-PatPlaylist'
+    'Remove-PatPlaylist'
+    'Remove-PatPlaylistItem'
     'Remove-PatServer'
     'Set-PatDefaultServer'
     'Stop-PatSession'

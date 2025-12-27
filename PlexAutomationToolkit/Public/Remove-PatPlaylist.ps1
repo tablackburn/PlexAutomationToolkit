@@ -1,0 +1,210 @@
+function Remove-PatPlaylist {
+    <#
+    .SYNOPSIS
+        Removes a playlist from a Plex server.
+
+    .DESCRIPTION
+        Deletes a playlist from the Plex server. Can identify the playlist by ID or name.
+        This action is irreversible - the playlist and its item associations will be
+        permanently deleted.
+
+    .PARAMETER PlaylistId
+        The unique identifier of the playlist to remove.
+
+    .PARAMETER PlaylistName
+        The name of the playlist to remove. Supports tab completion.
+
+    .PARAMETER ServerUri
+        The base URI of the Plex server (e.g., http://plex.example.com:32400).
+        If not specified, uses the default stored server.
+
+    .PARAMETER PassThru
+        If specified, returns the playlist object that was removed.
+
+    .EXAMPLE
+        Remove-PatPlaylist -PlaylistId 12345
+
+        Removes the playlist with ID 12345 after confirmation.
+
+    .EXAMPLE
+        Remove-PatPlaylist -PlaylistName 'Old Playlist' -Confirm:$false
+
+        Removes the playlist named 'Old Playlist' without confirmation prompt.
+
+    .EXAMPLE
+        Get-PatPlaylist -PlaylistName 'Temp*' | Remove-PatPlaylist
+
+        Removes all playlists starting with 'Temp' via pipeline.
+
+    .EXAMPLE
+        Remove-PatPlaylist -PlaylistName 'Test Playlist' -WhatIf
+
+        Shows what would be removed without actually removing it.
+
+    .EXAMPLE
+        Remove-PatPlaylist -PlaylistId 12345 -PassThru
+
+        Removes the playlist and returns the removed playlist object for logging.
+
+    .OUTPUTS
+        PlexAutomationToolkit.Playlist (when -PassThru is specified)
+
+        Returns the removed playlist object for auditing purposes.
+    #>
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+        'PSReviewUnusedParameter',
+        'commandName',
+        Justification = 'Standard ArgumentCompleter parameter, not always used'
+    )]
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+        'PSReviewUnusedParameter',
+        'parameterName',
+        Justification = 'Standard ArgumentCompleter parameter, not always used'
+    )]
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+        'PSReviewUnusedParameter',
+        'commandAst',
+        Justification = 'Standard ArgumentCompleter parameter, not always used'
+    )]
+    [CmdletBinding(SupportsShouldProcess, ConfirmImpact = 'High', DefaultParameterSetName = 'ById')]
+    param (
+        [Parameter(Mandatory = $true, ParameterSetName = 'ById', ValueFromPipeline, ValueFromPipelineByPropertyName)]
+        [ValidateRange(1, [int]::MaxValue)]
+        [int]
+        $PlaylistId,
+
+        [Parameter(Mandatory = $true, ParameterSetName = 'ByName')]
+        [ValidateNotNullOrEmpty()]
+        [ArgumentCompleter({
+            param($commandName, $parameterName, $wordToComplete, $commandAst, $fakeBoundParameters)
+
+            $quoteChar = ''
+            $strippedWord = $wordToComplete
+            if ($wordToComplete -match "^([`"'])(.*)$") {
+                $quoteChar = $Matches[1]
+                $strippedWord = $Matches[2]
+            }
+
+            $getParams = @{ ErrorAction = 'SilentlyContinue' }
+            if ($fakeBoundParameters.ContainsKey('ServerUri')) {
+                $getParams['ServerUri'] = $fakeBoundParameters['ServerUri']
+            }
+
+            $playlists = Get-PatPlaylist @getParams
+
+            foreach ($playlist in $playlists) {
+                if ($playlist.Title -ilike "$strippedWord*") {
+                    $title = $playlist.Title
+                    if ($quoteChar) {
+                        $text = "$quoteChar$title$quoteChar"
+                    }
+                    elseif ($title -match '\s') {
+                        $text = "'$title'"
+                    }
+                    else {
+                        $text = $title
+                    }
+
+                    [System.Management.Automation.CompletionResult]::new(
+                        $text,
+                        $title,
+                        'ParameterValue',
+                        $title
+                    )
+                }
+            }
+        })]
+        [string]
+        $PlaylistName,
+
+        [Parameter(Mandatory = $false)]
+        [ValidateNotNullOrEmpty()]
+        [ValidateScript({ Test-PatServerUri -Uri $_ })]
+        [string]
+        $ServerUri,
+
+        [Parameter(Mandatory = $false)]
+        [switch]
+        $PassThru
+    )
+
+    begin {
+        # Use default server if ServerUri not specified
+        $server = $null
+        $effectiveUri = $ServerUri
+        if (-not $ServerUri) {
+            try {
+                $server = Get-PatStoredServer -Default -ErrorAction 'Stop'
+                if (-not $server) {
+                    throw "No default server configured. Use Add-PatServer with -Default or specify -ServerUri."
+                }
+                $effectiveUri = $server.uri
+                Write-Verbose "Using default server: $effectiveUri"
+            }
+            catch {
+                throw "Failed to get default server: $($_.Exception.Message)"
+            }
+        }
+        else {
+            Write-Verbose "Using specified server: $effectiveUri"
+        }
+
+        # Build headers with authentication
+        $headers = if ($server) {
+            Get-PatAuthHeaders -Server $server
+        }
+        else {
+            @{ Accept = 'application/json' }
+        }
+    }
+
+    process {
+        try {
+            # Resolve playlist ID if using name
+            $resolvedId = $PlaylistId
+            $playlistInfo = $null
+
+            if ($PSCmdlet.ParameterSetName -eq 'ByName') {
+                $playlist = Get-PatPlaylist -PlaylistName $PlaylistName -ServerUri $effectiveUri -ErrorAction 'Stop'
+                if (-not $playlist) {
+                    throw "No playlist found with name '$PlaylistName'"
+                }
+                $resolvedId = $playlist.PlaylistId
+                $playlistInfo = $playlist
+            }
+            else {
+                # Get playlist info for ShouldProcess message and PassThru
+                try {
+                    $playlistInfo = Get-PatPlaylist -PlaylistId $PlaylistId -ServerUri $effectiveUri -ErrorAction 'Stop'
+                }
+                catch {
+                    Write-Verbose "Could not retrieve playlist info for ID $PlaylistId"
+                }
+            }
+
+            # Build descriptive target for confirmation
+            $target = if ($playlistInfo) {
+                "'$($playlistInfo.Title)' (ID: $resolvedId, $($playlistInfo.ItemCount) items)"
+            }
+            else {
+                "Playlist ID $resolvedId"
+            }
+
+            if ($PSCmdlet.ShouldProcess($target, 'Delete playlist')) {
+                $endpoint = "/playlists/$resolvedId"
+                $uri = Join-PatUri -BaseUri $effectiveUri -Endpoint $endpoint
+
+                Write-Verbose "Deleting playlist $resolvedId from $effectiveUri"
+
+                $null = Invoke-PatApi -Uri $uri -Method 'DELETE' -Headers $headers -ErrorAction 'Stop'
+
+                if ($PassThru -and $playlistInfo) {
+                    $playlistInfo
+                }
+            }
+        }
+        catch {
+            throw "Failed to remove playlist: $($_.Exception.Message)"
+        }
+    }
+}

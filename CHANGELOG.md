@@ -7,6 +7,40 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [0.4.0] - 2025-12-26
+
+### Added
+
+- New playlist management cmdlets for creating, managing, and deleting playlists:
+  - `Get-PatPlaylist` - Retrieve playlists from a Plex server
+    - List all playlists or filter by ID/name
+    - `-IncludeItems` switch to fetch playlist contents
+    - Tab completion for `-PlaylistName` parameter
+    - Returns `PlexAutomationToolkit.Playlist` objects
+  - `New-PatPlaylist` - Create new playlists
+    - Specify playlist title and type (video, audio, photo)
+    - Optionally add initial items via `-RatingKey` parameter
+    - Pipeline support for rating keys
+    - `-PassThru` to return created playlist
+  - `Remove-PatPlaylist` - Delete playlists
+    - Remove by ID or name (with tab completion)
+    - Pipeline support from Get-PatPlaylist
+    - High confirm impact for safety
+    - `-PassThru` for auditing
+  - `Add-PatPlaylistItem` - Add items to existing playlists
+    - Add by playlist ID or name
+    - Accepts multiple rating keys
+    - Pipeline support for batch additions
+  - `Remove-PatPlaylistItem` - Remove items from playlists
+    - Uses `PlaylistItemId` (distinct from media `RatingKey`)
+    - Pipeline support from playlist items
+    - Works with output from `Get-PatPlaylist -IncludeItems`
+
+### Notes
+
+- Playlist cmdlets work with regular (non-smart) playlists only
+- Smart playlists are automatically filtered out as they have limited API support for modifications
+
 ## [0.3.0] - 2025-12-26
 
 ### Added
