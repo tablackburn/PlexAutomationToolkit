@@ -157,8 +157,8 @@ Describe 'Update-PatLibrary Integration Tests' -Skip:(-not $script:integrationEn
                 $defaultServer = Get-PatStoredServer -Default
                 $defaultServer.name | Should -Be 'IntegrationTest-LibraryOps'
 
-                # Call with explicit ServerUri - currently fails with 401 because no auth token available
-                { Update-PatLibrary -ServerUri $env:PLEX_SERVER_URI -SectionId $script:testSectionId -Confirm:$false } | Should -Not -Throw
+                # Call with explicit ServerUri and Token
+                { Update-PatLibrary -ServerUri $env:PLEX_SERVER_URI -Token $env:PLEX_TOKEN -SectionId $script:testSectionId -Confirm:$false } | Should -Not -Throw
             }
             finally {
                 # Clean up the non-default server

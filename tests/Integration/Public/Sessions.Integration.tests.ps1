@@ -93,7 +93,7 @@ Describe 'Get-PatSession Integration Tests' -Skip:(-not $script:integrationEnabl
         }
 
         It 'Accepts explicit ServerUri parameter' {
-            { Get-PatSession -ServerUri $env:PLEX_SERVER_URI } | Should -Not -Throw
+            { Get-PatSession -ServerUri $env:PLEX_SERVER_URI -Token $env:PLEX_TOKEN } | Should -Not -Throw
         }
     }
 

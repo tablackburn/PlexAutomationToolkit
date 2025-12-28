@@ -100,7 +100,7 @@ Describe 'Get-PatPlaylist Integration Tests' -Skip:(-not $script:integrationEnab
         }
 
         It 'Accepts explicit ServerUri parameter' {
-            { Get-PatPlaylist -ServerUri $env:PLEX_SERVER_URI } | Should -Not -Throw
+            { Get-PatPlaylist -ServerUri $env:PLEX_SERVER_URI -Token $env:PLEX_TOKEN } | Should -Not -Throw
         }
     }
 

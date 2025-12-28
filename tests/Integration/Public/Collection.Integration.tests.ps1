@@ -132,7 +132,7 @@ Describe 'Get-PatCollection Integration Tests' -Skip:(-not $script:integrationEn
                 Set-ItResult -Skipped -Because 'No library available for testing'
                 return
             }
-            { Get-PatCollection -LibraryId $script:testLibrary.key -ServerUri $env:PLEX_SERVER_URI } | Should -Not -Throw
+            { Get-PatCollection -LibraryId $script:testLibrary.key -ServerUri $env:PLEX_SERVER_URI -Token $env:PLEX_TOKEN } | Should -Not -Throw
         }
     }
 
