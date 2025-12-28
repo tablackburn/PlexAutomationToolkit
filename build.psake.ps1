@@ -12,6 +12,7 @@ properties {
     $PSBPreference.Help.DefaultLocale = 'en-US'
 
     # Test settings - use relative paths from project root
+    $PSBPreference.Test.Enabled = $true
     $PSBPreference.Test.RootDir = Join-Path -Path $PSScriptRoot -ChildPath 'tests'
     $PSBPreference.Test.OutputFile = Join-Path -Path $PSScriptRoot -ChildPath 'out/testResults.xml'
     $PSBPreference.Test.OutputFormat = 'NUnitXml'
