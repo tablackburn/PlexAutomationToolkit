@@ -13,8 +13,9 @@ Syncs watch status from one Plex server to another.
 ## SYNTAX
 
 ```
-Sync-PatWatchStatus [-SourceServerName] <String> [-TargetServerName] <String> [[-SectionId] <Int32[]>]
- [-PassThru] [-ProgressAction <ActionPreference>] [-WhatIf] [-Confirm] [<CommonParameters>]
+Sync-PatWatchStatus [-SourceServerName] <String> [-TargetServerName] <String> [[-Direction] <String>]
+ [[-SectionId] <Int32[]>] [-PassThru] [-ProgressAction <ActionPreference>] [-WhatIf] [-Confirm]
+ [<CommonParameters>]
 ```
 
 ## DESCRIPTION
@@ -78,6 +79,24 @@ Accept pipeline input: False
 Accept wildcard characters: False
 ```
 
+### -Direction
+The direction of the sync:
+- SourceToTarget (default): Sync watched items from source to target
+- TargetToSource: Sync watched items from target to source
+- Bidirectional: Sync watched items in both directions
+
+```yaml
+Type: String
+Parameter Sets: (All)
+Aliases:
+
+Required: False
+Position: 3
+Default value: SourceToTarget
+Accept pipeline input: False
+Accept wildcard characters: False
+```
+
 ### -SectionId
 Optional array of library section IDs to sync.
 If not specified, syncs all sections.
@@ -88,7 +107,7 @@ Parameter Sets: (All)
 Aliases:
 
 Required: False
-Position: 3
+Position: 4
 Default value: None
 Accept pipeline input: False
 Accept wildcard characters: False

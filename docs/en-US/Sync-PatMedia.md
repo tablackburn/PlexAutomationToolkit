@@ -15,14 +15,15 @@ Syncs media from a Plex playlist to a destination folder.
 ### ByName (Default)
 ```
 Sync-PatMedia [-PlaylistName <String>] -Destination <String> [-SkipSubtitles] [-SkipRemoval] [-Force]
- [-PassThru] [-ServerUri <String>] [-ProgressAction <ActionPreference>] [-WhatIf] [-Confirm]
- [<CommonParameters>]
+ [-PassThru] [-ServerUri <String>] [-SyncWatchStatus] [-RemoveWatched] [-SourceServerName <String>]
+ [-TargetServerName <String>] [-ProgressAction <ActionPreference>] [-WhatIf] [-Confirm] [<CommonParameters>]
 ```
 
 ### ById
 ```
 Sync-PatMedia -PlaylistId <Int32> -Destination <String> [-SkipSubtitles] [-SkipRemoval] [-Force] [-PassThru]
- [-ServerUri <String>] [-ProgressAction <ActionPreference>] [-WhatIf] [-Confirm] [<CommonParameters>]
+ [-ServerUri <String>] [-SyncWatchStatus] [-RemoveWatched] [-SourceServerName <String>]
+ [-TargetServerName <String>] [-ProgressAction <ActionPreference>] [-WhatIf] [-Confirm] [<CommonParameters>]
 ```
 
 ## DESCRIPTION
@@ -166,6 +167,72 @@ Accept wildcard characters: False
 ### -ServerUri
 The base URI of the Plex server.
 If not specified, uses the default stored server.
+
+```yaml
+Type: String
+Parameter Sets: (All)
+Aliases:
+
+Required: False
+Position: Named
+Default value: None
+Accept pipeline input: False
+Accept wildcard characters: False
+```
+
+### -SyncWatchStatus
+After syncing media, compares watch status between the source and target servers and
+syncs watched items from the target (travel) server back to the source (home) server.
+Requires -SourceServerName and -TargetServerName parameters.
+
+```yaml
+Type: SwitchParameter
+Parameter Sets: (All)
+Aliases:
+
+Required: False
+Position: Named
+Default value: False
+Accept pipeline input: False
+Accept wildcard characters: False
+```
+
+### -RemoveWatched
+After syncing, prompts to remove watched items from the playlist. Items are first
+marked as watched on the source server (if -SyncWatchStatus is also specified),
+then removed from the playlist. Requires -SourceServerName and -TargetServerName.
+
+```yaml
+Type: SwitchParameter
+Parameter Sets: (All)
+Aliases:
+
+Required: False
+Position: Named
+Default value: False
+Accept pipeline input: False
+Accept wildcard characters: False
+```
+
+### -SourceServerName
+The name of the source (home) server for watch status operations. Required when
+using -SyncWatchStatus or -RemoveWatched.
+
+```yaml
+Type: String
+Parameter Sets: (All)
+Aliases:
+
+Required: False
+Position: Named
+Default value: None
+Accept pipeline input: False
+Accept wildcard characters: False
+```
+
+### -TargetServerName
+The name of the target (travel/portable) server for watch status operations.
+Required when using -SyncWatchStatus or -RemoveWatched.
 
 ```yaml
 Type: String
