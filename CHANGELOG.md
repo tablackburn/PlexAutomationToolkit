@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [0.6.2] - 2025-12-27
+
+### Fixed
+
+- Added platform tags to module manifest for shields.io badge compatibility
+
 ## [0.6.1] - 2025-12-27
 
 ### Added

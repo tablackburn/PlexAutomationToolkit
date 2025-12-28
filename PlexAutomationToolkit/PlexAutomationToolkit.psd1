@@ -12,7 +12,7 @@
 RootModule = 'PlexAutomationToolkit.psm1'
 
 # Version number of this module.
-ModuleVersion = '0.6.1'
+ModuleVersion = '0.6.2'
 
 # Supported PSEditions
 CompatiblePSEditions = @('Desktop', 'Core')
@@ -130,7 +130,7 @@ PrivateData = @{
     PSData = @{
 
         # Tags applied to this module. These help with module discovery in online galleries.
-        Tags = @('Plex', 'MediaServer', 'Automation', 'API')
+        Tags = @('PSEdition_Desktop', 'PSEdition_Core', 'Windows', 'Linux', 'MacOS', 'Plex', 'MediaServer', 'Automation', 'API')
 
         # A URL to the license for this module.
         LicenseUri = 'https://github.com/tablackburn/PlexAutomationToolkit/blob/main/LICENSE'
