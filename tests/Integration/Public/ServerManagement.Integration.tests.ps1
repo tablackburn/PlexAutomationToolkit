@@ -128,10 +128,19 @@ Describe 'Add-PatServer Integration Tests' -Skip:(-not $script:integrationEnable
                 -Confirm:$false
 
             # Re-import module to simulate new session
-            $moduleManifestFilename = $Env:BHProjectName + '.psd1'
-            $moduleManifestPath = Join-Path -Path $Env:BHBuildOutput -ChildPath $moduleManifestFilename
-            Get-Module $Env:BHProjectName | Remove-Module -Force
-            Import-Module -Name $moduleManifestPath -Verbose:$false -Force
+            $moduleName = $Env:BHProjectName
+            if (-not $moduleName) { $moduleName = 'PlexAutomationToolkit' }
+            Get-Module $moduleName | Remove-Module -Force
+
+            # Find the built module manifest
+            $moduleManifest = Get-ChildItem -Path 'Output' -Filter '*.psd1' -Recurse -ErrorAction SilentlyContinue |
+                Select-Object -First 1
+            if ($moduleManifest) {
+                Import-Module -Name $moduleManifest.FullName -Verbose:$false -Force
+            } else {
+                # Fallback to source module
+                Import-Module -Name "$PSScriptRoot/../../../PlexAutomationToolkit/PlexAutomationToolkit.psd1" -Verbose:$false -Force
+            }
 
             $result = Get-PatStoredServer -Name 'IntegrationTest-Persist'
             $result | Should -Not -BeNullOrEmpty
@@ -182,10 +191,17 @@ Describe 'Remove-PatServer Integration Tests' -Skip:(-not $script:integrationEna
             Remove-PatServer -Name 'IntegrationTest-RemovePersist' -Confirm:$false
 
             # Re-import module to simulate new session
-            $moduleManifestFilename = $Env:BHProjectName + '.psd1'
-            $moduleManifestPath = Join-Path -Path $Env:BHBuildOutput -ChildPath $moduleManifestFilename
-            Get-Module $Env:BHProjectName | Remove-Module -Force
-            Import-Module -Name $moduleManifestPath -Verbose:$false -Force
+            $moduleName = $Env:BHProjectName
+            if (-not $moduleName) { $moduleName = 'PlexAutomationToolkit' }
+            Get-Module $moduleName | Remove-Module -Force
+
+            $moduleManifest = Get-ChildItem -Path 'Output' -Filter '*.psd1' -Recurse -ErrorAction SilentlyContinue |
+                Select-Object -First 1
+            if ($moduleManifest) {
+                Import-Module -Name $moduleManifest.FullName -Verbose:$false -Force
+            } else {
+                Import-Module -Name "$PSScriptRoot/../../../PlexAutomationToolkit/PlexAutomationToolkit.psd1" -Verbose:$false -Force
+            }
 
             # Should throw when trying to get removed server
             { Get-PatStoredServer -Name 'IntegrationTest-RemovePersist' } | Should -Throw '*No server found*'
@@ -250,10 +266,17 @@ Describe 'Set-PatDefaultServer Integration Tests' -Skip:(-not $script:integratio
             Set-PatDefaultServer -Name 'IntegrationTest-Server1' -Confirm:$false
 
             # Re-import module to simulate new session
-            $moduleManifestFilename = $Env:BHProjectName + '.psd1'
-            $moduleManifestPath = Join-Path -Path $Env:BHBuildOutput -ChildPath $moduleManifestFilename
-            Get-Module $Env:BHProjectName | Remove-Module -Force
-            Import-Module -Name $moduleManifestPath -Verbose:$false -Force
+            $moduleName = $Env:BHProjectName
+            if (-not $moduleName) { $moduleName = 'PlexAutomationToolkit' }
+            Get-Module $moduleName | Remove-Module -Force
+
+            $moduleManifest = Get-ChildItem -Path 'Output' -Filter '*.psd1' -Recurse -ErrorAction SilentlyContinue |
+                Select-Object -First 1
+            if ($moduleManifest) {
+                Import-Module -Name $moduleManifest.FullName -Verbose:$false -Force
+            } else {
+                Import-Module -Name "$PSScriptRoot/../../../PlexAutomationToolkit/PlexAutomationToolkit.psd1" -Verbose:$false -Force
+            }
 
             $result = Get-PatStoredServer -Default
             $result.name | Should -Be 'IntegrationTest-Server1'
