@@ -296,6 +296,9 @@ function Sync-PatMedia {
             if ($syncPlan.AddOperations.Count -gt 0) {
                 Write-Verbose "Downloading $($syncPlan.AddOperations.Count) items..."
 
+                # Retrieve token once before the download loop (supports vault storage)
+                $token = if ($server) { Get-PatServerToken -ServerConfig $server } else { $null }
+
                 $downloadCount = 0
                 $downloadedBytes = 0
                 $totalBytes = $syncPlan.BytesToDownload
@@ -317,7 +320,6 @@ function Sync-PatMedia {
                         -Id 1
 
                     # Construct download URL
-                    $token = if ($server -and $server.token) { $server.token } else { $null }
                     $downloadUrl = if ($token) {
                         "$effectiveUri$($addOp.PartKey)?download=1&X-Plex-Token=$token"
                     }
