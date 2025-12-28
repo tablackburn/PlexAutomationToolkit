@@ -12,7 +12,7 @@
 RootModule = 'PlexAutomationToolkit.psm1'
 
 # Version number of this module.
-ModuleVersion = '0.6.3'
+ModuleVersion = '0.7.0'
 
 # Supported PSEditions
 CompatiblePSEditions = @('Desktop', 'Core')
@@ -98,6 +98,7 @@ FunctionsToExport = @(
     'Remove-PatPlaylist'
     'Remove-PatPlaylistItem'
     'Remove-PatServer'
+    'Search-PatMedia'
     'Set-PatDefaultServer'
     'Stop-PatSession'
     'Sync-PatMedia'

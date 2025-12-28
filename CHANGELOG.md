@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [0.7.0] - 2025-12-28
+
+### Added
+
+- New cmdlet `Search-PatMedia` for searching media items across Plex libraries
+  - Full-text search via Plex's `/hubs/search` API endpoint
+  - `-Query` parameter for search terms (required)
+  - `-SectionName` or `-SectionId` to limit search to specific library
+  - `-Type` parameter to filter by media type (movie, show, episode, artist, album, track, photo, collection)
+  - `-Limit` parameter to control max results per type (default: 10)
+  - Returns flattened results with Type property for easy pipeline filtering
+  - Tab completion for `-SectionName` parameter
+  - Returns `PlexAutomationToolkit.SearchResult` objects with RatingKey, Title, Year, Summary, LibraryId, LibraryName, and ServerUri
+
 ## [0.6.3] - 2025-12-27
 
 ### Fixed
