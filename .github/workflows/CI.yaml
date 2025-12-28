@@ -1,16 +1,107 @@
 name: CI
-on: [push, pull_request]
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: write
+
 jobs:
-  test:
-    name: Run Tests
+  unit-tests:
+    name: Unit Tests (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macOS-latest]
     steps:
-    - uses: actions/checkout@v1
-    - name: Test
-      shell: pwsh
-      run: ./build.ps1 -Task Test -Bootstrap
+      - uses: actions/checkout@v4
 
+      - name: Cache PowerShell modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/Documents/PowerShell/Modules
+            ~/.local/share/powershell/Modules
+          key: ${{ runner.os }}-psmodules-${{ hashFiles('build.depend.psd1') }}
+          restore-keys: |
+            ${{ runner.os }}-psmodules-
+
+      - name: Run Unit Tests
+        shell: pwsh
+        run: ./build.ps1 -Task Test -Bootstrap
+
+      - name: Upload Test Results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results-${{ matrix.os }}
+          path: |
+            out/testResults.xml
+            out/coverage.xml
+          if-no-files-found: warn
+
+      - name: Upload Coverage to Codecov
+        uses: codecov/codecov-action@v5
+        if: matrix.os == 'ubuntu-latest'
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: out/coverage.xml
+          flags: unittests
+          fail_ci_if_error: false
+          verbose: true
+
+  integration-tests:
+    name: Integration Tests (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    # Only run for pushes to main or PRs from the same repo (has access to secrets)
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
+    needs: unit-tests
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache PowerShell modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/Documents/PowerShell/Modules
+            ~/.local/share/powershell/Modules
+          key: ${{ runner.os }}-psmodules-${{ hashFiles('build.depend.psd1') }}
+          restore-keys: |
+            ${{ runner.os }}-psmodules-
+
+      - name: Bootstrap Dependencies
+        shell: pwsh
+        run: ./build.ps1 -Bootstrap
+
+      - name: Run Integration Tests
+        shell: pwsh
+        env:
+          PLEX_SERVER_URI: ${{ secrets.PLEX_SERVER_URI }}
+          PLEX_TOKEN: ${{ secrets.PLEX_TOKEN }}
+          PLEX_TEST_SECTION_ID: ${{ secrets.PLEX_TEST_SECTION_ID }}
+          PLEX_TEST_SECTION_NAME: ${{ secrets.PLEX_TEST_SECTION_NAME }}
+          PLEX_ALLOW_MUTATIONS: 'false'
+        run: |
+          if (-not $env:PLEX_SERVER_URI -or -not $env:PLEX_TOKEN) {
+            Write-Host "::warning::Integration tests skipped - PLEX_SERVER_URI or PLEX_TOKEN secrets not configured"
+            exit 0
+          }
+          Write-Host "Running integration tests against: $env:PLEX_SERVER_URI"
+          Invoke-Pester -Path tests/Integration/ -CI -Output Detailed
+
+      - name: Upload Integration Test Results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: integration-results-${{ matrix.os }}
+          path: testResults.xml
+          if-no-files-found: ignore

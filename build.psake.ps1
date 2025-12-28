@@ -14,6 +14,8 @@ properties {
     $PSBPreference.Test.OutputFormat = 'NUnitXml'
     $PSBPreference.Test.CodeCoverage.Enabled = $true
     $PSBPreference.Test.CodeCoverage.Threshold = 0.70  # 70% minimum coverage
+    $PSBPreference.Test.CodeCoverage.OutputPath = 'out/coverage.xml'
+    $PSBPreference.Test.CodeCoverage.OutputFormat = 'JaCoCo'
 }
 
 Task -Name 'Default' -Depends 'Test'
