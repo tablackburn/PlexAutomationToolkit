@@ -97,10 +97,10 @@ jobs:
           }
 
           # Import the built module
-          $modulePath = Get-ChildItem -Path Output/PlexAutomationToolkit -Directory |
-            Sort-Object Name -Descending |
+          $moduleManifest = Get-ChildItem -Path Output/PlexAutomationToolkit -Filter '*.psd1' -Recurse |
             Select-Object -First 1
-          Import-Module $modulePath.FullName -Force
+          Write-Host "Importing module from: $($moduleManifest.FullName)"
+          Import-Module $moduleManifest.FullName -Force
 
           Write-Host "Running integration tests against: $env:PLEX_SERVER_URI"
           Invoke-Pester -Path tests/Integration/ -CI -Output Detailed
