@@ -1,4 +1,7 @@
 BeforeAll {
+    # Remove any loaded instances of the module to avoid "multiple modules" error
+    Get-Module PlexAutomationToolkit -All | Remove-Module -Force -ErrorAction SilentlyContinue
+
     # Import the module from the source directory for unit testing
     $modulePath = Join-Path -Path $PSScriptRoot -ChildPath '..\..\..\PlexAutomationToolkit\PlexAutomationToolkit.psm1'
     Import-Module $modulePath -Force
