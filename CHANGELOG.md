@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [0.6.1] - 2025-12-27
+
+### Added
+
+- Status badges to README (downloads, version, CI status, platform)
+- `CompatiblePSEditions` to module manifest for PSGallery platform badge
+
 ## [0.6.0] - 2025-12-27
 
 ### Changed
