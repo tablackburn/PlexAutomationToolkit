@@ -352,8 +352,8 @@ Describe 'Get-PatSyncPlan' {
         }
 
         It 'Detects insufficient space' {
-            # Use a fresh temp directory for this test
-            $freshDir = Join-Path -Path $env:TEMP -ChildPath "PatSyncPlanSpace_$([Guid]::NewGuid().ToString('N'))"
+            # Use a fresh temp directory for this test (cross-platform)
+            $freshDir = Join-Path -Path ([System.IO.Path]::GetTempPath()) -ChildPath "PatSyncPlanSpace_$([Guid]::NewGuid().ToString('N'))"
             New-Item -Path $freshDir -ItemType Directory -Force | Out-Null
 
             try {
