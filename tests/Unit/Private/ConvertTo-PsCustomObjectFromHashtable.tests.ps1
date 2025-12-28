@@ -4,7 +4,11 @@ BeforeAll {
     Import-Module $modulePath -Force
 
     # Get the private function using module scope
-    $script:ConvertToObject = & (Get-Module PlexAutomationToolkit) { Get-Command ConvertTo-PsCustomObjectFromHashtable }
+    $module = Get-Module -Name 'PlexAutomationToolkit'
+    if (-not $module) {
+        throw "Module PlexAutomationToolkit not loaded"
+    }
+    $script:ConvertToObject = & $module { Get-Command ConvertTo-PsCustomObjectFromHashtable }
 }
 
 Describe 'ConvertTo-PsCustomObjectFromHashtable' {
