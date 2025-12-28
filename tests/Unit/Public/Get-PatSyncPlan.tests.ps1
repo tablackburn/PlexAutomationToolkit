@@ -3,8 +3,8 @@ BeforeAll {
     $modulePath = Join-Path -Path $PSScriptRoot -ChildPath '..\..\..\PlexAutomationToolkit\PlexAutomationToolkit.psm1'
     Import-Module $modulePath -Force
 
-    # Create temp directory for test files
-    $script:TestDir = Join-Path -Path $env:TEMP -ChildPath "PatSyncPlanTests_$([Guid]::NewGuid().ToString('N'))"
+    # Create temp directory for test files (cross-platform)
+    $script:TestDir = Join-Path -Path ([System.IO.Path]::GetTempPath()) -ChildPath "PatSyncPlanTests_$([Guid]::NewGuid().ToString('N'))"
     New-Item -Path $script:TestDir -ItemType Directory -Force | Out-Null
 }
 

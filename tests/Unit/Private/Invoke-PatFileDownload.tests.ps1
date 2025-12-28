@@ -6,8 +6,8 @@ BeforeAll {
     # Get the private function using module scope
     $script:InvokePatFileDownload = & (Get-Module PlexAutomationToolkit) { Get-Command Invoke-PatFileDownload }
 
-    # Create temp directory for test files
-    $script:TestDir = Join-Path -Path $env:TEMP -ChildPath "PatFileDownloadTests_$([Guid]::NewGuid().ToString('N'))"
+    # Create temp directory for test files (cross-platform)
+    $script:TestDir = Join-Path -Path ([System.IO.Path]::GetTempPath()) -ChildPath "PatFileDownloadTests_$([Guid]::NewGuid().ToString('N'))"
     New-Item -Path $script:TestDir -ItemType Directory -Force | Out-Null
 }
 
@@ -57,7 +57,8 @@ Describe 'Invoke-PatFileDownload' {
             $result = & $script:InvokePatFileDownload -Uri 'http://test/file' -OutFile $outFile | Select-Object -Last 1
 
             $result.GetType().Name | Should -Be 'FileInfo'
-            $result.FullName | Should -Be $outFile
+            # Compare resolved paths to handle Windows short path names (e.g., RUNNER~1)
+            $result.FullName | Should -Be (Resolve-Path -Path $outFile).Path
         }
 
         It 'Creates destination directory if it does not exist' {
