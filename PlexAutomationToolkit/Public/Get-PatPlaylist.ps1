@@ -103,6 +103,9 @@ function Get-PatPlaylist {
             if ($fakeBoundParameters.ContainsKey('ServerUri')) {
                 $getParams['ServerUri'] = $fakeBoundParameters['ServerUri']
             }
+            if ($fakeBoundParameters.ContainsKey('Token')) {
+                $getParams['Token'] = $fakeBoundParameters['Token']
+            }
 
             $playlists = Get-PatPlaylist @getParams
 

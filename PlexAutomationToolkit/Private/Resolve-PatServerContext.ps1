@@ -68,6 +68,7 @@ function Resolve-PatServerContext {
             Headers        = $headers
             WasExplicitUri = $true
             Server         = $null
+            Token          = $Token
         }
     }
 
@@ -82,5 +83,6 @@ function Resolve-PatServerContext {
         Headers        = Get-PatAuthenticationHeader -Server $server
         WasExplicitUri = $false
         Server         = $server
+        Token          = $null  # Token retrieved from stored server, not needed for nested calls
     }
 }

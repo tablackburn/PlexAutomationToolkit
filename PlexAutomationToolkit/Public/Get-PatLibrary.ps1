@@ -10,6 +10,10 @@ function Get-PatLibrary {
         The base URI of the Plex server (e.g., http://plex.example.com:32400)
         If not specified, uses the default stored server.
 
+    .PARAMETER Token
+        The Plex authentication token. Required when using -ServerUri to authenticate
+        with the server. If not specified with -ServerUri, requests will fail.
+
     .PARAMETER SectionId
         Optional ID of a specific library section to retrieve. If omitted, returns all sections.
 
@@ -52,6 +56,11 @@ function Get-PatLibrary {
         [string]
         $ServerUri,
 
+        [Parameter(Mandatory = $false)]
+        [ValidateNotNullOrEmpty()]
+        [string]
+        $Token,
+
         [Parameter(Mandatory = $false, ValueFromPipeline, ValueFromPipelineByPropertyName)]
         [ValidateRange(1, [int]::MaxValue)]
         [int]
@@ -83,7 +92,12 @@ function Get-PatLibrary {
             Get-PatAuthenticationHeader -Server $server
         }
         else {
-            @{ Accept = 'application/json' }
+            $h = @{ Accept = 'application/json' }
+            if (-not [string]::IsNullOrWhiteSpace($Token)) {
+                $h['X-Plex-Token'] = $Token
+                Write-Debug "Adding X-Plex-Token header for authenticated request"
+            }
+            $h
         }
     }
 
