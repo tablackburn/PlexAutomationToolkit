@@ -18,9 +18,15 @@ Add-PatCollectionItem -CollectionId <Int32> -RatingKey <Int32[]> [-ServerUri <St
  [-ProgressAction <ActionPreference>] [-WhatIf] [-Confirm] [<CommonParameters>]
 ```
 
-### ByName
+### ByNameWithLibraryId
 ```
 Add-PatCollectionItem -CollectionName <String> -LibraryId <Int32> -RatingKey <Int32[]> [-ServerUri <String>]
+ [-PassThru] [-ProgressAction <ActionPreference>] [-WhatIf] [-Confirm] [<CommonParameters>]
+```
+
+### ByNameWithLibraryName
+```
+Add-PatCollectionItem -CollectionName <String> -LibraryName <String> -RatingKey <Int32[]> [-ServerUri <String>]
  [-PassThru] [-ProgressAction <ActionPreference>] [-WhatIf] [-Confirm] [<CommonParameters>]
 ```
 
@@ -85,7 +91,23 @@ Requires LibraryId to be specified.
 
 ```yaml
 Type: String
-Parameter Sets: ByName
+Parameter Sets: ByNameWithLibraryId, ByNameWithLibraryName
+Aliases:
+
+Required: True
+Position: Named
+Default value: None
+Accept pipeline input: False
+Accept wildcard characters: False
+```
+
+### -LibraryName
+The name of the library containing the collection. Supports tab completion.
+Required when using -CollectionName. This is the preferred way to specify a library.
+
+```yaml
+Type: String
+Parameter Sets: ByNameWithLibraryName
 Aliases:
 
 Required: True
@@ -102,7 +124,7 @@ Use Get-PatLibrary to find library IDs.
 
 ```yaml
 Type: Int32
-Parameter Sets: ByName
+Parameter Sets: ByNameWithLibraryId
 Aliases:
 
 Required: True

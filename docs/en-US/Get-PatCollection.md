@@ -14,8 +14,8 @@ Retrieves collections from a Plex server library.
 
 ### All (Default)
 ```
-Get-PatCollection -LibraryId <Int32> [-IncludeItems] [-ServerUri <String>] [-ProgressAction <ActionPreference>]
- [<CommonParameters>]
+Get-PatCollection [-LibraryName <String>] [-LibraryId <Int32>] [-IncludeItems] [-ServerUri <String>]
+ [-ProgressAction <ActionPreference>] [<CommonParameters>]
 ```
 
 ### ById
@@ -24,9 +24,15 @@ Get-PatCollection -CollectionId <Int32> [-IncludeItems] [-ServerUri <String>]
  [-ProgressAction <ActionPreference>] [<CommonParameters>]
 ```
 
-### ByName
+### ByNameWithLibraryId
 ```
 Get-PatCollection -CollectionName <String> -LibraryId <Int32> [-IncludeItems] [-ServerUri <String>]
+ [-ProgressAction <ActionPreference>] [<CommonParameters>]
+```
+
+### ByNameWithLibraryName
+```
+Get-PatCollection -CollectionName <String> -LibraryName <String> [-IncludeItems] [-ServerUri <String>]
  [-ProgressAction <ActionPreference>] [<CommonParameters>]
 ```
 
@@ -99,7 +105,35 @@ Requires LibraryId to be specified.
 
 ```yaml
 Type: String
-Parameter Sets: ByName
+Parameter Sets: ByNameWithLibraryId, ByNameWithLibraryName
+Aliases:
+
+Required: True
+Position: Named
+Default value: None
+Accept pipeline input: False
+Accept wildcard characters: False
+```
+
+### -LibraryName
+The name of the library to retrieve collections from. Supports tab completion.
+This is the preferred way to specify a library.
+
+```yaml
+Type: String
+Parameter Sets: All
+Aliases:
+
+Required: False
+Position: Named
+Default value: None
+Accept pipeline input: False
+Accept wildcard characters: False
+```
+
+```yaml
+Type: String
+Parameter Sets: ByNameWithLibraryName
 Aliases:
 
 Required: True
@@ -117,7 +151,19 @@ Use Get-PatLibrary to find library IDs.
 
 ```yaml
 Type: Int32
-Parameter Sets: All, ByName
+Parameter Sets: All
+Aliases:
+
+Required: False
+Position: Named
+Default value: 0
+Accept pipeline input: False
+Accept wildcard characters: False
+```
+
+```yaml
+Type: Int32
+Parameter Sets: ByNameWithLibraryId
 Aliases:
 
 Required: True

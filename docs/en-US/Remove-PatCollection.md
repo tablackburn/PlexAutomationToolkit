@@ -18,9 +18,15 @@ Remove-PatCollection -CollectionId <Int32> [-ServerUri <String>] [-PassThru]
  [-ProgressAction <ActionPreference>] [-WhatIf] [-Confirm] [<CommonParameters>]
 ```
 
-### ByName
+### ByNameWithLibraryId
 ```
 Remove-PatCollection -CollectionName <String> -LibraryId <Int32> [-ServerUri <String>] [-PassThru]
+ [-ProgressAction <ActionPreference>] [-WhatIf] [-Confirm] [<CommonParameters>]
+```
+
+### ByNameWithLibraryName
+```
+Remove-PatCollection -CollectionName <String> -LibraryName <String> [-ServerUri <String>] [-PassThru]
  [-ProgressAction <ActionPreference>] [-WhatIf] [-Confirm] [<CommonParameters>]
 ```
 
@@ -92,7 +98,23 @@ Requires LibraryId to be specified.
 
 ```yaml
 Type: String
-Parameter Sets: ByName
+Parameter Sets: ByNameWithLibraryId, ByNameWithLibraryName
+Aliases:
+
+Required: True
+Position: Named
+Default value: None
+Accept pipeline input: False
+Accept wildcard characters: False
+```
+
+### -LibraryName
+The name of the library containing the collection. Supports tab completion.
+Required when using -CollectionName. This is the preferred way to specify a library.
+
+```yaml
+Type: String
+Parameter Sets: ByNameWithLibraryName
 Aliases:
 
 Required: True
@@ -109,7 +131,7 @@ Use Get-PatLibrary to find library IDs.
 
 ```yaml
 Type: Int32
-Parameter Sets: ByName
+Parameter Sets: ByNameWithLibraryId
 Aliases:
 
 Required: True

@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [0.6.3] - 2025-12-27
+
+### Fixed
+
+- Fixed publish workflow permissions for automated release creation
+
 ## [0.6.2] - 2025-12-27
 
 ### Fixed

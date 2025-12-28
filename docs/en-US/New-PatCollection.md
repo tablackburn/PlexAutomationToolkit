@@ -12,9 +12,16 @@ Creates a new collection in a Plex library.
 
 ## SYNTAX
 
+### ByLibraryName (Default)
 ```
-New-PatCollection [-Title] <String> [-LibraryId] <Int32> [-RatingKey] <Int32[]> [[-ServerUri] <String>]
- [-PassThru] [-ProgressAction <ActionPreference>] [-WhatIf] [-Confirm] [<CommonParameters>]
+New-PatCollection -Title <String> -LibraryName <String> -RatingKey <Int32[]> [-ServerUri <String>] [-PassThru]
+ [-ProgressAction <ActionPreference>] [-WhatIf] [-Confirm] [<CommonParameters>]
+```
+
+### ByLibraryId
+```
+New-PatCollection -Title <String> -LibraryId <Int32> -RatingKey <Int32[]> [-ServerUri <String>] [-PassThru]
+ [-ProgressAction <ActionPreference>] [-WhatIf] [-Confirm] [<CommonParameters>]
 ```
 
 ## DESCRIPTION
@@ -58,7 +65,23 @@ Parameter Sets: (All)
 Aliases:
 
 Required: True
-Position: 1
+Position: Named
+Default value: None
+Accept pipeline input: False
+Accept wildcard characters: False
+```
+
+### -LibraryName
+The name of the library where the collection will be created. Supports tab completion.
+This is the preferred way to specify a library.
+
+```yaml
+Type: String
+Parameter Sets: ByLibraryName
+Aliases:
+
+Required: True
+Position: Named
 Default value: None
 Accept pipeline input: False
 Accept wildcard characters: False
@@ -70,11 +93,11 @@ Use Get-PatLibrary to find library IDs.
 
 ```yaml
 Type: Int32
-Parameter Sets: (All)
+Parameter Sets: ByLibraryId
 Aliases:
 
 Required: True
-Position: 2
+Position: Named
 Default value: 0
 Accept pipeline input: False
 Accept wildcard characters: False
@@ -92,7 +115,7 @@ Parameter Sets: (All)
 Aliases:
 
 Required: True
-Position: 3
+Position: Named
 Default value: None
 Accept pipeline input: True (ByPropertyName, ByValue)
 Accept wildcard characters: False
@@ -108,7 +131,7 @@ Parameter Sets: (All)
 Aliases:
 
 Required: False
-Position: 4
+Position: Named
 Default value: None
 Accept pipeline input: False
 Accept wildcard characters: False

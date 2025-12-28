@@ -13,8 +13,8 @@ Creates a new playlist on a Plex server.
 ## SYNTAX
 
 ```
-New-PatPlaylist [-Title] <String> [[-Type] <String>] [[-RatingKey] <Int32[]>] [[-ServerUri] <String>]
- [-PassThru] [-ProgressAction <ActionPreference>] [-WhatIf] [-Confirm] [<CommonParameters>]
+New-PatPlaylist [-Title] <String> [[-Type] <String>] [-RatingKey] <Int32[]> [[-ServerUri] <String>] [-PassThru]
+ [-ProgressAction <ActionPreference>] [-WhatIf] [-Confirm] [<CommonParameters>]
 ```
 
 ## DESCRIPTION
@@ -100,7 +100,7 @@ Type: Int32[]
 Parameter Sets: (All)
 Aliases:
 
-Required: False
+Required: True
 Position: 3
 Default value: None
 Accept pipeline input: True (ByPropertyName, ByValue)
