@@ -202,7 +202,20 @@ Describe "Test help for <_.Name>" -ForEach $commands {
         }
 
         # Required value in Help should match IsMandatory property of parameter
+        # Note: Parameters that are mandatory in some parameter sets but not others may show
+        # inconsistent values in help (Get-Help shows based on default parameter set)
         It 'Has correct [mandatory] value' {
+            # Skip parameters that have different mandatory status across parameter sets
+            $parameterSetsWithParam = $command.ParameterSets | Where-Object { $_.Parameters.Name -contains $parameterName }
+            $mandatoryValues = $parameterSetsWithParam | ForEach-Object {
+                ($_.Parameters | Where-Object { $_.Name -eq $parameterName }).IsMandatory
+            } | Sort-Object -Unique
+
+            if ($mandatoryValues.Count -gt 1) {
+                Set-ItResult -Skipped -Because "Parameter '$parameterName' has varying mandatory status across parameter sets"
+                return
+            }
+
             $codeMandatory = $_.IsMandatory.toString().ToLower()
             $helpRequired = $parameterHelp.Required.ToLower()
             $helpRequired | Should -Be $codeMandatory
