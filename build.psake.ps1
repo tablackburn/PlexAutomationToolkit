@@ -18,8 +18,8 @@ properties {
     $PSBPreference.Test.OutputFormat = 'NUnitXml'
     $PSBPreference.Test.CodeCoverage.Enabled = $true
     $PSBPreference.Test.CodeCoverage.Threshold = 0.70  # 70% minimum coverage
-    $PSBPreference.Test.CodeCoverage.OutputPath = Join-Path -Path $PSScriptRoot -ChildPath 'out/coverage.xml'
-    $PSBPreference.Test.CodeCoverage.OutputFormat = 'JaCoCo'
+    $PSBPreference.Test.CodeCoverage.OutputFile = Join-Path -Path $PSScriptRoot -ChildPath 'out/coverage.xml'
+    $PSBPreference.Test.CodeCoverage.OutputFileFormat = 'JaCoCo'
 }
 
 Task -Name 'Default' -Depends 'Test'
