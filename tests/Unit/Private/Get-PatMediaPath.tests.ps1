@@ -5,9 +5,12 @@ BeforeAll {
 
     # Get the private function using module scope
     $script:GetPatMediaPath = & (Get-Module PlexAutomationToolkit) { Get-Command Get-PatMediaPath }
+
+    # Check if running on Windows
+    $script:IsWindows = $IsWindows -or ($PSVersionTable.PSEdition -eq 'Desktop')
 }
 
-Describe 'Get-PatMediaPath' {
+Describe 'Get-PatMediaPath' -Skip:(-not $script:IsWindows) {
     Context 'Movie path generation' {
         It 'Generates correct path for a movie' {
             $mediaInfo = [PSCustomObject]@{

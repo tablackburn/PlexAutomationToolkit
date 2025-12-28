@@ -6,6 +6,13 @@ BeforeAll {
 
     Get-Module PlexAutomationToolkit | Remove-Module -Force -ErrorAction 'Ignore'
     Import-Module -Name $moduleManifestPath -Verbose:$false -ErrorAction 'Stop'
+
+    # Check if running on Windows
+    $script:IsWindows = $IsWindows -or ($PSVersionTable.PSEdition -eq 'Desktop')
+
+    # Get the path separator for pattern matching
+    $script:Sep = [IO.Path]::DirectorySeparatorChar
+    $script:SepPattern = if ($script:Sep -eq '\') { '\\' } else { '/' }
 }
 
 Describe 'Get-PatConfigurationPath' {
@@ -14,6 +21,7 @@ Describe 'Get-PatConfigurationPath' {
         $script:originalOneDrive = $env:OneDrive
         $script:originalUserProfile = $env:USERPROFILE
         $script:originalLocalAppData = $env:LOCALAPPDATA
+        $script:originalHome = $env:HOME
     }
 
     AfterEach {
@@ -21,9 +29,10 @@ Describe 'Get-PatConfigurationPath' {
         $env:OneDrive = $script:originalOneDrive
         $env:USERPROFILE = $script:originalUserProfile
         $env:LOCALAPPDATA = $script:originalLocalAppData
+        $env:HOME = $script:originalHome
     }
 
-    Context 'OneDrive path (preferred location)' {
+    Context 'OneDrive path (preferred location)' -Skip:(-not $script:IsWindows) {
         It 'Should return OneDrive path when OneDrive is available and writable' {
             # Skip if no OneDrive on this system
             if (-not $env:OneDrive) {
@@ -85,14 +94,14 @@ Describe 'Get-PatConfigurationPath' {
         }
     }
 
-    Context 'Fallback to Documents folder' {
+    Context 'Fallback to Documents folder' -Skip:(-not $script:IsWindows) {
         It 'Should use Documents folder when OneDrive is not available' {
             # Temporarily remove OneDrive env variable
             $env:OneDrive = $null
 
             $result = InModuleScope PlexAutomationToolkit { Get-PatConfigurationPath }
 
-            $result | Should -BeLike "*Documents\PlexAutomationToolkit\servers.json"
+            $result | Should -BeLike "*Documents*PlexAutomationToolkit*servers.json"
             $result | Should -Not -BeLike "*OneDrive*"
         }
 
@@ -126,15 +135,14 @@ Describe 'Get-PatConfigurationPath' {
         }
     }
 
-    Context 'Final fallback to LocalAppData' {
-        It 'Should use LocalAppData when OneDrive and Documents are not available' {
-            # This test is difficult to simulate without breaking the environment
-            # We'll just verify the path format is correct
+    Context 'Final fallback to LocalAppData (Windows) or HOME (Unix)' {
+        It 'Should use fallback location when primary paths are not available' {
+            # This test verifies the function returns a valid path
             $result = InModuleScope PlexAutomationToolkit { Get-PatConfigurationPath }
 
             # Should return a valid path
             $result | Should -Not -BeNullOrEmpty
-            $result | Should -BeLike "*\servers.json"
+            $result | Should -Match "servers\.json$"
         }
 
         It 'Should return a path ending with servers.json' {

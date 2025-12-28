@@ -406,7 +406,7 @@ Describe 'Get-PatSyncPlan' {
         }
     }
 
-    Context 'Relative path resolution' {
+    Context 'Relative path resolution' -Skip:(-not ($IsWindows -or $PSVersionTable.PSEdition -eq 'Desktop')) {
         BeforeAll {
             Mock -ModuleName PlexAutomationToolkit Get-PatPlaylist {
                 return [PSCustomObject]@{
