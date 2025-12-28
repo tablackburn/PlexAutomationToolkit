@@ -11,17 +11,13 @@ properties {
     $PSBPreference.Build.CompileModule = $false
     $PSBPreference.Help.DefaultLocale = 'en-US'
 
-    # Ensure output directory exists and use absolute paths
-    $outDir = Join-Path -Path $PSScriptRoot -ChildPath 'out'
-    if (-not (Test-Path -Path $outDir)) {
-        New-Item -Path $outDir -ItemType Directory -Force | Out-Null
-    }
-
-    $PSBPreference.Test.OutputFile = Join-Path -Path $outDir -ChildPath 'testResults.xml'
+    # Test settings - use relative paths from project root
+    $PSBPreference.Test.RootDir = Join-Path -Path $PSScriptRoot -ChildPath 'tests'
+    $PSBPreference.Test.OutputFile = Join-Path -Path $PSScriptRoot -ChildPath 'out/testResults.xml'
     $PSBPreference.Test.OutputFormat = 'NUnitXml'
     $PSBPreference.Test.CodeCoverage.Enabled = $true
     $PSBPreference.Test.CodeCoverage.Threshold = 0.70  # 70% minimum coverage
-    $PSBPreference.Test.CodeCoverage.OutputPath = Join-Path -Path $outDir -ChildPath 'coverage.xml'
+    $PSBPreference.Test.CodeCoverage.OutputPath = Join-Path -Path $PSScriptRoot -ChildPath 'out/coverage.xml'
     $PSBPreference.Test.CodeCoverage.OutputFormat = 'JaCoCo'
 }
 

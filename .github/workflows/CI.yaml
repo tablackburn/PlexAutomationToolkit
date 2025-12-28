@@ -33,7 +33,9 @@ jobs:
 
       - name: Run Unit Tests
         shell: pwsh
-        run: ./build.ps1 -Task Test -Bootstrap
+        run: |
+          New-Item -Path out -ItemType Directory -Force | Out-Null
+          ./build.ps1 -Task Test -Bootstrap
 
       - name: Upload Test Results
         uses: actions/upload-artifact@v4
