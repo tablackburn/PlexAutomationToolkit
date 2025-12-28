@@ -18,6 +18,11 @@ function Resolve-PatServerContext {
     .PARAMETER ServerUri
         Optional URI of the Plex server. If not specified, uses the default stored server.
 
+    .PARAMETER Token
+        Optional Plex authentication token. Required when using explicit ServerUri
+        to authenticate with the server. If not specified with ServerUri, requests
+        will be unauthenticated and may fail with 401 errors.
+
     .OUTPUTS
         PSCustomObject with properties:
         - Uri: The effective server URI to use
@@ -44,14 +49,23 @@ function Resolve-PatServerContext {
     param(
         [Parameter(Mandatory = $false)]
         [string]
-        $ServerUri
+        $ServerUri,
+
+        [Parameter(Mandatory = $false)]
+        [string]
+        $Token
     )
 
     if ($ServerUri) {
         Write-Verbose "Using explicitly specified server: $ServerUri"
+        $headers = @{ Accept = 'application/json' }
+        if (-not [string]::IsNullOrWhiteSpace($Token)) {
+            $headers['X-Plex-Token'] = $Token
+            Write-Debug "Adding X-Plex-Token header for authenticated request"
+        }
         return [PSCustomObject]@{
             Uri            = $ServerUri
-            Headers        = @{ Accept = 'application/json' }
+            Headers        = $headers
             WasExplicitUri = $true
             Server         = $null
         }
