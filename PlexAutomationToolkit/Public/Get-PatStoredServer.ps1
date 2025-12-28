@@ -68,8 +68,11 @@ function Get-PatStoredServer {
             }
             'All' {
                 # Return servers if any exist, otherwise return nothing (not $null)
-                if ($configuration.servers) {
+                if ($configuration.servers -and $configuration.servers.Count -gt 0) {
                     $configuration.servers
+                }
+                else {
+                    Write-Information "No servers configured. Use Add-PatServer to add one." -InformationAction Continue
                 }
             }
         }

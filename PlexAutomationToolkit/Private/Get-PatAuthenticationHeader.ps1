@@ -36,15 +36,19 @@ function Get-PatAuthenticationHeader {
         Accept = 'application/json'
     }
 
-    # Add X-Plex-Token header if server has a non-empty token
-    if ($Server -and
-        $Server.PSObject.Properties['token'] -and
-        -not [string]::IsNullOrWhiteSpace($Server.token)) {
-        $headers['X-Plex-Token'] = $Server.token
-        Write-Debug "Adding X-Plex-Token header for authenticated request"
+    # Add X-Plex-Token header if server has a token (from vault or inline)
+    if ($Server) {
+        $token = Get-PatServerToken -ServerConfig $Server
+        if (-not [string]::IsNullOrWhiteSpace($token)) {
+            $headers['X-Plex-Token'] = $token
+            Write-Debug "Adding X-Plex-Token header for authenticated request"
+        }
+        else {
+            Write-Debug "No token available - using unauthenticated request"
+        }
     }
     else {
-        Write-Debug "No token available - using unauthenticated request"
+        Write-Debug "No server provided - using unauthenticated request"
     }
 
     return $headers

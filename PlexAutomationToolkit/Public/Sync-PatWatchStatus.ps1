@@ -8,11 +8,20 @@ function Sync-PatWatchStatus {
         as watched on the target server that are watched on the source. Uses the Plex
         scrobble endpoint to mark items as watched.
 
+        Supports bidirectional sync for scenarios like syncing watch status after
+        watching media on a travel server.
+
     .PARAMETER SourceServerName
         The name of the source server (as stored with Add-PatServer).
 
     .PARAMETER TargetServerName
         The name of the target server (as stored with Add-PatServer).
+
+    .PARAMETER Direction
+        The direction of the sync:
+        - SourceToTarget (default): Sync watched items from source to target
+        - TargetToSource: Sync watched items from target to source
+        - Bidirectional: Sync watched items in both directions
 
     .PARAMETER SectionId
         Optional array of library section IDs to sync. If not specified, syncs all sections.
@@ -24,6 +33,16 @@ function Sync-PatWatchStatus {
         Sync-PatWatchStatus -SourceServerName 'Travel' -TargetServerName 'Home'
 
         Syncs all watched status from Travel server to Home server.
+
+    .EXAMPLE
+        Sync-PatWatchStatus -SourceServerName 'Travel' -TargetServerName 'Home' -Direction TargetToSource
+
+        Syncs watched status from Home server back to Travel server.
+
+    .EXAMPLE
+        Sync-PatWatchStatus -SourceServerName 'Travel' -TargetServerName 'Home' -Direction Bidirectional
+
+        Syncs watched status in both directions between Travel and Home servers.
 
     .EXAMPLE
         Sync-PatWatchStatus -SourceServerName 'Travel' -TargetServerName 'Home' -SectionId 1, 2
@@ -61,6 +80,11 @@ function Sync-PatWatchStatus {
         $TargetServerName,
 
         [Parameter(Mandatory = $false)]
+        [ValidateSet('SourceToTarget', 'TargetToSource', 'Bidirectional')]
+        [string]
+        $Direction = 'SourceToTarget',
+
+        [Parameter(Mandatory = $false)]
         [int[]]
         $SectionId,
 
@@ -70,8 +94,13 @@ function Sync-PatWatchStatus {
     )
 
     begin {
-        # Get target server configuration for scrobble operations
+        # Get both server configurations
         try {
+            $sourceServer = Get-PatStoredServer -Name $SourceServerName -ErrorAction Stop
+            if (-not $sourceServer) {
+                throw "Source server '$SourceServerName' not found. Use Add-PatServer to configure it."
+            }
+
             $targetServer = Get-PatStoredServer -Name $TargetServerName -ErrorAction Stop
             if (-not $targetServer) {
                 throw "Target server '$TargetServerName' not found. Use Add-PatServer to configure it."
@@ -81,100 +110,144 @@ function Sync-PatWatchStatus {
             throw "Failed to get server configuration: $($_.Exception.Message)"
         }
 
-        Write-Verbose "Syncing watch status from '$SourceServerName' to '$TargetServerName'"
+        Write-Verbose "Syncing watch status between '$SourceServerName' and '$TargetServerName' (Direction: $Direction)"
     }
 
     process {
         try {
-            # Get differences (items watched on source but not target)
-            $compareParams = @{
-                SourceServerName   = $SourceServerName
-                TargetServerName   = $TargetServerName
-                WatchedOnSourceOnly = $true
-                ErrorAction        = 'Stop'
-            }
+            $allResults = @()
 
-            if ($SectionId) {
-                $compareParams['SectionId'] = $SectionId
-            }
-
-            $differences = @(Compare-PatWatchStatus @compareParams)
-
-            if ($differences.Count -eq 0) {
-                Write-Verbose "No differences found - watch status is already in sync"
-                return
-            }
-
-            Write-Verbose "Found $($differences.Count) items to mark as watched on target"
-
-            $results = @()
-            $successCount = 0
-            $failCount = 0
-
-            foreach ($item in $differences) {
-                $itemDisplay = if ($item.Type -eq 'episode') {
-                    "$($item.ShowName) - S$($item.Season.ToString('D2'))E$($item.Episode.ToString('D2')) - $($item.Title)"
+            # Determine which directions to sync
+            $syncOperations = switch ($Direction) {
+                'SourceToTarget' {
+                    @(@{
+                        FromName   = $SourceServerName
+                        ToName     = $TargetServerName
+                        FromServer = $sourceServer
+                        ToServer   = $targetServer
+                    })
                 }
-                else {
-                    "$($item.Title) ($($item.Year))"
+                'TargetToSource' {
+                    @(@{
+                        FromName   = $TargetServerName
+                        ToName     = $SourceServerName
+                        FromServer = $targetServer
+                        ToServer   = $sourceServer
+                    })
+                }
+                'Bidirectional' {
+                    @(
+                        @{
+                            FromName   = $SourceServerName
+                            ToName     = $TargetServerName
+                            FromServer = $sourceServer
+                            ToServer   = $targetServer
+                        },
+                        @{
+                            FromName   = $TargetServerName
+                            ToName     = $SourceServerName
+                            FromServer = $targetServer
+                            ToServer   = $sourceServer
+                        }
+                    )
+                }
+            }
+
+            foreach ($syncOp in $syncOperations) {
+                Write-Verbose "Syncing from '$($syncOp.FromName)' to '$($syncOp.ToName)'"
+
+                # Get differences (items watched on source but not target)
+                $compareParams = @{
+                    SourceServerName    = $syncOp.FromName
+                    TargetServerName    = $syncOp.ToName
+                    WatchedOnSourceOnly = $true
+                    ErrorAction         = 'Stop'
                 }
 
-                $percentComplete = [int]((($successCount + $failCount) / $differences.Count) * 100)
-                Write-Progress -Activity "Syncing watch status" `
-                    -Status "Processing $($successCount + $failCount + 1) of $($differences.Count)" `
-                    -PercentComplete $percentComplete `
-                    -CurrentOperation $itemDisplay `
-                    -Id 1
+                if ($SectionId) {
+                    $compareParams['SectionId'] = $SectionId
+                }
 
-                if ($PSCmdlet.ShouldProcess($itemDisplay, "Mark as watched on $TargetServerName")) {
-                    try {
-                        # Use scrobble endpoint to mark as watched
-                        $scrobbleEndpoint = "/:/scrobble?key=$($item.TargetRatingKey)&identifier=com.plexapp.plugins.library"
-                        $scrobbleUri = Join-PatUri -BaseUri $targetServer.uri -Endpoint $scrobbleEndpoint
-                        $headers = Get-PatAuthenticationHeader -Server $targetServer
+                $differences = @(Compare-PatWatchStatus @compareParams)
 
-                        Invoke-PatApi -Uri $scrobbleUri -Headers $headers -ErrorAction Stop | Out-Null
+                if ($differences.Count -eq 0) {
+                    Write-Verbose "No differences found for $($syncOp.FromName) -> $($syncOp.ToName)"
+                    Write-Information "Watch status already in sync: $($syncOp.FromName) -> $($syncOp.ToName)" -InformationAction Continue
+                    continue
+                }
 
-                        $successCount++
-                        Write-Verbose "Marked as watched: $itemDisplay"
+                Write-Verbose "Found $($differences.Count) items to mark as watched on '$($syncOp.ToName)'"
 
-                        $results += [PSCustomObject]@{
-                            PSTypeName = 'PlexAutomationToolkit.WatchStatusSyncResult'
-                            Title      = $item.Title
-                            Type       = $item.Type
-                            ShowName   = $item.ShowName
-                            Season     = $item.Season
-                            Episode    = $item.Episode
-                            RatingKey  = $item.TargetRatingKey
-                            Status     = 'Success'
-                            Error      = $null
+                $successCount = 0
+                $failCount = 0
+
+                foreach ($item in $differences) {
+                    $itemDisplay = if ($item.Type -eq 'episode') {
+                        "$($item.ShowName) - S$($item.Season.ToString('D2'))E$($item.Episode.ToString('D2')) - $($item.Title)"
+                    }
+                    else {
+                        "$($item.Title) ($($item.Year))"
+                    }
+
+                    $percentComplete = [int]((($successCount + $failCount) / $differences.Count) * 100)
+                    Write-Progress -Activity "Syncing watch status to $($syncOp.ToName)" `
+                        -Status "Processing $($successCount + $failCount + 1) of $($differences.Count)" `
+                        -PercentComplete $percentComplete `
+                        -CurrentOperation $itemDisplay `
+                        -Id 1
+
+                    if ($PSCmdlet.ShouldProcess($itemDisplay, "Mark as watched on $($syncOp.ToName)")) {
+                        try {
+                            # Use scrobble endpoint to mark as watched
+                            $scrobbleEndpoint = "/:/scrobble?key=$($item.TargetRatingKey)&identifier=com.plexapp.plugins.library"
+                            $scrobbleUri = Join-PatUri -BaseUri $syncOp.ToServer.uri -Endpoint $scrobbleEndpoint
+                            $headers = Get-PatAuthenticationHeader -Server $syncOp.ToServer
+
+                            Invoke-PatApi -Uri $scrobbleUri -Headers $headers -ErrorAction Stop | Out-Null
+
+                            $successCount++
+                            Write-Verbose "Marked as watched: $itemDisplay"
+
+                            $allResults += [PSCustomObject]@{
+                                PSTypeName  = 'PlexAutomationToolkit.WatchStatusSyncResult'
+                                Title       = $item.Title
+                                Type        = $item.Type
+                                ShowName    = $item.ShowName
+                                Season      = $item.Season
+                                Episode     = $item.Episode
+                                RatingKey   = $item.TargetRatingKey
+                                SyncedTo    = $syncOp.ToName
+                                Status      = 'Success'
+                                Error       = $null
+                            }
+                        }
+                        catch {
+                            $failCount++
+                            Write-Warning "Failed to mark as watched: $itemDisplay - $($_.Exception.Message)"
+
+                            $allResults += [PSCustomObject]@{
+                                PSTypeName  = 'PlexAutomationToolkit.WatchStatusSyncResult'
+                                Title       = $item.Title
+                                Type        = $item.Type
+                                ShowName    = $item.ShowName
+                                Season      = $item.Season
+                                Episode     = $item.Episode
+                                RatingKey   = $item.TargetRatingKey
+                                SyncedTo    = $syncOp.ToName
+                                Status      = 'Failed'
+                                Error       = $_.Exception.Message
+                            }
                         }
                     }
-                    catch {
-                        $failCount++
-                        Write-Warning "Failed to mark as watched: $itemDisplay - $($_.Exception.Message)"
-
-                        $results += [PSCustomObject]@{
-                            PSTypeName = 'PlexAutomationToolkit.WatchStatusSyncResult'
-                            Title      = $item.Title
-                            Type       = $item.Type
-                            ShowName   = $item.ShowName
-                            Season     = $item.Season
-                            Episode    = $item.Episode
-                            RatingKey  = $item.TargetRatingKey
-                            Status     = 'Failed'
-                            Error      = $_.Exception.Message
-                        }
-                    }
                 }
+
+                Write-Progress -Activity "Syncing watch status to $($syncOp.ToName)" -Completed -Id 1
+                Write-Verbose "Sync to '$($syncOp.ToName)' completed: $successCount succeeded, $failCount failed"
+                Write-Information "Synced $successCount items to '$($syncOp.ToName)'$(if ($failCount -gt 0) { " ($failCount failed)" })" -InformationAction Continue
             }
-
-            Write-Progress -Activity "Syncing watch status" -Completed -Id 1
-
-            Write-Verbose "Sync completed: $successCount succeeded, $failCount failed"
 
             if ($PassThru) {
-                $results
+                $allResults
             }
         }
         catch {

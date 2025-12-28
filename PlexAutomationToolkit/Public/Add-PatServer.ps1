@@ -23,7 +23,9 @@ function Add-PatServer {
         If not provided and the server requires authentication, you will be prompted to authenticate
         using Connect-PatAccount.
 
-        WARNING: Tokens are stored in PLAINTEXT in servers.json. Only use on trusted systems.
+        If Microsoft.PowerShell.SecretManagement is installed with a registered vault, tokens are
+        stored securely in the vault. Otherwise, tokens are stored in PLAINTEXT in servers.json.
+        Use Import-PatServerToken to migrate existing plaintext tokens to a vault.
 
     .PARAMETER PassThru
         If specified, returns the server configuration object after adding.
@@ -64,9 +66,10 @@ function Add-PatServer {
         Adds a server without validating connectivity. Useful for servers that are temporarily down.
 
     .NOTES
-        Security Warning: Authentication tokens are stored in PLAINTEXT in the servers.json configuration file.
-        Your Plex token provides full access to your Plex account. Only use on trusted systems with
-        appropriate file permissions.
+        Security: If Microsoft.PowerShell.SecretManagement is installed with a registered vault,
+        tokens are stored securely. Otherwise, tokens are stored in PLAINTEXT in servers.json.
+        Your Plex token provides full access to your Plex account. Install SecretManagement for
+        secure storage, or ensure appropriate file permissions on servers.json.
     #>
     [CmdletBinding(SupportsShouldProcess, ConfirmImpact = 'Low')]
     param (
@@ -168,9 +171,15 @@ function Add-PatServer {
             default = $Default.IsPresent
         }
 
-        # Conditionally add token if provided
+        # Store token securely if provided
         if ($Token) {
-            $newServer | Add-Member -NotePropertyName 'token' -NotePropertyValue $Token
+            $storageResult = Set-PatServerToken -ServerName $Name -Token $Token
+            if ($storageResult.StorageType -eq 'Vault') {
+                $newServer | Add-Member -NotePropertyName 'tokenInVault' -NotePropertyValue $true
+            }
+            else {
+                $newServer | Add-Member -NotePropertyName 'token' -NotePropertyValue $storageResult.Token
+            }
         }
 
         # Validate server connectivity and token unless skipped
@@ -207,7 +216,13 @@ function Add-PatServer {
                         )) {
                             try {
                                 $authenticationToken = Connect-PatAccount -Force:$Force
-                                $newServer | Add-Member -NotePropertyName 'token' -NotePropertyValue $authenticationToken -Force
+                                $authStorageResult = Set-PatServerToken -ServerName $Name -Token $authenticationToken
+                                if ($authStorageResult.StorageType -eq 'Vault') {
+                                    $newServer | Add-Member -NotePropertyName 'tokenInVault' -NotePropertyValue $true -Force
+                                }
+                                else {
+                                    $newServer | Add-Member -NotePropertyName 'token' -NotePropertyValue $authStorageResult.Token -Force
+                                }
                                 Write-Information "Authentication successful. Token added to server configuration." -InformationAction Continue
                             }
                             catch {

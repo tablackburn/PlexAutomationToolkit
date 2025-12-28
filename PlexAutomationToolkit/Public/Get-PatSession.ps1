@@ -124,6 +124,7 @@ function Get-PatSession {
     # Handle empty response (no active sessions)
     if (-not $result -or -not $result.Metadata) {
         Write-Verbose "No active sessions found"
+        Write-Information "No active sessions on server" -InformationAction Continue
         return
     }
 
@@ -163,6 +164,17 @@ function Get-PatSession {
 
     if ($Player) {
         $sessions = $sessions | Where-Object { $_.PlayerName -eq $Player }
+    }
+
+    # Inform user if filtering resulted in no matches
+    if (-not $sessions -or @($sessions).Count -eq 0) {
+        $filterInfo = @()
+        if ($Username) { $filterInfo += "Username='$Username'" }
+        if ($Player) { $filterInfo += "Player='$Player'" }
+        if ($filterInfo.Count -gt 0) {
+            Write-Information "No sessions match filter: $($filterInfo -join ', ')" -InformationAction Continue
+        }
+        return
     }
 
     $sessions

@@ -2,6 +2,10 @@ BeforeAll {
     $ProjectRoot = Split-Path -Parent (Split-Path -Parent (Split-Path -Parent $PSScriptRoot))
     $ModuleRoot = Join-Path $ProjectRoot 'PlexAutomationToolkit'
 
+    # Import dependencies
+    . (Join-Path $ModuleRoot 'Private\Get-PatSecretManagementAvailable.ps1')
+    . (Join-Path $ModuleRoot 'Private\Get-PatServerToken.ps1')
+
     # Import the function directly for testing
     . (Join-Path $ModuleRoot 'Private\Resolve-PatServerContext.ps1')
     . (Join-Path $ModuleRoot 'Private\Get-PatAuthenticationHeader.ps1')

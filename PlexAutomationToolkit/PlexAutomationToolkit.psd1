@@ -90,6 +90,7 @@ FunctionsToExport = @(
     'Get-PatStoredServer'
     'Get-PatSyncPlan'
     'Get-PatToken'
+    'Import-PatServerToken'
     'New-PatCollection'
     'New-PatPlaylist'
     'Remove-PatCollection'

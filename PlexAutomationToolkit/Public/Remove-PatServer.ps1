@@ -51,6 +51,9 @@ function Remove-PatServer {
             # Store server before removing for PassThru
             $removedServer = $server
 
+            # Remove token from vault if stored there
+            Remove-PatServerToken -ServerName $Name
+
             $configuration.servers = @($configuration.servers | Where-Object { $_.name -ne $Name })
             Set-PatServerConfiguration -Configuration $configuration -ErrorAction Stop
             Write-Verbose "Removed server '$Name' from configuration"

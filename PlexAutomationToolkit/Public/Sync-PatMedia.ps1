@@ -34,6 +34,24 @@ function Sync-PatMedia {
     .PARAMETER ServerUri
         The base URI of the Plex server. If not specified, uses the default stored server.
 
+    .PARAMETER SyncWatchStatus
+        After syncing media, compares watch status between the source and target servers and
+        syncs watched items from the target (travel) server back to the source (home) server.
+        Requires -SourceServerName and -TargetServerName parameters.
+
+    .PARAMETER RemoveWatched
+        After syncing, prompts to remove watched items from the playlist. Items are first
+        marked as watched on the source server (if -SyncWatchStatus is also specified),
+        then removed from the playlist. Requires -SourceServerName and -TargetServerName.
+
+    .PARAMETER SourceServerName
+        The name of the source (home) server for watch status operations. Required when
+        using -SyncWatchStatus or -RemoveWatched.
+
+    .PARAMETER TargetServerName
+        The name of the target (travel/portable) server for watch status operations.
+        Required when using -SyncWatchStatus or -RemoveWatched.
+
     .EXAMPLE
         Sync-PatMedia -Destination 'E:\'
 
@@ -48,6 +66,16 @@ function Sync-PatMedia {
         Sync-PatMedia -PlaylistName 'Vacation' -Destination 'E:\' -WhatIf
 
         Shows what would be synced from the 'Vacation' playlist without making changes.
+
+    .EXAMPLE
+        Sync-PatMedia -Destination 'E:\' -SourceServerName 'Home' -TargetServerName 'Travel' -SyncWatchStatus
+
+        After vacation: syncs media and marks items watched on the travel server as watched on home.
+
+    .EXAMPLE
+        Sync-PatMedia -Destination 'E:\' -SourceServerName 'Home' -TargetServerName 'Travel' -SyncWatchStatus -RemoveWatched
+
+        Full vacation workflow: syncs media, syncs watch status, then removes watched items from playlist.
 
     .OUTPUTS
         PlexAutomationToolkit.SyncPlan (with -PassThru)
@@ -144,7 +172,25 @@ function Sync-PatMedia {
         [ValidateNotNullOrEmpty()]
         [ValidateScript({ Test-PatServerUri -Uri $_ })]
         [string]
-        $ServerUri
+        $ServerUri,
+
+        [Parameter(Mandatory = $false)]
+        [switch]
+        $SyncWatchStatus,
+
+        [Parameter(Mandatory = $false)]
+        [switch]
+        $RemoveWatched,
+
+        [Parameter(Mandatory = $false)]
+        [ValidateNotNullOrEmpty()]
+        [string]
+        $SourceServerName,
+
+        [Parameter(Mandatory = $false)]
+        [ValidateNotNullOrEmpty()]
+        [string]
+        $TargetServerName
     )
 
     begin {
@@ -344,6 +390,116 @@ function Sync-PatMedia {
             }
 
             Write-Verbose "Sync completed"
+
+            # Handle vacation workflow: sync watch status and remove watched items
+            if ($SyncWatchStatus -or $RemoveWatched) {
+                # Validate server names are provided
+                if (-not $SourceServerName -or -not $TargetServerName) {
+                    Write-Warning "SyncWatchStatus and RemoveWatched require -SourceServerName and -TargetServerName parameters. Skipping watch status operations."
+                }
+                else {
+                    Write-Verbose "Checking for watch status differences..."
+
+                    # Get items watched on target (travel server) but not source (home server)
+                    $watchDiffs = @(Compare-PatWatchStatus -SourceServerName $TargetServerName `
+                        -TargetServerName $SourceServerName `
+                        -WatchedOnSourceOnly `
+                        -ErrorAction SilentlyContinue)
+
+                    if ($watchDiffs.Count -gt 0) {
+                        Write-Verbose "Found $($watchDiffs.Count) items watched on '$TargetServerName'"
+
+                        # Sync watch status first if requested
+                        if ($SyncWatchStatus) {
+                            if ($PSCmdlet.ShouldProcess("$($watchDiffs.Count) items", "Sync watch status from '$TargetServerName' to '$SourceServerName'")) {
+                                $syncResults = Sync-PatWatchStatus -SourceServerName $TargetServerName `
+                                    -TargetServerName $SourceServerName `
+                                    -PassThru `
+                                    -Confirm:$false
+
+                                $successCount = @($syncResults | Where-Object { $_.Status -eq 'Success' }).Count
+                                Write-Verbose "Synced watch status for $successCount items"
+                            }
+                        }
+
+                        # Remove watched items from playlist if requested
+                        if ($RemoveWatched) {
+                            # Get playlist with items to map RatingKey to PlaylistItemId
+                            $getPlaylistParams = @{
+                                IncludeItems = $true
+                                ErrorAction  = 'Stop'
+                            }
+                            if ($PlaylistId) {
+                                $getPlaylistParams['PlaylistId'] = $PlaylistId
+                            }
+                            else {
+                                $getPlaylistParams['PlaylistName'] = $PlaylistName
+                            }
+                            if ($ServerUri) {
+                                $getPlaylistParams['ServerUri'] = $ServerUri
+                            }
+
+                            $playlist = Get-PatPlaylist @getPlaylistParams
+
+                            # Build lookup from RatingKey to PlaylistItem
+                            $ratingKeyToItem = @{}
+                            foreach ($item in $playlist.Items) {
+                                $ratingKeyToItem[[string]$item.RatingKey] = $item
+                            }
+
+                            # Find watched items that are in the playlist
+                            # Use TargetRatingKey which corresponds to the source (home) server's keys
+                            $itemsToRemove = @()
+                            foreach ($diff in $watchDiffs) {
+                                $key = [string]$diff.TargetRatingKey
+                                if ($ratingKeyToItem.ContainsKey($key)) {
+                                    $itemsToRemove += @{
+                                        PlaylistItem = $ratingKeyToItem[$key]
+                                        WatchDiff    = $diff
+                                    }
+                                }
+                            }
+
+                            if ($itemsToRemove.Count -gt 0) {
+                                $removeDescription = "$($itemsToRemove.Count) watched items from playlist '$($playlist.Title)'"
+
+                                if ($PSCmdlet.ShouldProcess($removeDescription, 'Remove')) {
+                                    $removedCount = 0
+                                    foreach ($itemToRemove in $itemsToRemove) {
+                                        $playlistItem = $itemToRemove.PlaylistItem
+                                        $itemDisplay = if ($playlistItem.Type -eq 'episode') {
+                                            "$($playlistItem.GrandparentTitle) - S$($playlistItem.ParentIndex.ToString('D2'))E$($playlistItem.Index.ToString('D2'))"
+                                        }
+                                        else {
+                                            "$($playlistItem.Title) ($($playlistItem.Year))"
+                                        }
+
+                                        try {
+                                            Remove-PatPlaylistItem -PlaylistId $playlist.PlaylistId `
+                                                -PlaylistItemId $playlistItem.PlaylistItemId `
+                                                -Confirm:$false `
+                                                -ErrorAction Stop
+
+                                            $removedCount++
+                                            Write-Verbose "Removed '$itemDisplay' from playlist"
+                                        }
+                                        catch {
+                                            Write-Warning "Failed to remove '$itemDisplay': $($_.Exception.Message)"
+                                        }
+                                    }
+                                    Write-Verbose "Removed $removedCount watched items from playlist"
+                                }
+                            }
+                            else {
+                                Write-Verbose "No watched items found in playlist to remove"
+                            }
+                        }
+                    }
+                    else {
+                        Write-Verbose "No watched items found on '$TargetServerName' to process"
+                    }
+                }
+            }
 
             if ($PassThru) {
                 $syncPlan

@@ -131,6 +131,13 @@ function Compare-PatLibraryContent {
     $removed = ($results | Where-Object ChangeType -eq 'Removed').Count
     Write-Verbose "Found $added added items and $removed removed items"
 
+    if ($results.Count -eq 0) {
+        Write-Information "Libraries are in sync - no differences found" -InformationAction Continue
+    }
+    else {
+        Write-Information "Found $added added and $removed removed items" -InformationAction Continue
+    }
+
     # Return results (may be empty if no changes)
     $results
 }
