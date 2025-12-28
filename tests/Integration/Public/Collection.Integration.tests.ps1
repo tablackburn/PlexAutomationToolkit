@@ -54,12 +54,24 @@ Describe 'Get-PatCollection Integration Tests' -Skip:(-not $script:integrationEn
             -SkipValidation `
             -Confirm:$false
 
-        # Find a library to use for testing
+        # Find a library that has collections for testing
         $script:testLibrary = $null
         try {
             $libraries = Get-PatLibrary -ErrorAction SilentlyContinue
             if ($libraries -and $libraries.Directory) {
-                $script:testLibrary = $libraries.Directory | Select-Object -First 1
+                # Prefer a library that has collections
+                foreach ($lib in $libraries.Directory) {
+                    $collections = Get-PatCollection -LibraryId $lib.key -ErrorAction SilentlyContinue
+                    if ($collections -and $collections.Count -gt 0) {
+                        $script:testLibrary = $lib
+                        Write-Verbose "Selected library '$($lib.title)' with $($collections.Count) collections"
+                        break
+                    }
+                }
+                # Fall back to first library if none have collections
+                if (-not $script:testLibrary) {
+                    $script:testLibrary = $libraries.Directory | Select-Object -First 1
+                }
             }
         }
         catch {
@@ -362,18 +374,32 @@ Describe 'Collection WhatIf Integration Tests' -Skip:(-not $script:integrationEn
             -SkipValidation `
             -Confirm:$false
 
-        # Find a library and media item for testing
+        # Find a library with collections and media items for testing
         $script:testLibrary = $null
         $script:testMediaItem = $null
         try {
             $libraries = Get-PatLibrary -ErrorAction SilentlyContinue
             if ($libraries -and $libraries.Directory) {
+                # Prefer a library that has both collections and media items
                 foreach ($lib in $libraries.Directory) {
+                    $collections = Get-PatCollection -LibraryId $lib.key -ErrorAction SilentlyContinue
                     $items = Get-PatLibraryItem -SectionId $lib.key -ErrorAction SilentlyContinue | Select-Object -First 1
-                    if ($items) {
+                    if ($collections -and $collections.Count -gt 0 -and $items) {
                         $script:testLibrary = $lib
                         $script:testMediaItem = $items
+                        Write-Verbose "Selected library '$($lib.title)' with $($collections.Count) collections"
                         break
+                    }
+                }
+                # Fall back to any library with media items
+                if (-not $script:testLibrary) {
+                    foreach ($lib in $libraries.Directory) {
+                        $items = Get-PatLibraryItem -SectionId $lib.key -ErrorAction SilentlyContinue | Select-Object -First 1
+                        if ($items) {
+                            $script:testLibrary = $lib
+                            $script:testMediaItem = $items
+                            break
+                        }
                     }
                 }
             }
