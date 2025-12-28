@@ -10,11 +10,18 @@ properties {
     # Set this to $true to create a module with a monolithic PSM1
     $PSBPreference.Build.CompileModule = $false
     $PSBPreference.Help.DefaultLocale = 'en-US'
-    $PSBPreference.Test.OutputFile = 'out/testResults.xml'
+
+    # Ensure output directory exists and use absolute paths
+    $outDir = Join-Path -Path $PSScriptRoot -ChildPath 'out'
+    if (-not (Test-Path -Path $outDir)) {
+        New-Item -Path $outDir -ItemType Directory -Force | Out-Null
+    }
+
+    $PSBPreference.Test.OutputFile = Join-Path -Path $outDir -ChildPath 'testResults.xml'
     $PSBPreference.Test.OutputFormat = 'NUnitXml'
     $PSBPreference.Test.CodeCoverage.Enabled = $true
     $PSBPreference.Test.CodeCoverage.Threshold = 0.70  # 70% minimum coverage
-    $PSBPreference.Test.CodeCoverage.OutputPath = 'out/coverage.xml'
+    $PSBPreference.Test.CodeCoverage.OutputPath = Join-Path -Path $outDir -ChildPath 'coverage.xml'
     $PSBPreference.Test.CodeCoverage.OutputFormat = 'JaCoCo'
 }
 
