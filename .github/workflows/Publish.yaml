@@ -1,8 +1,11 @@
 name: Publish to PowerShell Gallery
 
 on:
-  release:
-    types: [published]
+  push:
+    branches:
+      - main
+    paths:
+      - 'PlexAutomationToolkit/PlexAutomationToolkit.psd1'
 
 jobs:
   publish:
@@ -11,12 +14,47 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get Module Version
+        id: version
+        shell: pwsh
+        run: |
+          $manifest = Import-PowerShellDataFile -Path ./PlexAutomationToolkit/PlexAutomationToolkit.psd1
+          $version = $manifest.ModuleVersion
+          Write-Host "Module version: $version"
+          "version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+
+      - name: Check if Release Exists
+        id: check_release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if gh release view "v${{ steps.version.outputs.version }}" > /dev/null 2>&1; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
 
       - name: Build Module
+        if: steps.check_release.outputs.exists == 'false'
         shell: pwsh
         run: ./build.ps1 -Task Build -Bootstrap
 
+      - name: Create GitHub Release
+        if: steps.check_release.outputs.exists == 'false'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "v${{ steps.version.outputs.version }}" \
+            --title "v${{ steps.version.outputs.version }}" \
+            --generate-notes
+
       - name: Publish to PowerShell Gallery
+        if: steps.check_release.outputs.exists == 'false'
         shell: pwsh
         env:
           PS_GALLERY_KEY: ${{ secrets.PS_GALLERY_KEY }}
