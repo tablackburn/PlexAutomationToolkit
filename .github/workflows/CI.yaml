@@ -31,11 +31,11 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-psmodules-
 
-      - name: Run Unit Tests
+      - name: Build and Test
         shell: pwsh
         run: |
           New-Item -Path out -ItemType Directory -Force | Out-Null
-          ./build.ps1 -Task Test -Bootstrap
+          ./build.ps1 -Task Build,Test -Bootstrap
 
       - name: Upload Test Results
         uses: actions/upload-artifact@v4
