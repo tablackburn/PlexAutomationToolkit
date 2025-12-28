@@ -2,38 +2,31 @@ BeforeAll {
     # Import the module from the source directory for unit testing
     $modulePath = Join-Path -Path $PSScriptRoot -ChildPath '..\..\..\PlexAutomationToolkit\PlexAutomationToolkit.psm1'
     Import-Module $modulePath -Force
-
-    # Get the private function using module scope
-    $module = Get-Module -Name 'PlexAutomationToolkit'
-    if (-not $module) {
-        throw "Module PlexAutomationToolkit not loaded"
-    }
-    $script:ConvertToObject = & $module { Get-Command ConvertTo-PsCustomObjectFromHashtable }
 }
 
 Describe 'ConvertTo-PsCustomObjectFromHashtable' {
     Context 'Null and primitive handling' {
         It 'Throws when input is null due to Mandatory parameter' {
-            { & $script:ConvertToObject -Hashtable $null } | Should -Throw '*is null*'
+            { InModuleScope PlexAutomationToolkit { ConvertTo-PsCustomObjectFromHashtable -Hashtable $null } } | Should -Throw '*is null*'
         }
 
         It 'Returns string as-is' {
-            $result = & $script:ConvertToObject -Hashtable 'test string'
+            $result = InModuleScope PlexAutomationToolkit { ConvertTo-PsCustomObjectFromHashtable -Hashtable 'test string' }
             $result | Should -Be 'test string'
         }
 
         It 'Returns integer as-is' {
-            $result = & $script:ConvertToObject -Hashtable 42
+            $result = InModuleScope PlexAutomationToolkit { ConvertTo-PsCustomObjectFromHashtable -Hashtable 42 }
             $result | Should -Be 42
         }
 
         It 'Returns boolean as-is' {
-            $result = & $script:ConvertToObject -Hashtable $true
+            $result = InModuleScope PlexAutomationToolkit { ConvertTo-PsCustomObjectFromHashtable -Hashtable $true }
             $result | Should -BeTrue
         }
 
         It 'Returns double as-is' {
-            $result = & $script:ConvertToObject -Hashtable 3.14
+            $result = InModuleScope PlexAutomationToolkit { ConvertTo-PsCustomObjectFromHashtable -Hashtable 3.14 }
             $result | Should -Be 3.14
         }
     }
@@ -44,7 +37,7 @@ Describe 'ConvertTo-PsCustomObjectFromHashtable' {
                 Name  = 'Test'
                 Value = 123
             }
-            $result = & $script:ConvertToObject -Hashtable $hashtable
+            $result = InModuleScope PlexAutomationToolkit -ArgumentList $hashtable { param($ht) ConvertTo-PsCustomObjectFromHashtable -Hashtable $ht }
 
             $result | Should -BeOfType [PSCustomObject]
             $result.Name | Should -Be 'Test'
@@ -53,7 +46,7 @@ Describe 'ConvertTo-PsCustomObjectFromHashtable' {
 
         It 'Converts an empty hashtable to empty PSCustomObject' {
             $hashtable = @{}
-            $result = & $script:ConvertToObject -Hashtable $hashtable
+            $result = InModuleScope PlexAutomationToolkit -ArgumentList $hashtable { param($ht) ConvertTo-PsCustomObjectFromHashtable -Hashtable $ht }
 
             $result | Should -BeOfType [PSCustomObject]
         }
@@ -65,7 +58,7 @@ Describe 'ConvertTo-PsCustomObjectFromHashtable' {
             $hashtable['guid'] = 'lowercase-guid'
             $hashtable['Guid'] = 'uppercase-guid'
 
-            $result = & $script:ConvertToObject -Hashtable $hashtable
+            $result = InModuleScope PlexAutomationToolkit -ArgumentList $hashtable { param($ht) ConvertTo-PsCustomObjectFromHashtable -Hashtable $ht }
 
             $result | Should -BeOfType [PSCustomObject]
             # Both access the same property (case-insensitive), last value wins
@@ -83,7 +76,7 @@ Describe 'ConvertTo-PsCustomObjectFromHashtable' {
                     Value = 456
                 }
             }
-            $result = & $script:ConvertToObject -Hashtable $hashtable
+            $result = InModuleScope PlexAutomationToolkit -ArgumentList $hashtable { param($ht) ConvertTo-PsCustomObjectFromHashtable -Hashtable $ht }
 
             $result | Should -BeOfType [PSCustomObject]
             $result.Name | Should -Be 'Parent'
@@ -102,7 +95,7 @@ Describe 'ConvertTo-PsCustomObjectFromHashtable' {
                     }
                 }
             }
-            $result = & $script:ConvertToObject -Hashtable $hashtable
+            $result = InModuleScope PlexAutomationToolkit -ArgumentList $hashtable { param($ht) ConvertTo-PsCustomObjectFromHashtable -Hashtable $ht }
 
             $result.Level1.Level2.Level3.Value | Should -Be 'deep'
             $result.Level1.Level2.Level3 | Should -BeOfType [PSCustomObject]
@@ -112,7 +105,7 @@ Describe 'ConvertTo-PsCustomObjectFromHashtable' {
     Context 'Array handling' {
         It 'Converts array of primitives' {
             $array = @(1, 2, 3)
-            $result = & $script:ConvertToObject -Hashtable $array
+            $result = InModuleScope PlexAutomationToolkit -ArgumentList @(, $array) { param($arr) ConvertTo-PsCustomObjectFromHashtable -Hashtable $arr }
 
             $result | Should -HaveCount 3
             $result[0] | Should -Be 1
@@ -125,7 +118,7 @@ Describe 'ConvertTo-PsCustomObjectFromHashtable' {
                 @{ Name = 'First'; Id = 1 }
                 @{ Name = 'Second'; Id = 2 }
             )
-            $result = & $script:ConvertToObject -Hashtable $array
+            $result = InModuleScope PlexAutomationToolkit -ArgumentList @(, $array) { param($arr) ConvertTo-PsCustomObjectFromHashtable -Hashtable $arr }
 
             $result | Should -HaveCount 2
             $result[0] | Should -BeOfType [PSCustomObject]
@@ -141,7 +134,7 @@ Describe 'ConvertTo-PsCustomObjectFromHashtable' {
                     @{ Id = 2 }
                 )
             }
-            $result = & $script:ConvertToObject -Hashtable $hashtable
+            $result = InModuleScope PlexAutomationToolkit -ArgumentList $hashtable { param($ht) ConvertTo-PsCustomObjectFromHashtable -Hashtable $ht }
 
             $result | Should -BeOfType [PSCustomObject]
             $result.Items | Should -HaveCount 2
@@ -151,7 +144,7 @@ Describe 'ConvertTo-PsCustomObjectFromHashtable' {
 
         It 'Handles empty array' {
             $array = @()
-            $result = & $script:ConvertToObject -Hashtable $array
+            $result = InModuleScope PlexAutomationToolkit -ArgumentList @(, $array) { param($arr) ConvertTo-PsCustomObjectFromHashtable -Hashtable $arr }
 
             $result | Should -HaveCount 0
         }
@@ -162,7 +155,7 @@ Describe 'ConvertTo-PsCustomObjectFromHashtable' {
                 @{ Name = 'Object' }
                 42
             )
-            $result = & $script:ConvertToObject -Hashtable $array
+            $result = InModuleScope PlexAutomationToolkit -ArgumentList @(, $array) { param($arr) ConvertTo-PsCustomObjectFromHashtable -Hashtable $arr }
 
             $result | Should -HaveCount 3
             $result[0] | Should -Be 'string value'
@@ -177,7 +170,7 @@ Describe 'ConvertTo-PsCustomObjectFromHashtable' {
                 @(1, 2, 3)
                 @(4, 5, 6)
             )
-            $result = & $script:ConvertToObject -Hashtable $array
+            $result = InModuleScope PlexAutomationToolkit -ArgumentList @(, $array) { param($arr) ConvertTo-PsCustomObjectFromHashtable -Hashtable $arr }
 
             # Arrays are flattened to a single array
             $result | Should -HaveCount 6
@@ -211,7 +204,7 @@ Describe 'ConvertTo-PsCustomObjectFromHashtable' {
                     )
                 }
             }
-            $result = & $script:ConvertToObject -Hashtable $response
+            $result = InModuleScope PlexAutomationToolkit -ArgumentList $response { param($ht) ConvertTo-PsCustomObjectFromHashtable -Hashtable $ht }
 
             $result | Should -BeOfType [PSCustomObject]
             $result.MediaContainer | Should -BeOfType [PSCustomObject]
@@ -232,7 +225,7 @@ Describe 'ConvertTo-PsCustomObjectFromHashtable' {
             )
             $metadata['title'] = 'Test Movie'
 
-            $result = & $script:ConvertToObject -Hashtable $metadata
+            $result = InModuleScope PlexAutomationToolkit -ArgumentList $metadata { param($ht) ConvertTo-PsCustomObjectFromHashtable -Hashtable $ht }
 
             $result | Should -BeOfType [PSCustomObject]
             # The array value (last assigned) is accessible via either case
@@ -248,7 +241,7 @@ Describe 'ConvertTo-PsCustomObjectFromHashtable' {
                 Name     = 'Test'
                 NullProp = $null
             }
-            $result = & $script:ConvertToObject -Hashtable $hashtable
+            $result = InModuleScope PlexAutomationToolkit -ArgumentList $hashtable { param($ht) ConvertTo-PsCustomObjectFromHashtable -Hashtable $ht }
 
             $result.Name | Should -Be 'Test'
             $result.NullProp | Should -BeNullOrEmpty
@@ -258,7 +251,7 @@ Describe 'ConvertTo-PsCustomObjectFromHashtable' {
             $hashtable = @{
                 ArrayString = '[1, 2, 3]'
             }
-            $result = & $script:ConvertToObject -Hashtable $hashtable
+            $result = InModuleScope PlexAutomationToolkit -ArgumentList $hashtable { param($ht) ConvertTo-PsCustomObjectFromHashtable -Hashtable $ht }
 
             $result.ArrayString | Should -Be '[1, 2, 3]'
             $result.ArrayString | Should -BeOfType [string]
@@ -270,7 +263,7 @@ Describe 'ConvertTo-PsCustomObjectFromHashtable' {
                 Second = 2
                 Third  = 3
             }
-            $result = & $script:ConvertToObject -Hashtable $ordered
+            $result = InModuleScope PlexAutomationToolkit -ArgumentList $ordered { param($ht) ConvertTo-PsCustomObjectFromHashtable -Hashtable $ht }
 
             $result | Should -BeOfType [PSCustomObject]
             $result.First | Should -Be 1
