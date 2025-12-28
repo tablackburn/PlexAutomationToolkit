@@ -15,7 +15,7 @@ RootModule = 'PlexAutomationToolkit.psm1'
 ModuleVersion = '0.6.0'
 
 # Supported PSEditions
-# CompatiblePSEditions = @()
+CompatiblePSEditions = @('Desktop', 'Core')
 
 # ID used to uniquely identify this module
 GUID = '00866e56-7c79-4259-a404-548cb36d1e74'
