@@ -110,6 +110,7 @@ function Get-IntegrationConfigPath {
     .DESCRIPTION
         Determines the configuration file path using the same logic as Get-PatConfigurationPath.
         This is a helper to avoid calling private module functions.
+        Cross-platform: works on Windows, Linux, and macOS.
 
     .OUTPUTS
         String
@@ -118,26 +119,43 @@ function Get-IntegrationConfigPath {
     [CmdletBinding()]
     param()
 
-    # Try OneDrive location first
-    if ($env:OneDrive) {
-        $configurationPath = Join-Path $env:OneDrive 'Documents\PlexAutomationToolkit\servers.json'
-        $configurationDirectory = Split-Path $configurationPath -Parent
+    $isWindows = $PSVersionTable.PSVersion.Major -lt 6 -or $IsWindows
 
-        if ((Test-Path $configurationDirectory) -or (Test-Path $configurationPath)) {
+    if ($isWindows) {
+        # Try OneDrive location first
+        if ($env:OneDrive) {
+            $configurationPath = Join-Path $env:OneDrive 'Documents\PlexAutomationToolkit\servers.json'
+            $configurationDirectory = Split-Path $configurationPath -Parent
+
+            if ((Test-Path $configurationDirectory) -or (Test-Path $configurationPath)) {
+                return $configurationPath
+            }
+        }
+
+        # Fallback to user Documents
+        if ($env:USERPROFILE) {
+            $configurationPath = Join-Path $env:USERPROFILE 'Documents\PlexAutomationToolkit\servers.json'
+            $configurationDirectory = Split-Path $configurationPath -Parent
+
+            if ((Test-Path $configurationDirectory) -or (Test-Path $configurationPath)) {
+                return $configurationPath
+            }
+        }
+
+        # Last resort: LocalAppData
+        if ($env:LOCALAPPDATA) {
+            $configurationPath = Join-Path $env:LOCALAPPDATA 'PlexAutomationToolkit\servers.json'
             return $configurationPath
         }
     }
 
-    # Fallback to user Documents
-    $configurationPath = Join-Path $env:USERPROFILE 'Documents\PlexAutomationToolkit\servers.json'
-    $configurationDirectory = Split-Path $configurationPath -Parent
-
-    if ((Test-Path $configurationDirectory) -or (Test-Path $configurationPath)) {
-        return $configurationPath
+    # Linux/macOS: use ~/.config/PlexAutomationToolkit
+    $homeDir = $env:HOME
+    if (-not $homeDir) {
+        $homeDir = [Environment]::GetFolderPath('UserProfile')
     }
 
-    # Last resort: LocalAppData
-    $configurationPath = Join-Path $env:LOCALAPPDATA 'PlexAutomationToolkit\servers.json'
+    $configurationPath = Join-Path $homeDir '.config/PlexAutomationToolkit/servers.json'
     return $configurationPath
 }
 
