@@ -37,25 +37,22 @@ jobs:
           New-Item -Path out -ItemType Directory -Force | Out-Null
           ./build.ps1 -Task Build,Test -Bootstrap
 
+      - name: Upload Coverage to Codecov
+        uses: codecov/codecov-action@v5
+        if: success()
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: out/codeCoverage.xml
+          flags: ${{ matrix.os }}
+          fail_ci_if_error: false
+
       - name: Upload Test Results
         uses: actions/upload-artifact@v4
         if: always()
         with:
           name: test-results-${{ matrix.os }}
-          path: |
-            out/testResults.xml
-            out/coverage.xml
-          if-no-files-found: warn
-
-      - name: Upload Coverage to Codecov
-        uses: codecov/codecov-action@v5
-        if: matrix.os == 'ubuntu-latest'
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          files: out/coverage.xml
-          flags: unittests
-          fail_ci_if_error: false
-          verbose: true
+          path: out/
+          retention-days: 30
 
   integration-tests:
     name: Integration Tests (${{ matrix.os }})

@@ -10,15 +10,16 @@ properties {
     # Set this to $true to create a module with a monolithic PSM1
     $PSBPreference.Build.CompileModule = $false
     $PSBPreference.Help.DefaultLocale = 'en-US'
-
-    # Test settings - use relative paths from project root
-    $PSBPreference.Test.Enabled = $true
-    $PSBPreference.Test.RootDir = Join-Path -Path $PSScriptRoot -ChildPath 'tests'
-    $PSBPreference.Test.OutputFile = Join-Path -Path $PSScriptRoot -ChildPath 'out/testResults.xml'
+    # Use absolute paths for test output (relative paths resolve from tests directory)
+    $PSBPreference.Test.OutputFile = [IO.Path]::Combine($PSScriptRoot, 'out', 'testResults.xml')
     $PSBPreference.Test.OutputFormat = 'NUnitXml'
     $PSBPreference.Test.CodeCoverage.Enabled = $true
-    $PSBPreference.Test.CodeCoverage.Threshold = 0.70  # 70% minimum coverage
-    $PSBPreference.Test.CodeCoverage.OutputFile = Join-Path -Path $PSScriptRoot -ChildPath 'out/coverage.xml'
+    $PSBPreference.Test.CodeCoverage.Files = @(
+        "$PSScriptRoot/PlexAutomationToolkit/Public/*.ps1"
+        "$PSScriptRoot/PlexAutomationToolkit/Private/*.ps1"
+    )
+    $PSBPreference.Test.CodeCoverage.Threshold = 0  # Threshold enforced by Codecov
+    $PSBPreference.Test.CodeCoverage.OutputFile = [IO.Path]::Combine($PSScriptRoot, 'out', 'codeCoverage.xml')
     $PSBPreference.Test.CodeCoverage.OutputFileFormat = 'JaCoCo'
 }
 
@@ -34,10 +35,5 @@ Task -Name 'Init_Integration' -Description 'Load integration test environment va
     }
 }
 
-# Override the Pester dependency to include Init_Integration before running tests
-# This ensures integration test env vars are loaded before Pester runs
-$PSBPesterDependency = @('Build', 'Init_Integration')
-
-Task -Name 'Pester' -FromModule 'PowerShellBuild' -MinimumVersion '0.7.3'
-Task -Name 'Analyze' -FromModule 'PowerShellBuild' -MinimumVersion '0.7.3'
-Task -Name 'Test' -FromModule 'PowerShellBuild' -MinimumVersion '0.7.3'
+# Note: -Depends replaces PowerShellBuild's default dependencies, so we must include Pester and Analyze explicitly
+Task -Name 'Test' -FromModule 'PowerShellBuild' -MinimumVersion '0.7.3' -Depends 'Init_Integration', 'Pester', 'Analyze'
