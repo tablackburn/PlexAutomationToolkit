@@ -96,6 +96,9 @@ jobs:
             exit 0
           }
 
+          # Set up build environment (required for persistence tests)
+          Set-BuildEnvironment -Force
+
           # Import the built module
           $moduleManifest = Get-ChildItem -Path Output/PlexAutomationToolkit -Filter '*.psd1' -Recurse |
             Select-Object -First 1

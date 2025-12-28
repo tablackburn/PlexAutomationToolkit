@@ -126,8 +126,9 @@ Describe 'Get-PatSyncPlan Integration Tests' -Skip:(-not $script:integrationEnab
             -SkipValidation `
             -Confirm:$false
 
-        # Create temp destination
-        $script:testDestination = Join-Path -Path $env:TEMP -ChildPath "PatSyncTest_$([Guid]::NewGuid().ToString('N'))"
+        # Create temp destination (cross-platform)
+        $tempPath = [System.IO.Path]::GetTempPath()
+        $script:testDestination = Join-Path -Path $tempPath -ChildPath "PatSyncTest_$([Guid]::NewGuid().ToString('N'))"
         New-Item -Path $script:testDestination -ItemType Directory -Force | Out-Null
 
         # Check if 'Travel' playlist exists
@@ -207,8 +208,9 @@ Describe 'Sync-PatMedia Integration Tests' -Skip:(-not $script:syncTestsEnabled)
             -SkipValidation `
             -Confirm:$false
 
-        # Create temp destination
-        $script:syncDestination = Join-Path -Path $env:TEMP -ChildPath "PatSyncIntegration_$([Guid]::NewGuid().ToString('N'))"
+        # Create temp destination (cross-platform)
+        $tempPath = [System.IO.Path]::GetTempPath()
+        $script:syncDestination = Join-Path -Path $tempPath -ChildPath "PatSyncIntegration_$([Guid]::NewGuid().ToString('N'))"
         New-Item -Path $script:syncDestination -ItemType Directory -Force | Out-Null
 
         # Check if 'Travel' playlist exists and has items
