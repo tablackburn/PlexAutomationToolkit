@@ -34,4 +34,10 @@ Task -Name 'Init_Integration' -Description 'Load integration test environment va
     }
 }
 
-Task -Name 'Test' -FromModule 'PowerShellBuild' -MinimumVersion '0.7.3' -Depends 'Init_Integration'
+# Override the Pester dependency to include Init_Integration before running tests
+# This ensures integration test env vars are loaded before Pester runs
+$PSBPesterDependency = @('Build', 'Init_Integration')
+
+Task -Name 'Pester' -FromModule 'PowerShellBuild' -MinimumVersion '0.7.3'
+Task -Name 'Analyze' -FromModule 'PowerShellBuild' -MinimumVersion '0.7.3'
+Task -Name 'Test' -FromModule 'PowerShellBuild' -MinimumVersion '0.7.3'
