@@ -121,17 +121,17 @@ Describe 'Update-PatLibrary Integration Tests' -Skip:(-not $script:integrationEn
     Context 'Library refresh with specific path' -Skip:(-not $script:mutationsEnabled) {
 
         It 'Successfully refreshes library with specific path by section ID' {
-            # This tests path-based refresh which is safer as it only scans specific path
-            { Update-PatLibrary -SectionId $script:testSectionId -Path '/test/path' -Confirm:$false } | Should -Not -Throw
+            # This tests path-based refresh - using SkipPathValidation since we're testing parameter handling
+            { Update-PatLibrary -SectionId $script:testSectionId -Path '/test/path' -SkipPathValidation -Confirm:$false } | Should -Not -Throw
         }
 
         It 'Successfully refreshes library with specific path by section name' {
-            { Update-PatLibrary -SectionName $script:testSectionName -Path '/test/path' -Confirm:$false } | Should -Not -Throw
+            { Update-PatLibrary -SectionName $script:testSectionName -Path '/test/path' -SkipPathValidation -Confirm:$false } | Should -Not -Throw
         }
 
         It 'Path parameter is properly URL-encoded' {
             # Test that paths with special characters work
-            { Update-PatLibrary -SectionId $script:testSectionId -Path '/test/path with spaces' -Confirm:$false } | Should -Not -Throw
+            { Update-PatLibrary -SectionId $script:testSectionId -Path '/test/path with spaces' -SkipPathValidation -Confirm:$false } | Should -Not -Throw
         }
     }
 

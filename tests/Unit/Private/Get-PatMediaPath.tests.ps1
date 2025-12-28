@@ -1,3 +1,8 @@
+BeforeDiscovery {
+    # Check if running on Windows - must be in BeforeDiscovery for -Skip to work
+    $script:RunningOnWindows = $IsWindows -or ($PSVersionTable.PSEdition -eq 'Desktop')
+}
+
 BeforeAll {
     # Import the module from the source directory for unit testing
     $modulePath = Join-Path -Path $PSScriptRoot -ChildPath '..\..\..\PlexAutomationToolkit\PlexAutomationToolkit.psm1'
@@ -5,12 +10,9 @@ BeforeAll {
 
     # Get the private function using module scope
     $script:GetPatMediaPath = & (Get-Module PlexAutomationToolkit) { Get-Command Get-PatMediaPath }
-
-    # Check if running on Windows
-    $script:IsWindows = $IsWindows -or ($PSVersionTable.PSEdition -eq 'Desktop')
 }
 
-Describe 'Get-PatMediaPath' -Skip:(-not $script:IsWindows) {
+Describe 'Get-PatMediaPath' -Skip:(-not $script:RunningOnWindows) {
     Context 'Movie path generation' {
         It 'Generates correct path for a movie' {
             $mediaInfo = [PSCustomObject]@{

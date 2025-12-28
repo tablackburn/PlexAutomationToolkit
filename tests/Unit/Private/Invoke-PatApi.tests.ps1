@@ -172,4 +172,177 @@ Describe 'Invoke-PatApi' {
             }
         }
     }
+
+    Context 'HTTP methods' {
+        BeforeAll {
+            Mock Invoke-RestMethod {
+                return [PSCustomObject]@{
+                    MediaContainer = [PSCustomObject]@{
+                        status = 'ok'
+                    }
+                }
+            }
+        }
+
+        It 'Should support PUT method' {
+            Invoke-PatApi -Uri 'http://localhost:32400/test' -Method Put
+
+            Should -Invoke Invoke-RestMethod -Times 1 -ParameterFilter {
+                $Method -eq 'Put'
+            }
+        }
+
+        It 'Should support DELETE method' {
+            Invoke-PatApi -Uri 'http://localhost:32400/test' -Method Delete
+
+            Should -Invoke Invoke-RestMethod -Times 1 -ParameterFilter {
+                $Method -eq 'Delete'
+            }
+        }
+
+        It 'Should support PATCH method' {
+            Invoke-PatApi -Uri 'http://localhost:32400/test' -Method Patch
+
+            Should -Invoke Invoke-RestMethod -Times 1 -ParameterFilter {
+                $Method -eq 'Patch'
+            }
+        }
+    }
+
+    Context 'HTTP error codes' {
+        It 'Should handle HTTP 400 Bad Request' {
+            Mock Invoke-RestMethod {
+                throw [System.Net.WebException]::new('400 Bad Request')
+            }
+
+            { Invoke-PatApi -Uri 'http://localhost:32400/test' } | Should -Throw "*400*"
+        }
+
+        It 'Should handle HTTP 403 Forbidden' {
+            Mock Invoke-RestMethod {
+                throw [System.Net.WebException]::new('403 Forbidden')
+            }
+
+            { Invoke-PatApi -Uri 'http://localhost:32400/test' } | Should -Throw "*403*"
+        }
+
+        It 'Should handle HTTP 404 Not Found' {
+            Mock Invoke-RestMethod {
+                throw [System.Net.WebException]::new('404 Not Found')
+            }
+
+            { Invoke-PatApi -Uri 'http://localhost:32400/test' } | Should -Throw "*404*"
+        }
+
+        It 'Should handle HTTP 500 Internal Server Error' {
+            Mock Invoke-RestMethod {
+                throw [System.Net.WebException]::new('500 Internal Server Error')
+            }
+
+            { Invoke-PatApi -Uri 'http://localhost:32400/test' } | Should -Throw "*500*"
+        }
+
+        It 'Should handle HTTP 503 Service Unavailable' {
+            Mock Invoke-RestMethod {
+                throw [System.Net.WebException]::new('503 Service Unavailable')
+            }
+
+            { Invoke-PatApi -Uri 'http://localhost:32400/test' } | Should -Throw "*503*"
+        }
+
+        It 'Should handle timeout errors' {
+            Mock Invoke-RestMethod {
+                throw [System.Net.WebException]::new('The operation has timed out')
+            }
+
+            { Invoke-PatApi -Uri 'http://localhost:32400/test' } | Should -Throw "*timed out*"
+        }
+    }
+
+    Context 'Response type variations' {
+        It 'Should handle response as array' {
+            Mock Invoke-RestMethod {
+                return @(
+                    [PSCustomObject]@{ id = 1; name = 'Item1' },
+                    [PSCustomObject]@{ id = 2; name = 'Item2' }
+                )
+            }
+
+            $result = Invoke-PatApi -Uri 'http://localhost:32400/test'
+
+            $result | Should -HaveCount 2
+            $result[0].id | Should -Be 1
+        }
+
+        It 'Should handle empty string response' {
+            Mock Invoke-RestMethod {
+                return ''
+            }
+
+            $result = Invoke-PatApi -Uri 'http://localhost:32400/test'
+
+            $result | Should -Be ''
+        }
+
+        It 'Should handle response without MediaContainer' {
+            Mock Invoke-RestMethod {
+                return [PSCustomObject]@{
+                    status = 'ok'
+                    value  = 42
+                }
+            }
+
+            $result = Invoke-PatApi -Uri 'http://localhost:32400/test'
+
+            $result.status | Should -Be 'ok'
+            $result.value | Should -Be 42
+        }
+    }
+
+    Context 'Security warnings' {
+        BeforeAll {
+            Mock Invoke-RestMethod {
+                return [PSCustomObject]@{
+                    MediaContainer = [PSCustomObject]@{
+                        status = 'ok'
+                    }
+                }
+            }
+        }
+
+        It 'Should warn when using HTTP with X-Plex-Token' {
+            $headers = @{
+                'Accept' = 'application/json'
+                'X-Plex-Token' = 'test-token'
+            }
+
+            $warnings = @()
+            $null = Invoke-PatApi -Uri 'http://localhost:32400/test' -Headers $headers -WarningVariable warnings 3>$null
+
+            $warnings | Should -Match 'unencrypted HTTP'
+        }
+
+        It 'Should not warn when using HTTPS with token' {
+            $headers = @{
+                'Accept' = 'application/json'
+                'X-Plex-Token' = 'test-token'
+            }
+
+            $warnings = @()
+            $null = Invoke-PatApi -Uri 'https://localhost:32400/test' -Headers $headers -WarningVariable warnings 3>$null
+
+            $warnings | Should -BeNullOrEmpty
+        }
+
+        It 'Should not warn when using HTTP without token' {
+            $headers = @{
+                'Accept' = 'application/json'
+            }
+
+            $warnings = @()
+            $null = Invoke-PatApi -Uri 'http://localhost:32400/test' -Headers $headers -WarningVariable warnings 3>$null
+
+            $warnings | Should -BeNullOrEmpty
+        }
+    }
 }

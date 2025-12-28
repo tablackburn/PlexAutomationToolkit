@@ -379,4 +379,313 @@ Describe 'Sync-PatMedia' {
                 Should -Not -Throw
         }
     }
+
+    Context 'SyncWatchStatus parameter' {
+        BeforeAll {
+            Mock -ModuleName PlexAutomationToolkit Get-PatSyncPlan {
+                return [PSCustomObject]@{
+                    PlaylistName     = 'Travel'
+                    PlaylistId       = 100
+                    TotalItems       = 0
+                    ItemsToAdd       = 0
+                    ItemsToRemove    = 0
+                    ItemsUnchanged   = 0
+                    BytesToDownload  = 0
+                    BytesToRemove    = 0
+                    DestinationFree  = 1000000000
+                    DestinationAfter = 1000000000
+                    SpaceSufficient  = $true
+                    AddOperations    = @()
+                    RemoveOperations = @()
+                    ServerUri        = 'http://plex.test:32400'
+                }
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Compare-PatWatchStatus {
+                return @(
+                    [PSCustomObject]@{
+                        Title           = 'Watched Movie'
+                        Type            = 'movie'
+                        Year            = 2023
+                        SourceRatingKey = 2001
+                        TargetRatingKey = 1001
+                    }
+                )
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Sync-PatWatchStatus {
+                return @(
+                    [PSCustomObject]@{
+                        Title    = 'Watched Movie'
+                        Status   = 'Success'
+                        SyncedTo = 'HomeServer'
+                    }
+                )
+            }
+        }
+
+        It 'Calls Compare-PatWatchStatus when SyncWatchStatus specified' {
+            Sync-PatMedia -PlaylistName 'Travel' -Destination $script:TestDir `
+                -SourceServerName 'HomeServer' -TargetServerName 'TravelServer' `
+                -SyncWatchStatus -Confirm:$false
+
+            Should -Invoke -CommandName Compare-PatWatchStatus -ModuleName PlexAutomationToolkit -Times 1
+        }
+
+        It 'Calls Sync-PatWatchStatus for watch differences' {
+            Sync-PatMedia -PlaylistName 'Travel' -Destination $script:TestDir `
+                -SourceServerName 'HomeServer' -TargetServerName 'TravelServer' `
+                -SyncWatchStatus -Confirm:$false
+
+            Should -Invoke -CommandName Sync-PatWatchStatus -ModuleName PlexAutomationToolkit -Times 1
+        }
+
+        It 'Skips watch sync when no differences found' {
+            Mock -ModuleName PlexAutomationToolkit Compare-PatWatchStatus { return @() }
+
+            Sync-PatMedia -PlaylistName 'Travel' -Destination $script:TestDir `
+                -SourceServerName 'HomeServer' -TargetServerName 'TravelServer' `
+                -SyncWatchStatus -Confirm:$false
+
+            Should -Invoke -CommandName Sync-PatWatchStatus -ModuleName PlexAutomationToolkit -Times 0
+        }
+    }
+
+    Context 'SyncWatchStatus without server names' {
+        BeforeAll {
+            Mock -ModuleName PlexAutomationToolkit Get-PatSyncPlan {
+                return [PSCustomObject]@{
+                    PlaylistName     = 'Travel'
+                    PlaylistId       = 100
+                    TotalItems       = 0
+                    ItemsToAdd       = 0
+                    ItemsToRemove    = 0
+                    ItemsUnchanged   = 0
+                    BytesToDownload  = 0
+                    BytesToRemove    = 0
+                    DestinationFree  = 1000000000
+                    DestinationAfter = 1000000000
+                    SpaceSufficient  = $true
+                    AddOperations    = @()
+                    RemoveOperations = @()
+                    ServerUri        = 'http://plex.test:32400'
+                }
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Compare-PatWatchStatus { }
+        }
+
+        It 'Warns when SourceServerName missing' {
+            Sync-PatMedia -PlaylistName 'Travel' -Destination $script:TestDir `
+                -TargetServerName 'TravelServer' `
+                -SyncWatchStatus -Confirm:$false 3>&1 | Should -Match 'require.*SourceServerName'
+        }
+
+        It 'Warns when TargetServerName missing' {
+            Sync-PatMedia -PlaylistName 'Travel' -Destination $script:TestDir `
+                -SourceServerName 'HomeServer' `
+                -SyncWatchStatus -Confirm:$false 3>&1 | Should -Match 'require.*TargetServerName'
+        }
+
+        It 'Does not call Compare-PatWatchStatus when server names missing' {
+            Sync-PatMedia -PlaylistName 'Travel' -Destination $script:TestDir `
+                -SyncWatchStatus -Confirm:$false 3>&1 | Out-Null
+
+            Should -Invoke -CommandName Compare-PatWatchStatus -ModuleName PlexAutomationToolkit -Times 0
+        }
+    }
+
+    Context 'RemoveWatched parameter' {
+        BeforeAll {
+            Mock -ModuleName PlexAutomationToolkit Get-PatSyncPlan {
+                return [PSCustomObject]@{
+                    PlaylistName     = 'Travel'
+                    PlaylistId       = 100
+                    TotalItems       = 0
+                    ItemsToAdd       = 0
+                    ItemsToRemove    = 0
+                    ItemsUnchanged   = 0
+                    BytesToDownload  = 0
+                    BytesToRemove    = 0
+                    DestinationFree  = 1000000000
+                    DestinationAfter = 1000000000
+                    SpaceSufficient  = $true
+                    AddOperations    = @()
+                    RemoveOperations = @()
+                    ServerUri        = 'http://plex.test:32400'
+                }
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Compare-PatWatchStatus {
+                return @(
+                    [PSCustomObject]@{
+                        Title           = 'Watched Movie'
+                        Type            = 'movie'
+                        Year            = 2023
+                        SourceRatingKey = 2001
+                        TargetRatingKey = 1001
+                    }
+                )
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Get-PatPlaylist {
+                return [PSCustomObject]@{
+                    Title      = 'Travel'
+                    PlaylistId = 100
+                    Items      = @(
+                        [PSCustomObject]@{
+                            RatingKey      = 1001
+                            PlaylistItemId = 5001
+                            Title          = 'Watched Movie'
+                            Type           = 'movie'
+                            Year           = 2023
+                        }
+                    )
+                }
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Remove-PatPlaylistItem { }
+        }
+
+        It 'Gets playlist with IncludeItems when RemoveWatched specified' {
+            Sync-PatMedia -PlaylistName 'Travel' -Destination $script:TestDir `
+                -SourceServerName 'HomeServer' -TargetServerName 'TravelServer' `
+                -RemoveWatched -Confirm:$false
+
+            Should -Invoke -CommandName Get-PatPlaylist -ModuleName PlexAutomationToolkit -Times 1 -ParameterFilter {
+                $IncludeItems -eq $true
+            }
+        }
+
+        It 'Calls Remove-PatPlaylistItem for watched items in playlist' {
+            Sync-PatMedia -PlaylistName 'Travel' -Destination $script:TestDir `
+                -SourceServerName 'HomeServer' -TargetServerName 'TravelServer' `
+                -RemoveWatched -Confirm:$false
+
+            Should -Invoke -CommandName Remove-PatPlaylistItem -ModuleName PlexAutomationToolkit -Times 1 -ParameterFilter {
+                $PlaylistId -eq 100 -and $PlaylistItemId -eq 5001
+            }
+        }
+
+        It 'Only removes items that exist in playlist' {
+            Mock -ModuleName PlexAutomationToolkit Compare-PatWatchStatus {
+                return @(
+                    [PSCustomObject]@{
+                        Title           = 'Not In Playlist'
+                        Type            = 'movie'
+                        Year            = 2023
+                        SourceRatingKey = 9999
+                        TargetRatingKey = 8888
+                    }
+                )
+            }
+
+            Sync-PatMedia -PlaylistName 'Travel' -Destination $script:TestDir `
+                -SourceServerName 'HomeServer' -TargetServerName 'TravelServer' `
+                -RemoveWatched -Confirm:$false
+
+            Should -Invoke -CommandName Remove-PatPlaylistItem -ModuleName PlexAutomationToolkit -Times 0
+        }
+
+        It 'Skips removal when no watched items found' {
+            Mock -ModuleName PlexAutomationToolkit Compare-PatWatchStatus { return @() }
+
+            Sync-PatMedia -PlaylistName 'Travel' -Destination $script:TestDir `
+                -SourceServerName 'HomeServer' -TargetServerName 'TravelServer' `
+                -RemoveWatched -Confirm:$false
+
+            Should -Invoke -CommandName Remove-PatPlaylistItem -ModuleName PlexAutomationToolkit -Times 0
+        }
+    }
+
+    Context 'Combined SyncWatchStatus and RemoveWatched' {
+        BeforeAll {
+            Mock -ModuleName PlexAutomationToolkit Get-PatSyncPlan {
+                return [PSCustomObject]@{
+                    PlaylistName     = 'Travel'
+                    PlaylistId       = 100
+                    TotalItems       = 0
+                    ItemsToAdd       = 0
+                    ItemsToRemove    = 0
+                    ItemsUnchanged   = 0
+                    BytesToDownload  = 0
+                    BytesToRemove    = 0
+                    DestinationFree  = 1000000000
+                    DestinationAfter = 1000000000
+                    SpaceSufficient  = $true
+                    AddOperations    = @()
+                    RemoveOperations = @()
+                    ServerUri        = 'http://plex.test:32400'
+                }
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Compare-PatWatchStatus {
+                return @(
+                    [PSCustomObject]@{
+                        Title           = 'Watched Movie'
+                        Type            = 'movie'
+                        Year            = 2023
+                        SourceRatingKey = 2001
+                        TargetRatingKey = 1001
+                    }
+                )
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Sync-PatWatchStatus {
+                return @(
+                    [PSCustomObject]@{
+                        Title    = 'Watched Movie'
+                        Status   = 'Success'
+                        SyncedTo = 'HomeServer'
+                    }
+                )
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Get-PatPlaylist {
+                return [PSCustomObject]@{
+                    Title      = 'Travel'
+                    PlaylistId = 100
+                    Items      = @(
+                        [PSCustomObject]@{
+                            RatingKey      = 1001
+                            PlaylistItemId = 5001
+                            Title          = 'Watched Movie'
+                            Type           = 'movie'
+                            Year           = 2023
+                        }
+                    )
+                }
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Remove-PatPlaylistItem { }
+        }
+
+        It 'Processes both SyncWatchStatus and RemoveWatched' {
+            Sync-PatMedia -PlaylistName 'Travel' -Destination $script:TestDir `
+                -SourceServerName 'HomeServer' -TargetServerName 'TravelServer' `
+                -SyncWatchStatus -RemoveWatched -Confirm:$false
+
+            Should -Invoke -CommandName Sync-PatWatchStatus -ModuleName PlexAutomationToolkit -Times 1
+            Should -Invoke -CommandName Remove-PatPlaylistItem -ModuleName PlexAutomationToolkit -Times 1
+        }
+
+        It 'Continues removal even if sync has failures' {
+            Mock -ModuleName PlexAutomationToolkit Sync-PatWatchStatus {
+                return @(
+                    [PSCustomObject]@{
+                        Title    = 'Watched Movie'
+                        Status   = 'Failed'
+                        Error    = 'API Error'
+                        SyncedTo = 'HomeServer'
+                    }
+                )
+            }
+
+            Sync-PatMedia -PlaylistName 'Travel' -Destination $script:TestDir `
+                -SourceServerName 'HomeServer' -TargetServerName 'TravelServer' `
+                -SyncWatchStatus -RemoveWatched -Confirm:$false
+
+            Should -Invoke -CommandName Remove-PatPlaylistItem -ModuleName PlexAutomationToolkit -Times 1
+        }
+    }
 }

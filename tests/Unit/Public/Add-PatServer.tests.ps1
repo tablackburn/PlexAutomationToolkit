@@ -44,6 +44,15 @@ Describe 'Add-PatServer' {
             # Default to successful validation
             return @{ friendlyName = 'Mock Server' }
         }
+
+        # Mock Set-PatServerToken to simulate plaintext storage (no vault)
+        Mock -CommandName Set-PatServerToken -ModuleName PlexAutomationToolkit -MockWith {
+            param($ServerName, $Token)
+            return [PSCustomObject]@{
+                StorageType = 'Plaintext'
+                Token       = $Token
+            }
+        }
     }
 
     Context 'Adding a basic server' {

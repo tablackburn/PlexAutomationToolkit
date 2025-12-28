@@ -1,3 +1,8 @@
+BeforeDiscovery {
+    # Check if running on Windows - must be in BeforeDiscovery for -Skip to work
+    $script:RunningOnWindows = $IsWindows -or ($PSVersionTable.PSEdition -eq 'Desktop')
+}
+
 BeforeAll {
     # Import the module from source
     $ProjectRoot = Split-Path -Parent (Split-Path -Parent (Split-Path -Parent $PSScriptRoot))
@@ -6,9 +11,6 @@ BeforeAll {
 
     Get-Module PlexAutomationToolkit | Remove-Module -Force -ErrorAction 'Ignore'
     Import-Module -Name $moduleManifestPath -Verbose:$false -ErrorAction 'Stop'
-
-    # Check if running on Windows
-    $script:IsWindows = $IsWindows -or ($PSVersionTable.PSEdition -eq 'Desktop')
 
     # Get the path separator for pattern matching
     $script:Sep = [IO.Path]::DirectorySeparatorChar
@@ -32,7 +34,7 @@ Describe 'Get-PatConfigurationPath' {
         $env:HOME = $script:originalHome
     }
 
-    Context 'OneDrive path (preferred location)' -Skip:(-not $script:IsWindows) {
+    Context 'OneDrive path (preferred location)' -Skip:(-not $script:RunningOnWindows) {
         It 'Should return OneDrive path when OneDrive is available and writable' {
             # Skip if no OneDrive on this system
             if (-not $env:OneDrive) {
@@ -94,7 +96,7 @@ Describe 'Get-PatConfigurationPath' {
         }
     }
 
-    Context 'Fallback to Documents folder' -Skip:(-not $script:IsWindows) {
+    Context 'Fallback to Documents folder' -Skip:(-not $script:RunningOnWindows) {
         It 'Should use Documents folder when OneDrive is not available' {
             # Temporarily remove OneDrive env variable
             $env:OneDrive = $null

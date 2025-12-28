@@ -480,4 +480,531 @@ Describe 'Get-PatSyncPlan' {
             }
         }
     }
+
+    Context 'File size scenarios' {
+        BeforeAll {
+            # Create temp directory for this context
+            $script:SizeTestDir = Join-Path -Path ([System.IO.Path]::GetTempPath()) -ChildPath "PatSyncPlanSizeTests_$([Guid]::NewGuid().ToString('N'))"
+            New-Item -Path $script:SizeTestDir -ItemType Directory -Force | Out-Null
+
+            Mock -ModuleName PlexAutomationToolkit Get-PatPlaylist {
+                return [PSCustomObject]@{
+                    PlaylistId = 100
+                    Title      = 'Travel'
+                    ItemCount  = 1
+                    Items      = @(
+                        [PSCustomObject]@{
+                            RatingKey = 1001
+                            Title     = 'Size Test Movie'
+                            Type      = 'movie'
+                        }
+                    )
+                    ServerUri  = 'http://plex.test:32400'
+                }
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Get-PatMediaInfo {
+                return [PSCustomObject]@{
+                    RatingKey        = 1001
+                    Title            = 'Size Test Movie'
+                    Type             = 'movie'
+                    Year             = 2023
+                    GrandparentTitle = $null
+                    ParentIndex      = $null
+                    Index            = $null
+                    Media            = @(
+                        [PSCustomObject]@{
+                            MediaId   = 2001
+                            Container = 'mkv'
+                            Part      = @(
+                                [PSCustomObject]@{
+                                    PartId    = 3001
+                                    Key       = '/library/parts/3001/file.mkv'
+                                    Size      = 1000000000
+                                    Container = 'mkv'
+                                    Streams   = @()
+                                }
+                            )
+                        }
+                    )
+                    ServerUri = 'http://plex.test:32400'
+                }
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Get-PSDrive {
+                return [PSCustomObject]@{
+                    Free = 100000000000
+                }
+            }
+        }
+
+        AfterAll {
+            if ($script:SizeTestDir -and (Test-Path -Path $script:SizeTestDir)) {
+                Remove-Item -Path $script:SizeTestDir -Recurse -Force -ErrorAction SilentlyContinue
+            }
+        }
+
+        It 'Marks file for download when size differs' {
+            # Create movie directory and file with wrong size
+            $movieDir = [System.IO.Path]::Combine($script:SizeTestDir, 'Movies', 'Size Test Movie (2023)')
+            New-Item -Path $movieDir -ItemType Directory -Force | Out-Null
+            $movieFile = Join-Path -Path $movieDir -ChildPath 'Size Test Movie (2023).mkv'
+            [System.IO.File]::WriteAllBytes($movieFile, [byte[]](1, 2, 3))  # Wrong size (3 bytes vs 1GB)
+
+            $result = Get-PatSyncPlan -PlaylistName 'Travel' -Destination $script:SizeTestDir
+
+            $result.ItemsToAdd | Should -Be 1
+            $result.BytesToDownload | Should -Be 1000000000
+        }
+
+        It 'Skips file when size matches exactly' {
+            # Create movie directory and file with correct size
+            $movieDir = [System.IO.Path]::Combine($script:SizeTestDir, 'Movies', 'Size Test Movie (2023)')
+            New-Item -Path $movieDir -ItemType Directory -Force | Out-Null
+            $movieFile = Join-Path -Path $movieDir -ChildPath 'Size Test Movie (2023).mkv'
+            $fs = [System.IO.File]::Create($movieFile)
+            $fs.SetLength(1000000000)  # Correct size
+            $fs.Close()
+
+            $result = Get-PatSyncPlan -PlaylistName 'Travel' -Destination $script:SizeTestDir
+
+            $result.ItemsToAdd | Should -Be 0
+            $result.ItemsUnchanged | Should -Be 1
+        }
+    }
+
+    Context 'Media container types' {
+        BeforeAll {
+            Mock -ModuleName PlexAutomationToolkit Get-PSDrive {
+                return [PSCustomObject]@{
+                    Free = 100000000000
+                }
+            }
+        }
+
+        It 'Handles .mp4 container' {
+            Mock -ModuleName PlexAutomationToolkit Get-PatPlaylist {
+                return [PSCustomObject]@{
+                    PlaylistId = 100
+                    Title      = 'Travel'
+                    ItemCount  = 1
+                    Items      = @(
+                        [PSCustomObject]@{
+                            RatingKey = 1001
+                            Title     = 'MP4 Movie'
+                            Type      = 'movie'
+                        }
+                    )
+                    ServerUri  = 'http://plex.test:32400'
+                }
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Get-PatMediaInfo {
+                return [PSCustomObject]@{
+                    RatingKey        = 1001
+                    Title            = 'MP4 Movie'
+                    Type             = 'movie'
+                    Year             = 2023
+                    GrandparentTitle = $null
+                    ParentIndex      = $null
+                    Index            = $null
+                    Media            = @(
+                        [PSCustomObject]@{
+                            MediaId   = 2001
+                            Container = 'mp4'
+                            Part      = @(
+                                [PSCustomObject]@{
+                                    PartId    = 3001
+                                    Key       = '/library/parts/3001/file.mp4'
+                                    Size      = 1000000000
+                                    Container = 'mp4'
+                                    Streams   = @()
+                                }
+                            )
+                        }
+                    )
+                    ServerUri = 'http://plex.test:32400'
+                }
+            }
+
+            $result = Get-PatSyncPlan -PlaylistName 'Travel' -Destination $script:TestDir
+
+            $result.AddOperations[0].Container | Should -Be 'mp4'
+            $result.AddOperations[0].DestinationPath | Should -Match '\.mp4$'
+        }
+
+        It 'Handles .avi container' {
+            Mock -ModuleName PlexAutomationToolkit Get-PatPlaylist {
+                return [PSCustomObject]@{
+                    PlaylistId = 100
+                    Title      = 'Travel'
+                    ItemCount  = 1
+                    Items      = @(
+                        [PSCustomObject]@{
+                            RatingKey = 1001
+                            Title     = 'AVI Movie'
+                            Type      = 'movie'
+                        }
+                    )
+                    ServerUri  = 'http://plex.test:32400'
+                }
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Get-PatMediaInfo {
+                return [PSCustomObject]@{
+                    RatingKey        = 1001
+                    Title            = 'AVI Movie'
+                    Type             = 'movie'
+                    Year             = 2023
+                    GrandparentTitle = $null
+                    ParentIndex      = $null
+                    Index            = $null
+                    Media            = @(
+                        [PSCustomObject]@{
+                            MediaId   = 2001
+                            Container = 'avi'
+                            Part      = @(
+                                [PSCustomObject]@{
+                                    PartId    = 3001
+                                    Key       = '/library/parts/3001/file.avi'
+                                    Size      = 1000000000
+                                    Container = 'avi'
+                                    Streams   = @()
+                                }
+                            )
+                        }
+                    )
+                    ServerUri = 'http://plex.test:32400'
+                }
+            }
+
+            $result = Get-PatSyncPlan -PlaylistName 'Travel' -Destination $script:TestDir
+
+            $result.AddOperations[0].Container | Should -Be 'avi'
+            $result.AddOperations[0].DestinationPath | Should -Match '\.avi$'
+        }
+
+        It 'Defaults to mkv when container is null' {
+            Mock -ModuleName PlexAutomationToolkit Get-PatPlaylist {
+                return [PSCustomObject]@{
+                    PlaylistId = 100
+                    Title      = 'Travel'
+                    ItemCount  = 1
+                    Items      = @(
+                        [PSCustomObject]@{
+                            RatingKey = 1001
+                            Title     = 'No Container Movie'
+                            Type      = 'movie'
+                        }
+                    )
+                    ServerUri  = 'http://plex.test:32400'
+                }
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Get-PatMediaInfo {
+                return [PSCustomObject]@{
+                    RatingKey        = 1001
+                    Title            = 'No Container Movie'
+                    Type             = 'movie'
+                    Year             = 2023
+                    GrandparentTitle = $null
+                    ParentIndex      = $null
+                    Index            = $null
+                    Media            = @(
+                        [PSCustomObject]@{
+                            MediaId   = 2001
+                            Container = $null
+                            Part      = @(
+                                [PSCustomObject]@{
+                                    PartId    = 3001
+                                    Key       = '/library/parts/3001/file'
+                                    Size      = 1000000000
+                                    Container = $null
+                                    Streams   = @()
+                                }
+                            )
+                        }
+                    )
+                    ServerUri = 'http://plex.test:32400'
+                }
+            }
+
+            $result = Get-PatSyncPlan -PlaylistName 'Travel' -Destination $script:TestDir
+
+            $result.AddOperations[0].DestinationPath | Should -Match '\.mkv$'
+        }
+    }
+
+    Context 'Playlist edge cases' {
+        BeforeAll {
+            Mock -ModuleName PlexAutomationToolkit Get-PSDrive {
+                return [PSCustomObject]@{
+                    Free = 100000000000
+                }
+            }
+        }
+
+        It 'Returns empty plan for empty playlist' {
+            Mock -ModuleName PlexAutomationToolkit Get-PatPlaylist {
+                return [PSCustomObject]@{
+                    PlaylistId = 100
+                    Title      = 'Empty'
+                    ItemCount  = 0
+                    Items      = @()
+                    ServerUri  = 'http://plex.test:32400'
+                }
+            }
+
+            $result = Get-PatSyncPlan -PlaylistName 'Empty' -Destination $script:TestDir
+
+            $result.TotalItems | Should -Be 0
+            $result.ItemsToAdd | Should -Be 0
+            $result.BytesToDownload | Should -Be 0
+            $result.AddOperations | Should -BeNullOrEmpty
+        }
+
+        It 'Handles playlist with single item' {
+            Mock -ModuleName PlexAutomationToolkit Get-PatPlaylist {
+                return [PSCustomObject]@{
+                    PlaylistId = 100
+                    Title      = 'Single'
+                    ItemCount  = 1
+                    Items      = @(
+                        [PSCustomObject]@{
+                            RatingKey = 1001
+                            Title     = 'Single Movie'
+                            Type      = 'movie'
+                        }
+                    )
+                    ServerUri  = 'http://plex.test:32400'
+                }
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Get-PatMediaInfo {
+                return [PSCustomObject]@{
+                    RatingKey        = 1001
+                    Title            = 'Single Movie'
+                    Type             = 'movie'
+                    Year             = 2023
+                    GrandparentTitle = $null
+                    ParentIndex      = $null
+                    Index            = $null
+                    Media            = @(
+                        [PSCustomObject]@{
+                            MediaId   = 2001
+                            Container = 'mkv'
+                            Part      = @(
+                                [PSCustomObject]@{
+                                    PartId    = 3001
+                                    Key       = '/library/parts/3001/file.mkv'
+                                    Size      = 1000000000
+                                    Container = 'mkv'
+                                    Streams   = @()
+                                }
+                            )
+                        }
+                    )
+                    ServerUri = 'http://plex.test:32400'
+                }
+            }
+
+            $result = Get-PatSyncPlan -PlaylistName 'Single' -Destination $script:TestDir
+
+            $result.TotalItems | Should -Be 1
+            $result.ItemsToAdd | Should -Be 1
+            $result.AddOperations | Should -HaveCount 1
+        }
+
+        It 'Handles items with no media files' {
+            Mock -ModuleName PlexAutomationToolkit Get-PatPlaylist {
+                return [PSCustomObject]@{
+                    PlaylistId = 100
+                    Title      = 'NoMedia'
+                    ItemCount  = 1
+                    Items      = @(
+                        [PSCustomObject]@{
+                            RatingKey = 1001
+                            Title     = 'No Media Item'
+                            Type      = 'movie'
+                        }
+                    )
+                    ServerUri  = 'http://plex.test:32400'
+                }
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Get-PatMediaInfo {
+                return [PSCustomObject]@{
+                    RatingKey        = 1001
+                    Title            = 'No Media Item'
+                    Type             = 'movie'
+                    Year             = 2023
+                    GrandparentTitle = $null
+                    ParentIndex      = $null
+                    Index            = $null
+                    Media            = @()  # No media
+                    ServerUri = 'http://plex.test:32400'
+                }
+            }
+
+            $result = Get-PatSyncPlan -PlaylistName 'NoMedia' -Destination $script:TestDir
+
+            # Should skip item with no media
+            $result.ItemsToAdd | Should -Be 0
+            $result.AddOperations | Should -BeNullOrEmpty
+        }
+
+        It 'Handles items with no media parts' {
+            Mock -ModuleName PlexAutomationToolkit Get-PatPlaylist {
+                return [PSCustomObject]@{
+                    PlaylistId = 100
+                    Title      = 'NoParts'
+                    ItemCount  = 1
+                    Items      = @(
+                        [PSCustomObject]@{
+                            RatingKey = 1001
+                            Title     = 'No Parts Item'
+                            Type      = 'movie'
+                        }
+                    )
+                    ServerUri  = 'http://plex.test:32400'
+                }
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Get-PatMediaInfo {
+                return [PSCustomObject]@{
+                    RatingKey        = 1001
+                    Title            = 'No Parts Item'
+                    Type             = 'movie'
+                    Year             = 2023
+                    GrandparentTitle = $null
+                    ParentIndex      = $null
+                    Index            = $null
+                    Media            = @(
+                        [PSCustomObject]@{
+                            MediaId   = 2001
+                            Container = 'mkv'
+                            Part      = @()  # No parts
+                        }
+                    )
+                    ServerUri = 'http://plex.test:32400'
+                }
+            }
+
+            $result = Get-PatSyncPlan -PlaylistName 'NoParts' -Destination $script:TestDir
+
+            # Should skip item with no parts
+            $result.ItemsToAdd | Should -Be 0
+            $result.AddOperations | Should -BeNullOrEmpty
+        }
+    }
+
+    Context 'Subtitle count detection' {
+        BeforeAll {
+            Mock -ModuleName PlexAutomationToolkit Get-PSDrive {
+                return [PSCustomObject]@{
+                    Free = 100000000000
+                }
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Get-PatPlaylist {
+                return [PSCustomObject]@{
+                    PlaylistId = 100
+                    Title      = 'Subtitles'
+                    ItemCount  = 1
+                    Items      = @(
+                        [PSCustomObject]@{
+                            RatingKey = 1001
+                            Title     = 'Subtitle Movie'
+                            Type      = 'movie'
+                        }
+                    )
+                    ServerUri  = 'http://plex.test:32400'
+                }
+            }
+        }
+
+        It 'Counts zero subtitles when none exist' {
+            Mock -ModuleName PlexAutomationToolkit Get-PatMediaInfo {
+                return [PSCustomObject]@{
+                    RatingKey        = 1001
+                    Title            = 'Subtitle Movie'
+                    Type             = 'movie'
+                    Year             = 2023
+                    GrandparentTitle = $null
+                    ParentIndex      = $null
+                    Index            = $null
+                    Media            = @(
+                        [PSCustomObject]@{
+                            MediaId   = 2001
+                            Container = 'mkv'
+                            Part      = @(
+                                [PSCustomObject]@{
+                                    PartId    = 3001
+                                    Key       = '/library/parts/3001/file.mkv'
+                                    Size      = 1000000000
+                                    Container = 'mkv'
+                                    Streams   = @()  # No streams
+                                }
+                            )
+                        }
+                    )
+                    ServerUri = 'http://plex.test:32400'
+                }
+            }
+
+            $result = Get-PatSyncPlan -PlaylistName 'Subtitles' -Destination $script:TestDir
+
+            $result.AddOperations[0].SubtitleCount | Should -Be 0
+        }
+
+        It 'Counts multiple external subtitles' {
+            Mock -ModuleName PlexAutomationToolkit Get-PatMediaInfo {
+                return [PSCustomObject]@{
+                    RatingKey        = 1001
+                    Title            = 'Subtitle Movie'
+                    Type             = 'movie'
+                    Year             = 2023
+                    GrandparentTitle = $null
+                    ParentIndex      = $null
+                    Index            = $null
+                    Media            = @(
+                        [PSCustomObject]@{
+                            MediaId   = 2001
+                            Container = 'mkv'
+                            Part      = @(
+                                [PSCustomObject]@{
+                                    PartId    = 3001
+                                    Key       = '/library/parts/3001/file.mkv'
+                                    Size      = 1000000000
+                                    Container = 'mkv'
+                                    Streams   = @(
+                                        [PSCustomObject]@{
+                                            StreamType = 3
+                                            External   = $true
+                                            Key        = '/library/streams/4001'
+                                        },
+                                        [PSCustomObject]@{
+                                            StreamType = 3
+                                            External   = $true
+                                            Key        = '/library/streams/4002'
+                                        },
+                                        [PSCustomObject]@{
+                                            StreamType = 3
+                                            External   = $false  # Not external, should not count
+                                            Key        = $null
+                                        }
+                                    )
+                                }
+                            )
+                        }
+                    )
+                    ServerUri = 'http://plex.test:32400'
+                }
+            }
+
+            $result = Get-PatSyncPlan -PlaylistName 'Subtitles' -Destination $script:TestDir
+
+            $result.AddOperations[0].SubtitleCount | Should -Be 2
+        }
+    }
 }

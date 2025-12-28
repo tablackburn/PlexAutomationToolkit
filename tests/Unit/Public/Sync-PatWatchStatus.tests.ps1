@@ -297,4 +297,283 @@ Describe 'Sync-PatWatchStatus' {
             $result[0].PSObject.TypeNames[0] | Should -Be 'PlexAutomationToolkit.WatchStatusSyncResult'
         }
     }
+
+    Context 'Direction parameter - SourceToTarget' {
+        BeforeAll {
+            Mock -ModuleName PlexAutomationToolkit Get-PatStoredServer {
+                param($Name)
+                return [PSCustomObject]@{
+                    name  = $Name
+                    uri   = "http://$Name.test:32400"
+                    token = 'token'
+                }
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Compare-PatWatchStatus {
+                return @(
+                    [PSCustomObject]@{
+                        Title           = 'Test Movie'
+                        Type            = 'movie'
+                        Year            = 2020
+                        ShowName        = $null
+                        Season          = $null
+                        Episode         = $null
+                        SourceWatched   = $true
+                        TargetWatched   = $false
+                        SourceRatingKey = 1001
+                        TargetRatingKey = 2001
+                    }
+                )
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Invoke-PatApi { }
+        }
+
+        It 'Syncs from Source to Target with default direction' {
+            Sync-PatWatchStatus -SourceServerName 'Source' -TargetServerName 'Target' -Confirm:$false
+
+            Should -Invoke -CommandName Compare-PatWatchStatus -ModuleName PlexAutomationToolkit -Times 1 -ParameterFilter {
+                $SourceServerName -eq 'Source' -and $TargetServerName -eq 'Target'
+            }
+        }
+
+        It 'Syncs from Source to Target with explicit direction' {
+            Sync-PatWatchStatus -SourceServerName 'Source' -TargetServerName 'Target' -Direction SourceToTarget -Confirm:$false
+
+            Should -Invoke -CommandName Compare-PatWatchStatus -ModuleName PlexAutomationToolkit -Times 1 -ParameterFilter {
+                $SourceServerName -eq 'Source' -and $TargetServerName -eq 'Target'
+            }
+        }
+    }
+
+    Context 'Direction parameter - TargetToSource' {
+        BeforeAll {
+            Mock -ModuleName PlexAutomationToolkit Get-PatStoredServer {
+                param($Name)
+                return [PSCustomObject]@{
+                    name  = $Name
+                    uri   = "http://$Name.test:32400"
+                    token = 'token'
+                }
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Compare-PatWatchStatus {
+                return @(
+                    [PSCustomObject]@{
+                        Title           = 'Test Movie'
+                        Type            = 'movie'
+                        Year            = 2020
+                        ShowName        = $null
+                        Season          = $null
+                        Episode         = $null
+                        SourceWatched   = $true
+                        TargetWatched   = $false
+                        SourceRatingKey = 2001
+                        TargetRatingKey = 1001
+                    }
+                )
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Invoke-PatApi { }
+        }
+
+        It 'Syncs from Target to Source when direction is TargetToSource' {
+            Sync-PatWatchStatus -SourceServerName 'Source' -TargetServerName 'Target' -Direction TargetToSource -Confirm:$false
+
+            Should -Invoke -CommandName Compare-PatWatchStatus -ModuleName PlexAutomationToolkit -Times 1 -ParameterFilter {
+                $SourceServerName -eq 'Target' -and $TargetServerName -eq 'Source'
+            }
+        }
+
+        It 'Returns SyncedTo with correct target server name' {
+            $result = Sync-PatWatchStatus -SourceServerName 'Source' -TargetServerName 'Target' -Direction TargetToSource -PassThru -Confirm:$false
+
+            $result[0].SyncedTo | Should -Be 'Source'
+        }
+    }
+
+    Context 'Direction parameter - Bidirectional' {
+        BeforeAll {
+            Mock -ModuleName PlexAutomationToolkit Get-PatStoredServer {
+                param($Name)
+                return [PSCustomObject]@{
+                    name  = $Name
+                    uri   = "http://$Name.test:32400"
+                    token = 'token'
+                }
+            }
+
+            $script:compareCallCount = 0
+            Mock -ModuleName PlexAutomationToolkit Compare-PatWatchStatus {
+                $script:compareCallCount++
+                return @(
+                    [PSCustomObject]@{
+                        Title           = "Movie $script:compareCallCount"
+                        Type            = 'movie'
+                        Year            = 2020
+                        ShowName        = $null
+                        Season          = $null
+                        Episode         = $null
+                        SourceWatched   = $true
+                        TargetWatched   = $false
+                        SourceRatingKey = 1001
+                        TargetRatingKey = 2001
+                    }
+                )
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Invoke-PatApi { }
+        }
+
+        It 'Calls Compare-PatWatchStatus twice for bidirectional sync' {
+            $script:compareCallCount = 0
+
+            Sync-PatWatchStatus -SourceServerName 'Source' -TargetServerName 'Target' -Direction Bidirectional -Confirm:$false
+
+            Should -Invoke -CommandName Compare-PatWatchStatus -ModuleName PlexAutomationToolkit -Times 2
+        }
+
+        It 'Syncs in both directions' {
+            Sync-PatWatchStatus -SourceServerName 'Source' -TargetServerName 'Target' -Direction Bidirectional -Confirm:$false
+
+            # First call: Source -> Target
+            Should -Invoke -CommandName Compare-PatWatchStatus -ModuleName PlexAutomationToolkit -Times 1 -ParameterFilter {
+                $SourceServerName -eq 'Source' -and $TargetServerName -eq 'Target'
+            }
+
+            # Second call: Target -> Source
+            Should -Invoke -CommandName Compare-PatWatchStatus -ModuleName PlexAutomationToolkit -Times 1 -ParameterFilter {
+                $SourceServerName -eq 'Target' -and $TargetServerName -eq 'Source'
+            }
+        }
+
+        It 'Returns results from both directions' {
+            $script:compareCallCount = 0
+
+            $result = Sync-PatWatchStatus -SourceServerName 'Source' -TargetServerName 'Target' -Direction Bidirectional -PassThru -Confirm:$false
+
+            $result | Should -HaveCount 2
+        }
+
+        It 'Includes correct SyncedTo for each direction' {
+            $script:compareCallCount = 0
+
+            $result = Sync-PatWatchStatus -SourceServerName 'Source' -TargetServerName 'Target' -Direction Bidirectional -PassThru -Confirm:$false
+
+            ($result | Where-Object { $_.SyncedTo -eq 'Target' }) | Should -Not -BeNullOrEmpty
+            ($result | Where-Object { $_.SyncedTo -eq 'Source' }) | Should -Not -BeNullOrEmpty
+        }
+    }
+
+    Context 'API error scenarios' {
+        BeforeAll {
+            Mock -ModuleName PlexAutomationToolkit Get-PatStoredServer {
+                param($Name)
+                return [PSCustomObject]@{
+                    name  = $Name
+                    uri   = "http://$Name.test:32400"
+                    token = 'token'
+                }
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Compare-PatWatchStatus {
+                return @(
+                    [PSCustomObject]@{
+                        Title           = 'Test Movie'
+                        Type            = 'movie'
+                        Year            = 2020
+                        ShowName        = $null
+                        Season          = $null
+                        Episode         = $null
+                        SourceWatched   = $true
+                        TargetWatched   = $false
+                        SourceRatingKey = 1001
+                        TargetRatingKey = 2001
+                    }
+                )
+            }
+        }
+
+        It 'Handles HTTP 401 Unauthorized' {
+            Mock -ModuleName PlexAutomationToolkit Invoke-PatApi {
+                throw "401 Unauthorized"
+            }
+
+            $result = Sync-PatWatchStatus -SourceServerName 'Source' -TargetServerName 'Target' -PassThru -Confirm:$false
+
+            $result[0].Status | Should -Be 'Failed'
+            $result[0].Error | Should -Match '401'
+        }
+
+        It 'Handles HTTP 404 Not Found' {
+            Mock -ModuleName PlexAutomationToolkit Invoke-PatApi {
+                throw "404 Not Found"
+            }
+
+            $result = Sync-PatWatchStatus -SourceServerName 'Source' -TargetServerName 'Target' -PassThru -Confirm:$false
+
+            $result[0].Status | Should -Be 'Failed'
+            $result[0].Error | Should -Match '404'
+        }
+
+        It 'Handles HTTP 500 Server Error' {
+            Mock -ModuleName PlexAutomationToolkit Invoke-PatApi {
+                throw "500 Internal Server Error"
+            }
+
+            $result = Sync-PatWatchStatus -SourceServerName 'Source' -TargetServerName 'Target' -PassThru -Confirm:$false
+
+            $result[0].Status | Should -Be 'Failed'
+            $result[0].Error | Should -Match '500'
+        }
+
+        It 'Handles network timeout' {
+            Mock -ModuleName PlexAutomationToolkit Invoke-PatApi {
+                throw "The operation has timed out"
+            }
+
+            $result = Sync-PatWatchStatus -SourceServerName 'Source' -TargetServerName 'Target' -PassThru -Confirm:$false
+
+            $result[0].Status | Should -Be 'Failed'
+            $result[0].Error | Should -Match 'timed out'
+        }
+    }
+
+    Context 'Server validation - both servers' {
+        BeforeAll {
+            Mock -ModuleName PlexAutomationToolkit Get-PatStoredServer {
+                param($Name)
+                if ($Name -eq 'Source') {
+                    return $null
+                }
+                return $null
+            }
+        }
+
+        It 'Throws when source server not found' {
+            { Sync-PatWatchStatus -SourceServerName 'Source' -TargetServerName 'Target' } |
+                Should -Throw "*Source*not found*"
+        }
+    }
+
+    Context 'Server validation - target only' {
+        BeforeAll {
+            Mock -ModuleName PlexAutomationToolkit Get-PatStoredServer {
+                param($Name)
+                if ($Name -eq 'Source') {
+                    return [PSCustomObject]@{
+                        name  = 'Source'
+                        uri   = 'http://source.test:32400'
+                        token = 'token'
+                    }
+                }
+                return $null
+            }
+        }
+
+        It 'Throws when only target server not found' {
+            { Sync-PatWatchStatus -SourceServerName 'Source' -TargetServerName 'Target' } |
+                Should -Throw "*Target*not found*"
+        }
+    }
 }
