@@ -78,9 +78,9 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-psmodules-
 
-      - name: Bootstrap Dependencies
+      - name: Build Module
         shell: pwsh
-        run: ./build.ps1 -Bootstrap
+        run: ./build.ps1 -Task Build -Bootstrap
 
       - name: Run Integration Tests
         shell: pwsh
@@ -95,6 +95,13 @@ jobs:
             Write-Host "::warning::Integration tests skipped - PLEX_SERVER_URI or PLEX_TOKEN secrets not configured"
             exit 0
           }
+
+          # Import the built module
+          $modulePath = Get-ChildItem -Path Output/PlexAutomationToolkit -Directory |
+            Sort-Object Name -Descending |
+            Select-Object -First 1
+          Import-Module $modulePath.FullName -Force
+
           Write-Host "Running integration tests against: $env:PLEX_SERVER_URI"
           Invoke-Pester -Path tests/Integration/ -CI -Output Detailed
 
