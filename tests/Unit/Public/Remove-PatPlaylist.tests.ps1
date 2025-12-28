@@ -221,6 +221,17 @@ Describe 'Remove-PatPlaylist' {
 
     Context 'Pipeline input' {
         BeforeAll {
+            Mock -ModuleName PlexAutomationToolkit Get-PatStoredServer {
+                return [PSCustomObject]$script:mockDefaultServer
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Get-PatAuthenticationHeader {
+                return @{
+                    Accept         = 'application/json'
+                    'X-Plex-Token' = 'test-token'
+                }
+            }
+
             Mock -ModuleName PlexAutomationToolkit Get-PatPlaylist {
                 return $script:mockPlaylist
             }

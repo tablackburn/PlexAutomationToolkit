@@ -203,8 +203,9 @@ Describe "Test help for <_.Name>" -ForEach $commands {
 
         # Required value in Help should match IsMandatory property of parameter
         It 'Has correct [mandatory] value' {
-            $codeMandatory = $_.IsMandatory.toString()
-            $parameterHelp.Required | Should -Be $codeMandatory
+            $codeMandatory = $_.IsMandatory.toString().ToLower()
+            $helpRequired = $parameterHelp.Required.ToLower()
+            $helpRequired | Should -Be $codeMandatory
         }
 
         # Parameter type in help should match code
