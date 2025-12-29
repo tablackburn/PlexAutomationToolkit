@@ -9,10 +9,14 @@ function Invoke-PatFileDownload {
         resuming interrupted downloads.
 
     .PARAMETER Uri
-        The complete URI to download from, including authentication token.
+        The URI to download from (without authentication token in query string).
 
     .PARAMETER OutFile
         The destination file path.
+
+    .PARAMETER Token
+        Optional Plex authentication token. Passed via X-Plex-Token header for security.
+        Prefer this over including token in Uri query string.
 
     .PARAMETER ExpectedSize
         Optional expected file size in bytes. Used for progress calculation and
@@ -27,14 +31,14 @@ function Invoke-PatFileDownload {
         Returns the downloaded file information.
 
     .EXAMPLE
-        Invoke-PatFileDownload -Uri "http://plex:32400/library/parts/123?download=1&X-Plex-Token=abc" -OutFile "C:\movie.mkv"
+        Invoke-PatFileDownload -Uri "http://plex:32400/library/parts/123?download=1" -Token $token -OutFile "C:\movie.mkv"
 
-        Downloads the file to the specified path.
+        Downloads the file using header-based authentication (recommended).
 
     .EXAMPLE
-        Invoke-PatFileDownload -Uri $uri -OutFile $path -ExpectedSize 4000000000 -Resume
+        Invoke-PatFileDownload -Uri $uri -OutFile $path -Token $token -ExpectedSize 4000000000 -Resume
 
-        Attempts to resume a partial download.
+        Attempts to resume a partial download with authentication.
     #>
     [CmdletBinding()]
     [OutputType([System.IO.FileInfo])]
@@ -48,6 +52,10 @@ function Invoke-PatFileDownload {
         [ValidateNotNullOrEmpty()]
         [string]
         $OutFile,
+
+        [Parameter(Mandatory = $false)]
+        [string]
+        $Token,
 
         [Parameter(Mandatory = $false)]
         [long]
@@ -68,6 +76,11 @@ function Invoke-PatFileDownload {
     # Check for existing partial download
     $existingSize = 0
     $headers = @{}
+
+    # Add authentication token to headers if provided (more secure than URL query string)
+    if ($Token) {
+        $headers['X-Plex-Token'] = $Token
+    }
 
     if ($Resume -and (Test-Path -Path $OutFile)) {
         $existingFile = Get-Item -Path $OutFile
@@ -114,15 +127,18 @@ function Invoke-PatFileDownload {
 
             # Check if server supports range requests (206 Partial Content)
             if ($response.StatusCode -eq 206) {
-                # Append to existing file
-                $fileStream = [System.IO.FileStream]::new($OutFile, [System.IO.FileMode]::Append)
+                # Append to existing file using proper resource disposal
+                $fileStream = $null
                 try {
+                    $fileStream = [System.IO.FileStream]::new($OutFile, [System.IO.FileMode]::Append)
                     $fileStream.Write($response.Content, 0, $response.Content.Length)
+                    Write-Verbose "Appended $($response.Content.Length) bytes to existing file"
                 }
                 finally {
-                    $fileStream.Close()
+                    if ($fileStream) {
+                        $fileStream.Dispose()
+                    }
                 }
-                Write-Verbose "Appended $($response.Content.Length) bytes to existing file"
             }
             else {
                 # Server doesn't support range requests, save full response

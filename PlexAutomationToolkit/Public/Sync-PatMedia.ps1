@@ -309,7 +309,14 @@ function Sync-PatMedia {
                 Write-Verbose "Downloading $($syncPlan.AddOperations.Count) items..."
 
                 # Retrieve token once before the download loop (supports vault storage)
-                $token = if ($server) { Get-PatServerToken -ServerConfig $server } else { $null }
+                # Use explicitly provided Token parameter first, then fall back to server config
+                $effectiveToken = if ($Token) {
+                    $Token
+                } elseif ($server) {
+                    Get-PatServerToken -ServerConfig $server
+                } else {
+                    $null
+                }
 
                 $downloadCount = 0
                 $downloadedBytes = 0
@@ -331,22 +338,23 @@ function Sync-PatMedia {
                         -PercentComplete $overallPercent `
                         -Id 1
 
-                    # Construct download URL
-                    $downloadUrl = if ($token) {
-                        "$effectiveUri$($addOp.PartKey)?download=1&X-Plex-Token=$token"
-                    }
-                    else {
-                        "$effectiveUri$($addOp.PartKey)?download=1"
-                    }
+                    # Construct download URL (token passed via header, not URL for security)
+                    $downloadUrl = "$effectiveUri$($addOp.PartKey)?download=1"
 
                     Write-Verbose "Downloading: $($addOp.DestinationPath)"
 
                     try {
-                        Invoke-PatFileDownload -Uri $downloadUrl `
-                            -OutFile $addOp.DestinationPath `
-                            -ExpectedSize $addOp.MediaSize `
-                            -Resume `
-                            -ErrorAction Stop | Out-Null
+                        $downloadParams = @{
+                            Uri          = $downloadUrl
+                            OutFile      = $addOp.DestinationPath
+                            ExpectedSize = $addOp.MediaSize
+                            Resume       = $true
+                            ErrorAction  = 'Stop'
+                        }
+                        if ($effectiveToken) {
+                            $downloadParams['Token'] = $effectiveToken
+                        }
+                        Invoke-PatFileDownload @downloadParams | Out-Null
 
                         # Download subtitles if requested
                         if (-not $SkipSubtitles -and $addOp.SubtitleCount -gt 0) {
@@ -375,19 +383,21 @@ function Sync-PatMedia {
                                     $basePath = [System.IO.Path]::ChangeExtension($addOp.DestinationPath, $null).TrimEnd('.')
                                     $subPath = "$basePath.$lang.$format"
 
-                                    $subUrl = if ($token) {
-                                        "$effectiveUri$($sub.Key)?download=1&X-Plex-Token=$token"
-                                    }
-                                    else {
-                                        "$effectiveUri$($sub.Key)?download=1"
-                                    }
+                                    # Token passed via header, not URL for security
+                                    $subUrl = "$effectiveUri$($sub.Key)?download=1"
 
                                     Write-Verbose "Downloading subtitle: $subPath"
 
                                     try {
-                                        Invoke-PatFileDownload -Uri $subUrl `
-                                            -OutFile $subPath `
-                                            -ErrorAction Stop | Out-Null
+                                        $subDownloadParams = @{
+                                            Uri         = $subUrl
+                                            OutFile     = $subPath
+                                            ErrorAction = 'Stop'
+                                        }
+                                        if ($effectiveToken) {
+                                            $subDownloadParams['Token'] = $effectiveToken
+                                        }
+                                        Invoke-PatFileDownload @subDownloadParams | Out-Null
                                     }
                                     catch {
                                         Write-Warning "Failed to download subtitle for '$itemDisplay': $($_.Exception.Message)"

@@ -57,7 +57,9 @@ function Invoke-PatApi {
         $response = Invoke-RestMethod @apiQueryParameters
 
         # Handle case where response is returned as JSON string (some servers/content-types)
-        if ($response -is [string] -and $response.TrimStart().StartsWith('{')) {
+        # Check for both JSON objects ({) and arrays ([)
+        $trimmedResponse = if ($response -is [string]) { $response.TrimStart() } else { $null }
+        if ($trimmedResponse -and ($trimmedResponse.StartsWith('{') -or $trimmedResponse.StartsWith('['))) {
             Write-Debug "Response is JSON string, parsing with -AsHashtable..."
             # Use -AsHashtable to handle Plex API's case-sensitive keys (e.g., "guid" and "Guid")
             # Then convert back to PSCustomObject for consistent property access patterns
