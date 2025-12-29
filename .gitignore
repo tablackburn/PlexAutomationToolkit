@@ -5,6 +5,7 @@ scratch/
 
 testResults.xml
 codeCoverage.xml
+coverage.xml
 out/
 
 # Don't check in local integration test settings (contains tokens)
