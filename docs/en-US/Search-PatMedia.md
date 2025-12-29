@@ -14,20 +14,20 @@ Searches for media items across Plex libraries.
 
 ### All (Default)
 ```
-Search-PatMedia [-Query] <String> [-ServerUri <String>] [-Type <String[]>] [-Limit <Int32>]
+Search-PatMedia [-Query] <String> [-ServerUri <String>] [-Token <String>] [-Type <String[]>] [-Limit <Int32>]
  [-ProgressAction <ActionPreference>] [<CommonParameters>]
 ```
 
 ### ByName
 ```
-Search-PatMedia [-Query] <String> [-ServerUri <String>] [-SectionName <String>] [-Type <String[]>]
- [-Limit <Int32>] [-ProgressAction <ActionPreference>] [<CommonParameters>]
+Search-PatMedia [-Query] <String> [-ServerUri <String>] [-Token <String>] [-SectionName <String>]
+ [-Type <String[]>] [-Limit <Int32>] [-ProgressAction <ActionPreference>] [<CommonParameters>]
 ```
 
 ### ById
 ```
-Search-PatMedia [-Query] <String> [-ServerUri <String>] [-SectionId <Int32>] [-Type <String[]>]
- [-Limit <Int32>] [-ProgressAction <ActionPreference>] [<CommonParameters>]
+Search-PatMedia [-Query] <String> [-ServerUri <String>] [-Token <String>] [-SectionId <Int32>]
+ [-Type <String[]>] [-Limit <Int32>] [-ProgressAction <ActionPreference>] [<CommonParameters>]
 ```
 
 ## DESCRIPTION
@@ -92,6 +92,22 @@ Accept wildcard characters: False
 ### -ServerUri
 The base URI of the Plex server (e.g., http://plex.example.com:32400).
 If not specified, uses the default stored server.
+
+```yaml
+Type: String
+Parameter Sets: (All)
+Aliases:
+
+Required: False
+Position: Named
+Default value: None
+Accept pipeline input: False
+Accept wildcard characters: False
+```
+
+### -Token
+The Plex authentication token. Required when using -ServerUri to authenticate
+with the server. If not specified with -ServerUri, requests may fail with 401.
 
 ```yaml
 Type: String

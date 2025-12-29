@@ -14,20 +14,20 @@ Removes an item from a collection on a Plex server.
 
 ### ById (Default)
 ```
-Remove-PatCollectionItem -CollectionId <Int32> -RatingKey <Int32[]> [-ServerUri <String>] [-PassThru]
- [-ProgressAction <ActionPreference>] [-WhatIf] [-Confirm] [<CommonParameters>]
+Remove-PatCollectionItem -CollectionId <Int32> -RatingKey <Int32[]> [-ServerUri <String>] [-Token <String>]
+ [-PassThru] [-ProgressAction <ActionPreference>] [-WhatIf] [-Confirm] [<CommonParameters>]
 ```
 
 ### ByNameWithLibraryId
 ```
 Remove-PatCollectionItem -CollectionName <String> -LibraryId <Int32> -RatingKey <Int32[]> [-ServerUri <String>]
- [-PassThru] [-ProgressAction <ActionPreference>] [-WhatIf] [-Confirm] [<CommonParameters>]
+ [-Token <String>] [-PassThru] [-ProgressAction <ActionPreference>] [-WhatIf] [-Confirm] [<CommonParameters>]
 ```
 
 ### ByNameWithLibraryName
 ```
 Remove-PatCollectionItem -CollectionName <String> -LibraryName <String> -RatingKey <Int32[]>
- [-ServerUri <String>] [-PassThru] [-ProgressAction <ActionPreference>] [-WhatIf] [-Confirm]
+ [-ServerUri <String>] [-Token <String>] [-PassThru] [-ProgressAction <ActionPreference>] [-WhatIf] [-Confirm]
  [<CommonParameters>]
 ```
 
@@ -165,6 +165,22 @@ Accept wildcard characters: False
 ### -ServerUri
 The base URI of the Plex server (e.g., http://plex.example.com:32400).
 If not specified, uses the default stored server.
+
+```yaml
+Type: String
+Parameter Sets: (All)
+Aliases:
+
+Required: False
+Position: Named
+Default value: None
+Accept pipeline input: False
+Accept wildcard characters: False
+```
+
+### -Token
+The Plex authentication token. Required when using -ServerUri to authenticate
+with the server. If not specified with -ServerUri, requests may fail with 401.
 
 ```yaml
 Type: String

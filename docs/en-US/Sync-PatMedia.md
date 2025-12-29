@@ -15,14 +15,15 @@ Syncs media from a Plex playlist to a destination folder.
 ### ByName (Default)
 ```
 Sync-PatMedia [-PlaylistName <String>] -Destination <String> [-SkipSubtitles] [-SkipRemoval] [-Force]
- [-PassThru] [-ServerUri <String>] [-SyncWatchStatus] [-RemoveWatched] [-SourceServerName <String>]
- [-TargetServerName <String>] [-ProgressAction <ActionPreference>] [-WhatIf] [-Confirm] [<CommonParameters>]
+ [-PassThru] [-ServerUri <String>] [-Token <String>] [-SyncWatchStatus] [-RemoveWatched]
+ [-SourceServerName <String>] [-TargetServerName <String>] [-ProgressAction <ActionPreference>] [-WhatIf]
+ [-Confirm] [<CommonParameters>]
 ```
 
 ### ById
 ```
 Sync-PatMedia -PlaylistId <Int32> -Destination <String> [-SkipSubtitles] [-SkipRemoval] [-Force] [-PassThru]
- [-ServerUri <String>] [-SyncWatchStatus] [-RemoveWatched] [-SourceServerName <String>]
+ [-ServerUri <String>] [-Token <String>] [-SyncWatchStatus] [-RemoveWatched] [-SourceServerName <String>]
  [-TargetServerName <String>] [-ProgressAction <ActionPreference>] [-WhatIf] [-Confirm] [<CommonParameters>]
 ```
 
@@ -167,6 +168,22 @@ Accept wildcard characters: False
 ### -ServerUri
 The base URI of the Plex server.
 If not specified, uses the default stored server.
+
+```yaml
+Type: String
+Parameter Sets: (All)
+Aliases:
+
+Required: False
+Position: Named
+Default value: None
+Accept pipeline input: False
+Accept wildcard characters: False
+```
+
+### -Token
+The Plex authentication token. Required when using -ServerUri to authenticate
+with the server. If not specified with -ServerUri, requests may fail with 401.
 
 ```yaml
 Type: String

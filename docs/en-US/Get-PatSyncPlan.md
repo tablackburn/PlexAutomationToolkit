@@ -14,13 +14,13 @@ Generates a sync plan for transferring media from a Plex playlist to a destinati
 
 ### ByName (Default)
 ```
-Get-PatSyncPlan [-PlaylistName <String>] -Destination <String> [-ServerUri <String>]
+Get-PatSyncPlan [-PlaylistName <String>] -Destination <String> [-ServerUri <String>] [-Token <String>]
  [-ProgressAction <ActionPreference>] [<CommonParameters>]
 ```
 
 ### ById
 ```
-Get-PatSyncPlan -PlaylistId <Int32> -Destination <String> [-ServerUri <String>]
+Get-PatSyncPlan -PlaylistId <Int32> -Destination <String> [-ServerUri <String>] [-Token <String>]
  [-ProgressAction <ActionPreference>] [<CommonParameters>]
 ```
 
@@ -97,6 +97,22 @@ Accept wildcard characters: False
 ### -ServerUri
 The base URI of the Plex server.
 If not specified, uses the default stored server.
+
+```yaml
+Type: String
+Parameter Sets: (All)
+Aliases:
+
+Required: False
+Position: Named
+Default value: None
+Accept pipeline input: False
+Accept wildcard characters: False
+```
+
+### -Token
+The Plex authentication token. Required when using -ServerUri to authenticate
+with the server. If not specified with -ServerUri, requests may fail with 401.
 
 ```yaml
 Type: String

@@ -13,7 +13,7 @@ Retrieves current activities from a Plex server.
 ## SYNTAX
 
 ```
-Get-PatActivity [[-Type] <String>] [[-SectionId] <Int32>] [[-ServerUri] <String>]
+Get-PatActivity [[-Type] <String>] [[-SectionId] <Int32>] [[-ServerUri] <String>] [[-Token] <String>]
  [-ProgressAction <ActionPreference>] [<CommonParameters>]
 ```
 
@@ -111,6 +111,22 @@ Aliases:
 
 Required: False
 Position: 3
+Default value: None
+Accept pipeline input: False
+Accept wildcard characters: False
+```
+
+### -Token
+The Plex authentication token. Required when using -ServerUri to authenticate
+with the server. If not specified with -ServerUri, requests may fail with 401.
+
+```yaml
+Type: String
+Parameter Sets: (All)
+Aliases:
+
+Required: False
+Position: 4
 Default value: None
 Accept pipeline input: False
 Accept wildcard characters: False

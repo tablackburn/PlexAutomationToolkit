@@ -13,8 +13,8 @@ Removes an item from a playlist on a Plex server.
 ## SYNTAX
 
 ```
-Remove-PatPlaylistItem [-PlaylistId] <Int32> [-PlaylistItemId] <Int32> [[-ServerUri] <String>] [-PassThru]
- [-ProgressAction <ActionPreference>] [-WhatIf] [-Confirm] [<CommonParameters>]
+Remove-PatPlaylistItem [-PlaylistId] <Int32> [-PlaylistItemId] <Int32> [[-ServerUri] <String>]
+ [[-Token] <String>] [-PassThru] [-ProgressAction <ActionPreference>] [-WhatIf] [-Confirm] [<CommonParameters>]
 ```
 
 ## DESCRIPTION
@@ -104,6 +104,22 @@ Aliases:
 
 Required: False
 Position: 3
+Default value: None
+Accept pipeline input: True (ByPropertyName)
+Accept wildcard characters: False
+```
+
+### -Token
+The Plex authentication token. Required when using -ServerUri to authenticate
+with the server. If not specified with -ServerUri, requests may fail with 401.
+
+```yaml
+Type: String
+Parameter Sets: (All)
+Aliases:
+
+Required: False
+Position: 4
 Default value: None
 Accept pipeline input: True (ByPropertyName)
 Accept wildcard characters: False
