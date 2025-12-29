@@ -11,6 +11,45 @@ permissions:
   pull-requests: write
 
 jobs:
+  lint:
+    name: PSScriptAnalyzer Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache PowerShell modules
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/share/powershell/Modules
+          key: ${{ runner.os }}-psmodules-lint-${{ hashFiles('build.depend.psd1') }}
+          restore-keys: |
+            ${{ runner.os }}-psmodules-lint-
+
+      - name: Install PSScriptAnalyzer
+        shell: pwsh
+        run: |
+          Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
+          Install-Module -Name PSScriptAnalyzer -Force -Scope CurrentUser
+
+      - name: Run PSScriptAnalyzer
+        shell: pwsh
+        run: |
+          $results = Invoke-ScriptAnalyzer -Path ./PlexAutomationToolkit -Recurse -Settings PSGallery -ReportSummary
+          $errors = $results | Where-Object { $_.Severity -eq 'Error' }
+
+          if ($results) {
+            Write-Host "::group::PSScriptAnalyzer Results"
+            $results | Format-Table -AutoSize
+            Write-Host "::endgroup::"
+          }
+
+          if ($errors) {
+            Write-Host "::error::PSScriptAnalyzer found $($errors.Count) error(s)"
+            exit 1
+          }
+
+          Write-Host "PSScriptAnalyzer passed with no errors"
+
   unit-tests:
     name: Unit Tests (${{ matrix.os }})
     runs-on: ${{ matrix.os }}

@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [0.8.1] - 2025-12-29
+
+### Fixed
+
+- **Security**: Moved authentication tokens from URL query strings to `X-Plex-Token` header in `Invoke-PatFileDownload` and `Sync-PatMedia`
+- **Security**: Changed `Remove-PatServerToken` to use `Get-SecretInfo` instead of `Get-Secret` to avoid unnecessarily exposing secret values
+- **Bug**: Fixed `-Token` parameter being ignored when explicitly provided in `Sync-PatMedia`
+- **Bug**: Fixed FileStream resource leak in `Invoke-PatFileDownload` with proper `try/finally` disposal pattern
+- **Bug**: Fixed JSON array detection in `Invoke-PatApi` (now handles responses starting with `[`)
+- **Performance**: Eliminated redundant `Get-PatMediaInfo` API calls in `Get-PatSyncPlan` by caching results
+
+### Added
+
+- PSScriptAnalyzer lint job in CI pipeline for early detection of code issues
+- `workflow_dispatch` trigger for manual publish workflow runs
+- Independent checks for GitHub release and PSGallery version in publish workflow
+
 ## [0.8.0] - 2025-12-29
 
 ### Added

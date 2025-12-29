@@ -193,9 +193,10 @@ function Get-PatSyncPlan {
 
             Write-Verbose "Playlist '$($playlist.Title)' has $($playlist.ItemCount) items"
 
-            # Get media info for each playlist item
+            # Get media info for each playlist item (cache results to avoid redundant API calls)
             $addOperations = @()
             $totalBytesToDownload = 0
+            $mediaInfoCache = @{}
 
             if ($playlist.Items -and $playlist.Items.Count -gt 0) {
                 $itemCount = 0
@@ -215,6 +216,9 @@ function Get-PatSyncPlan {
                     }
 
                     $mediaInfo = Get-PatMediaInfo @mediaInfoParams
+
+                    # Cache media info for reuse when building expected paths
+                    $mediaInfoCache[$item.RatingKey] = $mediaInfo
 
                     if (-not $mediaInfo.Media -or $mediaInfo.Media.Count -eq 0) {
                         Write-Warning "No media files found for '$($item.Title)'"
@@ -288,21 +292,11 @@ function Get-PatSyncPlan {
                 $expectedPaths[$op.DestinationPath] = $true
             }
 
-            # Also mark existing items that don't need download
+            # Also mark existing items that don't need download (use cached media info)
             if ($playlist.Items) {
                 foreach ($item in $playlist.Items) {
-                    $mediaInfoParams = @{
-                        RatingKey   = $item.RatingKey
-                        ErrorAction = 'SilentlyContinue'
-                    }
-                    if ($ServerUri) {
-                        $mediaInfoParams['ServerUri'] = $ServerUri
-                    }
-                    if ($Token) {
-                        $mediaInfoParams['Token'] = $Token
-                    }
-
-                    $mediaInfo = Get-PatMediaInfo @mediaInfoParams
+                    # Use cached media info instead of making another API call
+                    $mediaInfo = $mediaInfoCache[$item.RatingKey]
                     if ($mediaInfo -and $mediaInfo.Media -and $mediaInfo.Media.Count -gt 0) {
                         $media = $mediaInfo.Media[0]
                         if ($media.Part -and $media.Part.Count -gt 0) {
