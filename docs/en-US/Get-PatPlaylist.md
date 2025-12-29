@@ -14,18 +14,19 @@ Retrieves playlists from a Plex server.
 
 ### All (Default)
 ```
-Get-PatPlaylist [-IncludeItems] [-ServerUri <String>] [-ProgressAction <ActionPreference>] [<CommonParameters>]
+Get-PatPlaylist [-IncludeItems] [-ServerUri <String>] [-Token <String>] [-ProgressAction <ActionPreference>]
+ [<CommonParameters>]
 ```
 
 ### ById
 ```
-Get-PatPlaylist -PlaylistId <Int32> [-IncludeItems] [-ServerUri <String>] [-ProgressAction <ActionPreference>]
- [<CommonParameters>]
+Get-PatPlaylist -PlaylistId <Int32> [-IncludeItems] [-ServerUri <String>] [-Token <String>]
+ [-ProgressAction <ActionPreference>] [<CommonParameters>]
 ```
 
 ### ByName
 ```
-Get-PatPlaylist -PlaylistName <String> [-IncludeItems] [-ServerUri <String>]
+Get-PatPlaylist -PlaylistName <String> [-IncludeItems] [-ServerUri <String>] [-Token <String>]
  [-ProgressAction <ActionPreference>] [<CommonParameters>]
 ```
 
@@ -124,6 +125,22 @@ Accept wildcard characters: False
 ### -ServerUri
 The base URI of the Plex server (e.g., http://plex.example.com:32400).
 If not specified, uses the default stored server.
+
+```yaml
+Type: String
+Parameter Sets: (All)
+Aliases:
+
+Required: False
+Position: Named
+Default value: None
+Accept pipeline input: False
+Accept wildcard characters: False
+```
+
+### -Token
+The Plex authentication token. Required when using -ServerUri to authenticate
+with the server. If not specified with -ServerUri, requests will fail.
 
 ```yaml
 Type: String

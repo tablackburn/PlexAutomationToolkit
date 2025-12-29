@@ -15,6 +15,10 @@ function Search-PatMedia {
         The base URI of the Plex server (e.g., http://plex.example.com:32400).
         If not specified, uses the default stored server.
 
+    .PARAMETER Token
+        The Plex authentication token. Required when using -ServerUri to authenticate
+        with the server. If not specified with -ServerUri, requests may fail with 401.
+
     .PARAMETER SectionName
         Limit search to a specific library section by name (e.g., "Movies", "TV Shows").
 
@@ -94,6 +98,11 @@ function Search-PatMedia {
         [ValidateScript({ Test-PatServerUri -Uri $_ })]
         [string]
         $ServerUri,
+
+        [Parameter(Mandatory = $false)]
+        [ValidateNotNullOrEmpty()]
+        [string]
+        $Token,
 
         [Parameter(Mandatory = $false, ParameterSetName = 'ByName')]
         [ValidateNotNullOrEmpty()]
@@ -196,7 +205,7 @@ function Search-PatMedia {
     )
 
     begin {
-        $script:serverContext = Resolve-PatServerContext -ServerUri $ServerUri
+        $script:serverContext = Resolve-PatServerContext -ServerUri $ServerUri -Token $Token
         $effectiveUri = $script:serverContext.Uri
         $headers = $script:serverContext.Headers
     }

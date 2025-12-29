@@ -29,6 +29,10 @@ function Wait-PatLibraryScan {
         The base URI of the Plex server (e.g., http://plex.example.com:32400)
         If not specified, uses the default stored server.
 
+    .PARAMETER Token
+        The Plex authentication token. Required when using -ServerUri to authenticate
+        with the server. If not specified with -ServerUri, requests may fail with 401.
+
     .EXAMPLE
         Update-PatLibrary -SectionName 'Movies' -Path '/mnt/media/Movies/NewMovie'
         Wait-PatLibraryScan -SectionName 'Movies'
@@ -85,13 +89,21 @@ function Wait-PatLibraryScan {
         [ValidateNotNullOrEmpty()]
         [ValidateScript({ Test-PatServerUri -Uri $_ })]
         [string]
-        $ServerUri
+        $ServerUri,
+
+        [Parameter(Mandatory = $false)]
+        [ValidateNotNullOrEmpty()]
+        [string]
+        $Token
     )
 
     # Build parameters for internal calls
     $serverParams = @{}
     if ($ServerUri) {
         $serverParams['ServerUri'] = $ServerUri
+    }
+    if ($Token) {
+        $serverParams['Token'] = $Token
     }
 
     # Resolve section name to ID if needed

@@ -34,6 +34,10 @@ function Sync-PatMedia {
     .PARAMETER ServerUri
         The base URI of the Plex server. If not specified, uses the default stored server.
 
+    .PARAMETER Token
+        The Plex authentication token. Required when using -ServerUri to authenticate
+        with the server. If not specified with -ServerUri, requests may fail with 401.
+
     .PARAMETER SyncWatchStatus
         After syncing media, compares watch status between the source and target servers and
         syncs watched items from the target (travel) server back to the source (home) server.
@@ -175,6 +179,11 @@ function Sync-PatMedia {
         $ServerUri,
 
         [Parameter(Mandatory = $false)]
+        [ValidateNotNullOrEmpty()]
+        [string]
+        $Token,
+
+        [Parameter(Mandatory = $false)]
         [switch]
         $SyncWatchStatus,
 
@@ -221,6 +230,9 @@ function Sync-PatMedia {
             }
             if ($ServerUri) {
                 $syncPlanParams['ServerUri'] = $ServerUri
+            }
+            if ($Token) {
+                $syncPlanParams['Token'] = $Token
             }
             if ($PlaylistId) {
                 $syncPlanParams['PlaylistId'] = $PlaylistId
@@ -346,6 +358,9 @@ function Sync-PatMedia {
                             if ($ServerUri) {
                                 $mediaInfoParams['ServerUri'] = $ServerUri
                             }
+                            if ($Token) {
+                                $mediaInfoParams['Token'] = $Token
+                            }
 
                             $mediaInfo = Get-PatMediaInfo @mediaInfoParams
 
@@ -439,6 +454,9 @@ function Sync-PatMedia {
                             }
                             if ($ServerUri) {
                                 $getPlaylistParams['ServerUri'] = $ServerUri
+                            }
+                            if ($Token) {
+                                $getPlaylistParams['Token'] = $Token
                             }
 
                             $playlist = Get-PatPlaylist @getPlaylistParams

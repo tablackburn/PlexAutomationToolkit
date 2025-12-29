@@ -16,6 +16,10 @@ function Get-PatMediaInfo {
         The base URI of the Plex server (e.g., http://plex.example.com:32400).
         If not specified, uses the default stored server.
 
+    .PARAMETER Token
+        The Plex authentication token. Required when using -ServerUri to authenticate
+        with the server. If not specified with -ServerUri, requests may fail with 401.
+
     .EXAMPLE
         Get-PatMediaInfo -RatingKey 12345
 
@@ -59,7 +63,12 @@ function Get-PatMediaInfo {
         [ValidateNotNullOrEmpty()]
         [ValidateScript({ Test-PatServerUri -Uri $_ })]
         [string]
-        $ServerUri
+        $ServerUri,
+
+        [Parameter(Mandatory = $false)]
+        [ValidateNotNullOrEmpty()]
+        [string]
+        $Token
     )
 
     begin {
@@ -83,12 +92,17 @@ function Get-PatMediaInfo {
             Write-Verbose "Using specified server: $effectiveUri"
         }
 
-        # Build headers with authentication if we have server object
+        # Build headers with authentication if we have server object or token
         $headers = if ($server) {
             Get-PatAuthenticationHeader -Server $server
         }
         else {
-            @{ Accept = 'application/json' }
+            $h = @{ Accept = 'application/json' }
+            if (-not [string]::IsNullOrWhiteSpace($Token)) {
+                $h['X-Plex-Token'] = $Token
+                Write-Debug "Adding X-Plex-Token header for authenticated request"
+            }
+            $h
         }
     }
 

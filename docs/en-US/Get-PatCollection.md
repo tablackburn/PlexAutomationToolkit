@@ -15,25 +15,25 @@ Retrieves collections from a Plex server library.
 ### All (Default)
 ```
 Get-PatCollection [-LibraryName <String>] [-LibraryId <Int32>] [-IncludeItems] [-ServerUri <String>]
- [-ProgressAction <ActionPreference>] [<CommonParameters>]
+ [-Token <String>] [-ProgressAction <ActionPreference>] [<CommonParameters>]
 ```
 
 ### ById
 ```
-Get-PatCollection -CollectionId <Int32> [-IncludeItems] [-ServerUri <String>]
+Get-PatCollection -CollectionId <Int32> [-IncludeItems] [-ServerUri <String>] [-Token <String>]
  [-ProgressAction <ActionPreference>] [<CommonParameters>]
 ```
 
 ### ByNameWithLibraryId
 ```
 Get-PatCollection -CollectionName <String> -LibraryId <Int32> [-IncludeItems] [-ServerUri <String>]
- [-ProgressAction <ActionPreference>] [<CommonParameters>]
+ [-Token <String>] [-ProgressAction <ActionPreference>] [<CommonParameters>]
 ```
 
 ### ByNameWithLibraryName
 ```
 Get-PatCollection -CollectionName <String> -LibraryName <String> [-IncludeItems] [-ServerUri <String>]
- [-ProgressAction <ActionPreference>] [<CommonParameters>]
+ [-Token <String>] [-ProgressAction <ActionPreference>] [<CommonParameters>]
 ```
 
 ## DESCRIPTION
@@ -192,6 +192,22 @@ Accept wildcard characters: False
 ### -ServerUri
 The base URI of the Plex server (e.g., http://plex.example.com:32400).
 If not specified, uses the default stored server.
+
+```yaml
+Type: String
+Parameter Sets: (All)
+Aliases:
+
+Required: False
+Position: Named
+Default value: None
+Accept pipeline input: False
+Accept wildcard characters: False
+```
+
+### -Token
+The Plex authentication token. Required when using -ServerUri to authenticate
+with the server. If not specified with -ServerUri, requests will fail.
 
 ```yaml
 Type: String

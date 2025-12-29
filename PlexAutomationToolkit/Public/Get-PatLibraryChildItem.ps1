@@ -11,6 +11,10 @@ function Get-PatLibraryChildItem {
         The base URI of the Plex server (e.g., http://plex.example.com:32400)
         If not specified, uses the default stored server.
 
+    .PARAMETER Token
+        The Plex authentication token. Required when using -ServerUri to authenticate
+        with the server. If not specified with -ServerUri, requests may fail with 401.
+
     .PARAMETER Path
         The absolute filesystem path to browse (e.g., /mnt/media, /var/lib/plexmediaserver)
         If omitted, lists root-level accessible paths.
@@ -85,38 +89,27 @@ function Get-PatLibraryChildItem {
             }
 
             # Use provided ServerUri if available, otherwise use default server
+            $getParams = @{ ErrorAction = 'SilentlyContinue' }
             if ($fakeBoundParameters.ContainsKey('ServerUri')) {
-                try {
-                    $sections = Get-PatLibrary -ServerUri $fakeBoundParameters['ServerUri'] -ErrorAction 'SilentlyContinue'
-                    foreach ($sectionTitle in $sections.Directory.title) {
-                        if ($sectionTitle -ilike "$strippedWord*") {
-                            if ($quoteChar) { $completionText = "$quoteChar$sectionTitle$quoteChar" }
-                            elseif ($sectionTitle -match '\s') { $completionText = "'$sectionTitle'" }
-                            else { $completionText = $sectionTitle }
-                            [System.Management.Automation.CompletionResult]::new($completionText, $sectionTitle, 'ParameterValue', $sectionTitle)
-                        }
+                $getParams['ServerUri'] = $fakeBoundParameters['ServerUri']
+            }
+            if ($fakeBoundParameters.ContainsKey('Token')) {
+                $getParams['Token'] = $fakeBoundParameters['Token']
+            }
+
+            try {
+                $sections = Get-PatLibrary @getParams
+                foreach ($sectionTitle in $sections.Directory.title) {
+                    if ($sectionTitle -ilike "$strippedWord*") {
+                        if ($quoteChar) { $completionText = "$quoteChar$sectionTitle$quoteChar" }
+                        elseif ($sectionTitle -match '\s') { $completionText = "'$sectionTitle'" }
+                        else { $completionText = $sectionTitle }
+                        [System.Management.Automation.CompletionResult]::new($completionText, $sectionTitle, 'ParameterValue', $sectionTitle)
                     }
-                }
-                catch {
-                    Write-Debug "Tab completion failed for SectionName: $($_.Exception.Message)"
                 }
             }
-            else {
-                # Fall back to default server - don't pass ServerUri so Get-PatLibrary retrieves server object with token
-                try {
-                    $sections = Get-PatLibrary -ErrorAction 'SilentlyContinue'
-                    foreach ($sectionTitle in $sections.Directory.title) {
-                        if ($sectionTitle -ilike "$strippedWord*") {
-                            if ($quoteChar) { $completionText = "$quoteChar$sectionTitle$quoteChar" }
-                            elseif ($sectionTitle -match '\s') { $completionText = "'$sectionTitle'" }
-                            else { $completionText = $sectionTitle }
-                            [System.Management.Automation.CompletionResult]::new($completionText, $sectionTitle, 'ParameterValue', $sectionTitle)
-                        }
-                    }
-                }
-                catch {
-                    Write-Debug "Tab completion failed for SectionName (default server): $($_.Exception.Message)"
-                }
+            catch {
+                Write-Debug "Tab completion failed for SectionName: $($_.Exception.Message)"
             }
         })]
         [string]
@@ -131,34 +124,25 @@ function Get-PatLibraryChildItem {
             $strippedWord = $wordToComplete -replace "^[`"']", ''
 
             # Use provided ServerUri if available, otherwise use default server
+            $getParams = @{ ErrorAction = 'SilentlyContinue' }
             if ($fakeBoundParameters.ContainsKey('ServerUri')) {
-                try {
-                    $sections = Get-PatLibrary -ServerUri $fakeBoundParameters['ServerUri'] -ErrorAction 'SilentlyContinue'
-                    $sections.Directory | ForEach-Object {
-                        $sectionId = ($_.key -replace '.*/(\d+)$', '$1')
-                        if ($sectionId -ilike "$strippedWord*") {
-                            [System.Management.Automation.CompletionResult]::new($sectionId, "$sectionId - $($_.title)", 'ParameterValue', "$($_.title) (ID: $sectionId)")
-                        }
+                $getParams['ServerUri'] = $fakeBoundParameters['ServerUri']
+            }
+            if ($fakeBoundParameters.ContainsKey('Token')) {
+                $getParams['Token'] = $fakeBoundParameters['Token']
+            }
+
+            try {
+                $sections = Get-PatLibrary @getParams
+                $sections.Directory | ForEach-Object {
+                    $sectionId = ($_.key -replace '.*/(\d+)$', '$1')
+                    if ($sectionId -ilike "$strippedWord*") {
+                        [System.Management.Automation.CompletionResult]::new($sectionId, "$sectionId - $($_.title)", 'ParameterValue', "$($_.title) (ID: $sectionId)")
                     }
-                }
-                catch {
-                    Write-Debug "Tab completion failed for SectionId: $($_.Exception.Message)"
                 }
             }
-            else {
-                # Fall back to default server - don't pass ServerUri so Get-PatLibrary retrieves server object with token
-                try {
-                    $sections = Get-PatLibrary -ErrorAction 'SilentlyContinue'
-                    $sections.Directory | ForEach-Object {
-                        $sectionId = ($_.key -replace '.*/(\d+)$', '$1')
-                        if ($sectionId -ilike "$strippedWord*") {
-                            [System.Management.Automation.CompletionResult]::new($sectionId, "$sectionId - $($_.title)", 'ParameterValue', "$($_.title) (ID: $sectionId)")
-                        }
-                    }
-                }
-                catch {
-                    Write-Debug "Tab completion failed for SectionId (default server): $($_.Exception.Message)"
-                }
+            catch {
+                Write-Debug "Tab completion failed for SectionId: $($_.Exception.Message)"
             }
         })]
         [int]
@@ -168,7 +152,12 @@ function Get-PatLibraryChildItem {
         [ValidateNotNullOrEmpty()]
         [ValidateScript({ Test-PatServerUri -Uri $_ })]
         [string]
-        $ServerUri
+        $ServerUri,
+
+        [Parameter(Mandatory = $false)]
+        [ValidateNotNullOrEmpty()]
+        [string]
+        $Token
     )
 
     # Use default server if ServerUri not specified
@@ -199,7 +188,9 @@ function Get-PatLibraryChildItem {
                 $sections = Get-PatLibrary -ErrorAction 'Stop'
             }
             else {
-                $sections = Get-PatLibrary -ServerUri $effectiveUri -ErrorAction 'Stop'
+                $libParams = @{ ServerUri = $effectiveUri; ErrorAction = 'Stop' }
+                if ($Token) { $libParams['Token'] = $Token }
+                $sections = Get-PatLibrary @libParams
             }
 
             $matchingSection = $null
@@ -239,12 +230,17 @@ function Get-PatLibraryChildItem {
             $pathsToBrowse = @($null)
         }
 
-        # Build headers with authentication if we have server object
+        # Build headers with authentication if we have server object or token
         $headers = if ($server) {
             Get-PatAuthenticationHeader -Server $server
         }
         else {
-            @{ Accept = 'application/json' }
+            $h = @{ Accept = 'application/json' }
+            if (-not [string]::IsNullOrWhiteSpace($Token)) {
+                $h['X-Plex-Token'] = $Token
+                Write-Debug "Adding X-Plex-Token header for authenticated request"
+            }
+            $h
         }
 
         $results = @()

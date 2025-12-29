@@ -22,6 +22,10 @@ function Stop-PatSession {
         The base URI of the Plex server (e.g., http://plex.example.com:32400).
         If not specified, uses the default stored server.
 
+    .PARAMETER Token
+        The Plex authentication token. Required when using -ServerUri to authenticate
+        with the server. If not specified with -ServerUri, requests may fail with 401.
+
     .PARAMETER PassThru
         If specified, returns the session information before termination.
 
@@ -82,6 +86,11 @@ function Stop-PatSession {
         $ServerUri,
 
         [Parameter(Mandatory = $false)]
+        [ValidateNotNullOrEmpty()]
+        [string]
+        $Token,
+
+        [Parameter(Mandatory = $false)]
         [switch]
         $PassThru
     )
@@ -103,12 +112,17 @@ function Stop-PatSession {
             }
         }
 
-        # Build headers with authentication
+        # Build headers with authentication if we have server object or token
         $headers = if ($server) {
             Get-PatAuthenticationHeader -Server $server
         }
         else {
-            @{ Accept = 'application/json' }
+            $h = @{ Accept = 'application/json' }
+            if (-not [string]::IsNullOrWhiteSpace($Token)) {
+                $h['X-Plex-Token'] = $Token
+                Write-Debug "Adding X-Plex-Token header for authenticated request"
+            }
+            $h
         }
     }
 

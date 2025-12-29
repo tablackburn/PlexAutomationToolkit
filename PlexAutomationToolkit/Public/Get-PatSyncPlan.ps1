@@ -21,6 +21,10 @@ function Get-PatSyncPlan {
     .PARAMETER ServerUri
         The base URI of the Plex server. If not specified, uses the default stored server.
 
+    .PARAMETER Token
+        The Plex authentication token. Required when using -ServerUri to authenticate
+        with the server. If not specified with -ServerUri, requests may fail with 401.
+
     .EXAMPLE
         Get-PatSyncPlan -Destination 'E:\'
 
@@ -125,7 +129,12 @@ function Get-PatSyncPlan {
         [ValidateNotNullOrEmpty()]
         [ValidateScript({ Test-PatServerUri -Uri $_ })]
         [string]
-        $ServerUri
+        $ServerUri,
+
+        [Parameter(Mandatory = $false)]
+        [ValidateNotNullOrEmpty()]
+        [string]
+        $Token
     )
 
     begin {
@@ -163,6 +172,9 @@ function Get-PatSyncPlan {
             }
             elseif ($ServerUri) {
                 $playlistParams['ServerUri'] = $ServerUri
+                if ($Token) {
+                    $playlistParams['Token'] = $Token
+                }
             }
 
             if ($PlaylistId) {
@@ -197,6 +209,9 @@ function Get-PatSyncPlan {
                     }
                     if ($ServerUri) {
                         $mediaInfoParams['ServerUri'] = $ServerUri
+                    }
+                    if ($Token) {
+                        $mediaInfoParams['Token'] = $Token
                     }
 
                     $mediaInfo = Get-PatMediaInfo @mediaInfoParams
@@ -282,6 +297,9 @@ function Get-PatSyncPlan {
                     }
                     if ($ServerUri) {
                         $mediaInfoParams['ServerUri'] = $ServerUri
+                    }
+                    if ($Token) {
+                        $mediaInfoParams['Token'] = $Token
                     }
 
                     $mediaInfo = Get-PatMediaInfo @mediaInfoParams

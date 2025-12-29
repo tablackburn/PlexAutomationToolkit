@@ -28,6 +28,10 @@ function New-PatCollection {
         The base URI of the Plex server (e.g., http://plex.example.com:32400).
         If not specified, uses the default stored server.
 
+    .PARAMETER Token
+        The Plex authentication token. Required when using -ServerUri to authenticate
+        with the server. If not specified with -ServerUri, requests may fail with 401.
+
     .PARAMETER PassThru
         If specified, returns the created collection object.
 
@@ -142,13 +146,18 @@ function New-PatCollection {
         $ServerUri,
 
         [Parameter(Mandatory = $false)]
+        [ValidateNotNullOrEmpty()]
+        [string]
+        $Token,
+
+        [Parameter(Mandatory = $false)]
         [switch]
         $PassThru
     )
 
     begin {
         try {
-            $script:serverContext = Resolve-PatServerContext -ServerUri $ServerUri
+            $script:serverContext = Resolve-PatServerContext -ServerUri $ServerUri -Token $Token
         }
         catch {
             throw "Failed to resolve server: $($_.Exception.Message)"

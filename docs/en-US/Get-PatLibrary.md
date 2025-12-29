@@ -13,8 +13,8 @@ Retrieves Plex library information.
 ## SYNTAX
 
 ```
-Get-PatLibrary [[-ServerUri] <String>] [[-SectionId] <Int32>] [-ProgressAction <ActionPreference>]
- [<CommonParameters>]
+Get-PatLibrary [[-ServerUri] <String>] [[-Token] <String>] [[-SectionId] <Int32>]
+ [-ProgressAction <ActionPreference>] [<CommonParameters>]
 ```
 
 ## DESCRIPTION
@@ -56,6 +56,22 @@ Accept pipeline input: False
 Accept wildcard characters: False
 ```
 
+### -Token
+The Plex authentication token. Required when using -ServerUri to authenticate
+with the server. If not specified with -ServerUri, requests will fail.
+
+```yaml
+Type: String
+Parameter Sets: (All)
+Aliases:
+
+Required: False
+Position: 2
+Default value: None
+Accept pipeline input: False
+Accept wildcard characters: False
+```
+
 ### -SectionId
 Optional ID of a specific library section to retrieve.
 If omitted, returns all sections.
@@ -66,7 +82,7 @@ Parameter Sets: (All)
 Aliases:
 
 Required: False
-Position: 2
+Position: 3
 Default value: 0
 Accept pipeline input: True (ByPropertyName, ByValue)
 Accept wildcard characters: False

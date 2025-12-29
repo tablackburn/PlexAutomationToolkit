@@ -20,6 +20,10 @@ function Remove-PatPlaylistItem {
         The base URI of the Plex server (e.g., http://plex.example.com:32400).
         If not specified, uses the default stored server.
 
+    .PARAMETER Token
+        The Plex authentication token. Required when using -ServerUri to authenticate
+        with the server. If not specified with -ServerUri, requests may fail with 401.
+
     .PARAMETER PassThru
         If specified, returns the updated playlist object.
 
@@ -76,6 +80,11 @@ function Remove-PatPlaylistItem {
         [string]
         $ServerUri,
 
+        [Parameter(Mandatory = $false, ValueFromPipelineByPropertyName)]
+        [ValidateNotNullOrEmpty()]
+        [string]
+        $Token,
+
         [Parameter(Mandatory = $false)]
         [switch]
         $PassThru
@@ -85,15 +94,17 @@ function Remove-PatPlaylistItem {
         # Cache for server context (will be set per-item in process block if ServerUri varies)
         $script:cachedServerContext = $null
         $script:cachedServerUri = $null
+        $script:cachedToken = $null
     }
 
     process {
         try {
-            # Resolve server context (cache if ServerUri is the same)
-            if ($ServerUri -ne $script:cachedServerUri) {
+            # Resolve server context (cache if ServerUri and Token are the same)
+            if ($ServerUri -ne $script:cachedServerUri -or $Token -ne $script:cachedToken) {
                 try {
-                    $script:cachedServerContext = Resolve-PatServerContext -ServerUri $ServerUri
+                    $script:cachedServerContext = Resolve-PatServerContext -ServerUri $ServerUri -Token $Token
                     $script:cachedServerUri = $ServerUri
+                    $script:cachedToken = $Token
                 }
                 catch {
                     throw "Failed to resolve server: $($_.Exception.Message)"

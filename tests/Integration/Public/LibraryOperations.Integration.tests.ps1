@@ -137,13 +137,8 @@ Describe 'Update-PatLibrary Integration Tests' -Skip:(-not $script:integrationEn
 
     Context 'Using explicit ServerUri parameter' -Skip:(-not $script:mutationsEnabled) {
 
-        It 'Works with explicit ServerUri when server is stored but not default' -Skip {
-            # SKIP: Current architecture doesn't support explicit ServerUri with authentication.
-            # When -ServerUri is provided, the function doesn't look up stored servers by URI,
-            # so there's no way to get the authentication token. This would require either:
-            #   1. Enhancing Get-PatStoredServer to support lookup by URI
-            #   2. Adding -Token parameter to Update-PatLibrary and other cmdlets
-            # Tracked as future enhancement.
+        It 'Works with explicit ServerUri and Token parameters' {
+            # Tests the -Token parameter which allows explicit ServerUri to work with authentication
 
             # Add a second server without default flag
             Add-PatServer -Name 'IntegrationTest-NonDefault' `

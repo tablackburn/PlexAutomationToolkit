@@ -12,6 +12,10 @@ function Update-PatLibrary {
         The base URI of the Plex server (e.g., http://plex.example.com:32400)
         If not specified, uses the default stored server.
 
+    .PARAMETER Token
+        The Plex authentication token. Required when using -ServerUri to authenticate
+        with the server. If not specified with -ServerUri, requests may fail with 401.
+
     .PARAMETER SectionId
         The ID of the library section to refresh
 
@@ -106,6 +110,12 @@ function Update-PatLibrary {
         $changes | Where-Object ChangeType -eq 'Added'
 
         Returns a list of items that were added or removed by the scan.
+
+    .EXAMPLE
+        Update-PatLibrary -ServerUri "http://plex.example.com:32400" -Token $myToken -SectionId 2
+
+        Refreshes library section 2 using an explicit server URI and token.
+        Use this when you don't have the server stored in configuration.
     #>
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
         'PSReviewUnusedParameter',
@@ -350,7 +360,13 @@ function Update-PatLibrary {
         [ValidateNotNullOrEmpty()]
         [ValidateScript({ Test-PatServerUri -Uri $_ })]
         [string]
-        $ServerUri
+        $ServerUri,
+
+        [Parameter(Mandatory = $false, ParameterSetName = 'ByName')]
+        [Parameter(Mandatory = $false, ParameterSetName = 'ById')]
+        [ValidateNotNullOrEmpty()]
+        [string]
+        $Token
     )
 
     # Use default server if ServerUri not specified
@@ -439,12 +455,17 @@ function Update-PatLibrary {
         $target = "section $resolvedSectionId"
     }
 
-    # Build headers with authentication if we have server object
+    # Build headers with authentication if we have server object or token
     $headers = if ($server) {
         Get-PatAuthenticationHeader -Server $server
     }
     else {
-        @{ Accept = 'application/json' }
+        $h = @{ Accept = 'application/json' }
+        if (-not [string]::IsNullOrWhiteSpace($Token)) {
+            $h['X-Plex-Token'] = $Token
+            Write-Debug "Adding X-Plex-Token header for authenticated request"
+        }
+        $h
     }
 
     if ($PSCmdlet.ShouldProcess($target, 'Refresh library')) {
