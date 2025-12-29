@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - 'PlexAutomationToolkit/PlexAutomationToolkit.psd1'
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -37,12 +38,28 @@ jobs:
         run: |
           if gh release view "v${{ steps.version.outputs.version }}" > /dev/null 2>&1; then
             echo "exists=true" >> $GITHUB_OUTPUT
+            echo "GitHub release v${{ steps.version.outputs.version }} already exists"
           else
             echo "exists=false" >> $GITHUB_OUTPUT
+            echo "GitHub release v${{ steps.version.outputs.version }} does not exist"
           fi
 
+      - name: Check if PSGallery Version Exists
+        id: check_psgallery
+        shell: pwsh
+        run: |
+          $version = "${{ steps.version.outputs.version }}"
+          $published = Find-Module -Name PlexAutomationToolkit -RequiredVersion $version -Repository PSGallery -ErrorAction SilentlyContinue
+          if ($published) {
+            Write-Host "PSGallery version $version already exists"
+            "exists=true" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          } else {
+            Write-Host "PSGallery version $version not found - will publish"
+            "exists=false" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          }
+
       - name: Build Module
-        if: steps.check_release.outputs.exists == 'false'
+        if: steps.check_release.outputs.exists == 'false' || steps.check_psgallery.outputs.exists == 'false'
         shell: pwsh
         run: ./build.ps1 -Task Build -Bootstrap
 
@@ -57,7 +74,7 @@ jobs:
             --generate-notes
 
       - name: Publish to PowerShell Gallery
-        if: steps.check_release.outputs.exists == 'false'
+        if: steps.check_psgallery.outputs.exists == 'false'
         shell: pwsh
         env:
           PS_GALLERY_KEY: ${{ secrets.PS_GALLERY_KEY }}
