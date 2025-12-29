@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [0.8.0] - 2025-12-29
+
+### Added
+
+- New `-Token` parameter on all cmdlets that accept `-ServerUri`, enabling explicit authentication without storing server configurations
+  - Allows ad-hoc connections: `Get-PatLibrary -ServerUri "http://plex:32400" -Token $myToken`
+  - Eliminates need for `Add-PatServer` when working with temporary or one-off server connections
+  - Token is passed through to nested cmdlet calls for consistent authentication
+  - Tab completion for library/playlist/collection names works with explicit Token
+  - 21 cmdlets updated: `Add-PatCollectionItem`, `Add-PatPlaylistItem`, `Get-PatActivity`, `Get-PatLibraryChildItem`, `Get-PatLibraryItem`, `Get-PatLibraryPath`, `Get-PatMediaInfo`, `Get-PatServer`, `Get-PatSyncPlan`, `New-PatCollection`, `New-PatPlaylist`, `Remove-PatCollection`, `Remove-PatCollectionItem`, `Remove-PatPlaylist`, `Remove-PatPlaylistItem`, `Search-PatMedia`, `Stop-PatSession`, `Sync-PatMedia`, `Test-PatLibraryPath`, `Update-PatLibrary`, `Wait-PatLibraryScan`
+
 ## [0.7.0] - 2025-12-28
 
 ### Added
