@@ -92,42 +92,21 @@ function Get-PatPlaylist {
         [ArgumentCompleter({
             param($commandName, $parameterName, $wordToComplete, $commandAst, $fakeBoundParameters)
 
-            $quoteChar = ''
-            $strippedWord = $wordToComplete
-            if ($wordToComplete -match "^([`"'])(.*)$") {
-                $quoteChar = $Matches[1]
-                $strippedWord = $Matches[2]
-            }
+            $completerInput = ConvertFrom-PatCompleterInput -WordToComplete $wordToComplete
 
-            $getParams = @{ ErrorAction = 'SilentlyContinue' }
+            $getParameters = @{ ErrorAction = 'SilentlyContinue' }
             if ($fakeBoundParameters.ContainsKey('ServerUri')) {
-                $getParams['ServerUri'] = $fakeBoundParameters['ServerUri']
+                $getParameters['ServerUri'] = $fakeBoundParameters['ServerUri']
             }
             if ($fakeBoundParameters.ContainsKey('Token')) {
-                $getParams['Token'] = $fakeBoundParameters['Token']
+                $getParameters['Token'] = $fakeBoundParameters['Token']
             }
 
-            $playlists = Get-PatPlaylist @getParams
+            $playlists = Get-PatPlaylist @getParameters
 
             foreach ($playlist in $playlists) {
-                if ($playlist.Title -ilike "$strippedWord*") {
-                    $title = $playlist.Title
-                    if ($quoteChar) {
-                        $text = "$quoteChar$title$quoteChar"
-                    }
-                    elseif ($title -match '\s') {
-                        $text = "'$title'"
-                    }
-                    else {
-                        $text = $title
-                    }
-
-                    [System.Management.Automation.CompletionResult]::new(
-                        $text,
-                        $title,
-                        'ParameterValue',
-                        $title
-                    )
+                if ($playlist.Title -ilike "$($completerInput.StrippedWord)*") {
+                    New-PatCompletionResult -Value $playlist.Title -QuoteChar $completerInput.QuoteChar
                 }
             }
         })]

@@ -92,48 +92,27 @@ function Remove-PatCollection {
         [ArgumentCompleter({
             param($commandName, $parameterName, $wordToComplete, $commandAst, $fakeBoundParameters)
 
-            $quoteChar = ''
-            $strippedWord = $wordToComplete
-            if ($wordToComplete -match "^([`"'])(.*)$") {
-                $quoteChar = $Matches[1]
-                $strippedWord = $Matches[2]
-            }
+            $completerInput = ConvertFrom-PatCompleterInput -WordToComplete $wordToComplete
 
-            $getParams = @{ ErrorAction = 'SilentlyContinue' }
+            $getParameters = @{ ErrorAction = 'SilentlyContinue' }
             if ($fakeBoundParameters.ContainsKey('ServerUri')) {
-                $getParams['ServerUri'] = $fakeBoundParameters['ServerUri']
+                $getParameters['ServerUri'] = $fakeBoundParameters['ServerUri']
             }
             if ($fakeBoundParameters.ContainsKey('LibraryName')) {
-                $getParams['LibraryName'] = $fakeBoundParameters['LibraryName']
+                $getParameters['LibraryName'] = $fakeBoundParameters['LibraryName']
             }
             elseif ($fakeBoundParameters.ContainsKey('LibraryId')) {
-                $getParams['LibraryId'] = $fakeBoundParameters['LibraryId']
+                $getParameters['LibraryId'] = $fakeBoundParameters['LibraryId']
             }
             else {
                 return
             }
 
-            $collections = Get-PatCollection @getParams
+            $collections = Get-PatCollection @getParameters
 
             foreach ($collection in $collections) {
-                if ($collection.Title -ilike "$strippedWord*") {
-                    $title = $collection.Title
-                    if ($quoteChar) {
-                        $text = "$quoteChar$title$quoteChar"
-                    }
-                    elseif ($title -match '\s') {
-                        $text = "'$title'"
-                    }
-                    else {
-                        $text = $title
-                    }
-
-                    [System.Management.Automation.CompletionResult]::new(
-                        $text,
-                        $title,
-                        'ParameterValue',
-                        $title
-                    )
+                if ($collection.Title -ilike "$($completerInput.StrippedWord)*") {
+                    New-PatCompletionResult -Value $collection.Title -QuoteChar $completerInput.QuoteChar
                 }
             }
         })]
@@ -145,39 +124,18 @@ function Remove-PatCollection {
         [ArgumentCompleter({
             param($commandName, $parameterName, $wordToComplete, $commandAst, $fakeBoundParameters)
 
-            $quoteChar = ''
-            $strippedWord = $wordToComplete
-            if ($wordToComplete -match "^([`"'])(.*)$") {
-                $quoteChar = $Matches[1]
-                $strippedWord = $Matches[2]
-            }
+            $completerInput = ConvertFrom-PatCompleterInput -WordToComplete $wordToComplete
 
-            $getParams = @{ ErrorAction = 'SilentlyContinue' }
+            $getParameters = @{ ErrorAction = 'SilentlyContinue' }
             if ($fakeBoundParameters.ContainsKey('ServerUri')) {
-                $getParams['ServerUri'] = $fakeBoundParameters['ServerUri']
+                $getParameters['ServerUri'] = $fakeBoundParameters['ServerUri']
             }
 
-            $libraries = Get-PatLibrary @getParams
+            $libraries = Get-PatLibrary @getParameters
 
             foreach ($lib in $libraries.Directory) {
-                if ($lib.title -ilike "$strippedWord*") {
-                    $title = $lib.title
-                    if ($quoteChar) {
-                        $text = "$quoteChar$title$quoteChar"
-                    }
-                    elseif ($title -match '\s') {
-                        $text = "'$title'"
-                    }
-                    else {
-                        $text = $title
-                    }
-
-                    [System.Management.Automation.CompletionResult]::new(
-                        $text,
-                        $title,
-                        'ParameterValue',
-                        $title
-                    )
+                if ($lib.title -ilike "$($completerInput.StrippedWord)*") {
+                    New-PatCompletionResult -Value $lib.title -QuoteChar $completerInput.QuoteChar
                 }
             }
         })]

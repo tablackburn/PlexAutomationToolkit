@@ -80,31 +80,21 @@ function Get-PatLibraryChildItem {
         [ArgumentCompleter({
             param($commandName, $parameterName, $wordToComplete, $commandAst, $fakeBoundParameters)
 
-            # Strip leading quotes for matching (case-insensitive)
-            $quoteChar = ''
-            $strippedWord = $wordToComplete
-            if ($wordToComplete -match "^([`"'])(.*)$") {
-                $quoteChar = $Matches[1]
-                $strippedWord = $Matches[2]
-            }
+            $completerInput = ConvertFrom-PatCompleterInput -WordToComplete $wordToComplete
 
-            # Use provided ServerUri if available, otherwise use default server
-            $getParams = @{ ErrorAction = 'SilentlyContinue' }
+            $getParameters = @{ ErrorAction = 'SilentlyContinue' }
             if ($fakeBoundParameters.ContainsKey('ServerUri')) {
-                $getParams['ServerUri'] = $fakeBoundParameters['ServerUri']
+                $getParameters['ServerUri'] = $fakeBoundParameters['ServerUri']
             }
             if ($fakeBoundParameters.ContainsKey('Token')) {
-                $getParams['Token'] = $fakeBoundParameters['Token']
+                $getParameters['Token'] = $fakeBoundParameters['Token']
             }
 
             try {
-                $sections = Get-PatLibrary @getParams
+                $sections = Get-PatLibrary @getParameters
                 foreach ($sectionTitle in $sections.Directory.title) {
-                    if ($sectionTitle -ilike "$strippedWord*") {
-                        if ($quoteChar) { $completionText = "$quoteChar$sectionTitle$quoteChar" }
-                        elseif ($sectionTitle -match '\s') { $completionText = "'$sectionTitle'" }
-                        else { $completionText = $sectionTitle }
-                        [System.Management.Automation.CompletionResult]::new($completionText, $sectionTitle, 'ParameterValue', $sectionTitle)
+                    if ($sectionTitle -ilike "$($completerInput.StrippedWord)*") {
+                        New-PatCompletionResult -Value $sectionTitle -QuoteChar $completerInput.QuoteChar
                     }
                 }
             }
@@ -120,24 +110,22 @@ function Get-PatLibraryChildItem {
         [ArgumentCompleter({
             param($commandName, $parameterName, $wordToComplete, $commandAst, $fakeBoundParameters)
 
-            # Strip leading quotes for matching
-            $strippedWord = $wordToComplete -replace "^[`"']", ''
+            $completerInput = ConvertFrom-PatCompleterInput -WordToComplete $wordToComplete
 
-            # Use provided ServerUri if available, otherwise use default server
-            $getParams = @{ ErrorAction = 'SilentlyContinue' }
+            $getParameters = @{ ErrorAction = 'SilentlyContinue' }
             if ($fakeBoundParameters.ContainsKey('ServerUri')) {
-                $getParams['ServerUri'] = $fakeBoundParameters['ServerUri']
+                $getParameters['ServerUri'] = $fakeBoundParameters['ServerUri']
             }
             if ($fakeBoundParameters.ContainsKey('Token')) {
-                $getParams['Token'] = $fakeBoundParameters['Token']
+                $getParameters['Token'] = $fakeBoundParameters['Token']
             }
 
             try {
-                $sections = Get-PatLibrary @getParams
+                $sections = Get-PatLibrary @getParameters
                 $sections.Directory | ForEach-Object {
                     $sectionId = ($_.key -replace '.*/(\d+)$', '$1')
-                    if ($sectionId -ilike "$strippedWord*") {
-                        [System.Management.Automation.CompletionResult]::new($sectionId, "$sectionId - $($_.title)", 'ParameterValue', "$($_.title) (ID: $sectionId)")
+                    if ($sectionId -ilike "$($completerInput.StrippedWord)*") {
+                        New-PatCompletionResult -Value $sectionId -ListItemText "$sectionId - $($_.title)" -ToolTip "$($_.title) (ID: $sectionId)"
                     }
                 }
             }
