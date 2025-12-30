@@ -233,4 +233,344 @@ Describe 'Update-PatLibrary' {
             { Update-PatLibrary -ServerUri 'http://plex-test-server.local:32400' -SectionId 2 -Confirm:$false } | Should -Throw '*Failed to refresh Plex library*'
         }
     }
+
+    Context 'When using -PassThru' {
+        BeforeAll {
+            Mock -ModuleName PlexAutomationToolkit Invoke-PatApi {
+                return $null
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Join-PatUri {
+                return 'http://plex-test-server.local:32400/library/sections/2/refresh'
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Get-PatLibrary {
+                return @{
+                    size      = 1
+                    Directory = @{
+                        key   = '2'
+                        type  = 'movie'
+                        title = 'Movies'
+                    }
+                }
+            }
+        }
+
+        It 'Returns the library section after refreshing' {
+            $result = Update-PatLibrary -ServerUri 'http://plex-test-server.local:32400' -SectionId 2 -PassThru -Confirm:$false
+            $result | Should -Not -BeNullOrEmpty
+            $result.Directory.title | Should -Be 'Movies'
+        }
+
+        It 'Calls Get-PatLibrary after refresh' {
+            Update-PatLibrary -ServerUri 'http://plex-test-server.local:32400' -SectionId 2 -PassThru -Confirm:$false
+            Should -Invoke -ModuleName PlexAutomationToolkit Get-PatLibrary -ParameterFilter {
+                $SectionId -eq 2 -and $ServerUri -eq 'http://plex-test-server.local:32400'
+            }
+        }
+    }
+
+    Context 'When using -PassThru with default server' {
+        BeforeAll {
+            Mock -ModuleName PlexAutomationToolkit Get-PatStoredServer {
+                return $script:mockDefaultServer
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Invoke-PatApi {
+                return $null
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Join-PatUri {
+                return 'http://plex-test-server.local:32400/library/sections/2/refresh'
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Get-PatLibrary {
+                return @{
+                    size      = 1
+                    Directory = @{
+                        key   = '2'
+                        type  = 'movie'
+                        title = 'Movies'
+                    }
+                }
+            }
+        }
+
+        It 'Calls Get-PatLibrary without ServerUri for default server' {
+            Update-PatLibrary -SectionId 2 -PassThru -Confirm:$false
+            Should -Invoke -ModuleName PlexAutomationToolkit Get-PatLibrary -ParameterFilter {
+                $SectionId -eq 2 -and -not $ServerUri
+            }
+        }
+    }
+
+    Context 'When using -Wait' {
+        BeforeAll {
+            Mock -ModuleName PlexAutomationToolkit Invoke-PatApi {
+                return $null
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Join-PatUri {
+                return 'http://plex-test-server.local:32400/library/sections/2/refresh'
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Wait-PatLibraryScan {
+                return $null
+            }
+        }
+
+        It 'Waits for scan to complete' {
+            Update-PatLibrary -ServerUri 'http://plex-test-server.local:32400' -SectionId 2 -Wait -Confirm:$false
+            Should -Invoke -ModuleName PlexAutomationToolkit Wait-PatLibraryScan -ParameterFilter {
+                $SectionId -eq 2 -and $Timeout -eq 300
+            }
+        }
+
+        It 'Uses custom timeout value' {
+            Update-PatLibrary -ServerUri 'http://plex-test-server.local:32400' -SectionId 2 -Wait -Timeout 60 -Confirm:$false
+            Should -Invoke -ModuleName PlexAutomationToolkit Wait-PatLibraryScan -ParameterFilter {
+                $Timeout -eq 60
+            }
+        }
+    }
+
+    Context 'When using -ReportChanges' {
+        BeforeAll {
+            $script:mockBeforeItems = @(
+                [PSCustomObject]@{ ratingKey = '1'; title = 'Movie A' }
+                [PSCustomObject]@{ ratingKey = '2'; title = 'Movie B' }
+            )
+
+            $script:mockAfterItems = @(
+                [PSCustomObject]@{ ratingKey = '1'; title = 'Movie A' }
+                [PSCustomObject]@{ ratingKey = '2'; title = 'Movie B' }
+                [PSCustomObject]@{ ratingKey = '3'; title = 'Movie C' }  # Added
+            )
+
+            $script:mockChanges = @(
+                [PSCustomObject]@{
+                    PSTypeName = 'PlexAutomationToolkit.LibraryChange'
+                    ChangeType = 'Added'
+                    RatingKey  = '3'
+                    Title      = 'Movie C'
+                }
+            )
+
+            Mock -ModuleName PlexAutomationToolkit Invoke-PatApi {
+                return $null
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Join-PatUri {
+                return 'http://plex-test-server.local:32400/library/sections/2/refresh'
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Wait-PatLibraryScan {
+                return $null
+            }
+
+            $script:getItemCallCount = 0
+            Mock -ModuleName PlexAutomationToolkit Get-PatLibraryItem {
+                $script:getItemCallCount++
+                if ($script:getItemCallCount -eq 1) {
+                    return $script:mockBeforeItems
+                }
+                return $script:mockAfterItems
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Compare-PatLibraryContent {
+                return $script:mockChanges
+            }
+        }
+
+        BeforeEach {
+            $script:getItemCallCount = 0
+        }
+
+        It 'Returns changes detected during scan' {
+            $result = Update-PatLibrary -ServerUri 'http://plex-test-server.local:32400' -SectionId 2 -ReportChanges -Confirm:$false
+            $result | Should -Not -BeNullOrEmpty
+            ($result | Select-Object -First 1).ChangeType | Should -Be 'Added'
+        }
+
+        It 'Captures library state before and after scan' {
+            Update-PatLibrary -ServerUri 'http://plex-test-server.local:32400' -SectionId 2 -ReportChanges -Confirm:$false
+            Should -Invoke -ModuleName PlexAutomationToolkit Get-PatLibraryItem -Times 2
+        }
+
+        It 'Compares before and after states' {
+            Update-PatLibrary -ServerUri 'http://plex-test-server.local:32400' -SectionId 2 -ReportChanges -Confirm:$false
+            Should -Invoke -ModuleName PlexAutomationToolkit Compare-PatLibraryContent
+        }
+
+        It 'Implicitly waits for scan when reporting changes' {
+            Update-PatLibrary -ServerUri 'http://plex-test-server.local:32400' -SectionId 2 -ReportChanges -Confirm:$false
+            Should -Invoke -ModuleName PlexAutomationToolkit Wait-PatLibraryScan
+        }
+    }
+
+    Context 'When path validation is enabled (default)' {
+        BeforeAll {
+            Mock -ModuleName PlexAutomationToolkit Test-PatLibraryPath {
+                return $true
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Invoke-PatApi {
+                return $null
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Join-PatUri {
+                param($BaseUri, $Endpoint, $QueryString)
+                if ($QueryString) {
+                    return "$BaseUri$Endpoint`?$QueryString"
+                }
+                return "$BaseUri$Endpoint"
+            }
+        }
+
+        It 'Validates path before refreshing' {
+            Update-PatLibrary -ServerUri 'http://plex-test-server.local:32400' -SectionId 2 -Path '/mnt/media/Movies' -Confirm:$false
+            Should -Invoke -ModuleName PlexAutomationToolkit Test-PatLibraryPath -ParameterFilter {
+                $Path -eq '/mnt/media/Movies'
+            }
+        }
+
+        It 'Proceeds with refresh when path is valid' {
+            Update-PatLibrary -ServerUri 'http://plex-test-server.local:32400' -SectionId 2 -Path '/mnt/media/Movies' -Confirm:$false
+            Should -Invoke -ModuleName PlexAutomationToolkit Invoke-PatApi
+        }
+    }
+
+    Context 'When path validation fails' {
+        BeforeAll {
+            Mock -ModuleName PlexAutomationToolkit Test-PatLibraryPath {
+                return $false
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Invoke-PatApi {
+                return $null
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Join-PatUri {
+                return 'http://plex-test-server.local:32400/library/sections/2/refresh'
+            }
+        }
+
+        It 'Throws when path does not exist' {
+            { Update-PatLibrary -ServerUri 'http://plex-test-server.local:32400' -SectionId 2 -Path '/mnt/invalid/path' -Confirm:$false } | Should -Throw '*Path validation failed*'
+        }
+
+        It 'Does not call Invoke-PatApi when path is invalid' {
+            try {
+                Update-PatLibrary -ServerUri 'http://plex-test-server.local:32400' -SectionId 2 -Path '/mnt/invalid/path' -Confirm:$false
+            }
+            catch {
+                # Expected
+            }
+            Should -Invoke -ModuleName PlexAutomationToolkit Invoke-PatApi -Exactly 0
+        }
+    }
+
+    Context 'When using -SkipPathValidation' {
+        BeforeAll {
+            Mock -ModuleName PlexAutomationToolkit Test-PatLibraryPath {
+                return $false  # Would fail if called
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Invoke-PatApi {
+                return $null
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Join-PatUri {
+                param($BaseUri, $Endpoint, $QueryString)
+                if ($QueryString) {
+                    return "$BaseUri$Endpoint`?$QueryString"
+                }
+                return "$BaseUri$Endpoint"
+            }
+        }
+
+        It 'Skips path validation' {
+            Update-PatLibrary -ServerUri 'http://plex-test-server.local:32400' -SectionId 2 -Path '/mnt/any/path' -SkipPathValidation -Confirm:$false
+            Should -Invoke -ModuleName PlexAutomationToolkit Test-PatLibraryPath -Exactly 0
+        }
+
+        It 'Proceeds with refresh without validation' {
+            Update-PatLibrary -ServerUri 'http://plex-test-server.local:32400' -SectionId 2 -Path '/mnt/any/path' -SkipPathValidation -Confirm:$false
+            Should -Invoke -ModuleName PlexAutomationToolkit Invoke-PatApi
+        }
+    }
+
+    Context 'When using explicit Token parameter' {
+        BeforeAll {
+            Mock -ModuleName PlexAutomationToolkit Invoke-PatApi {
+                return $null
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Join-PatUri {
+                return 'http://plex-test-server.local:32400/library/sections/2/refresh'
+            }
+        }
+
+        It 'Uses token in request headers' {
+            Update-PatLibrary -ServerUri 'http://plex-test-server.local:32400' -Token 'my-secret-token' -SectionId 2 -Confirm:$false
+            Should -Invoke -ModuleName PlexAutomationToolkit Invoke-PatApi -ParameterFilter {
+                $Headers['X-Plex-Token'] -eq 'my-secret-token'
+            }
+        }
+    }
+
+    Context 'When Get-PatStoredServer throws' {
+        BeforeAll {
+            Mock -ModuleName PlexAutomationToolkit Get-PatStoredServer {
+                throw 'Configuration file corrupted'
+            }
+        }
+
+        It 'Throws with server error context' {
+            { Update-PatLibrary -SectionId 2 -Confirm:$false } | Should -Throw '*Failed to get default server*'
+        }
+    }
+
+    Context 'When using SectionName with default server' {
+        BeforeAll {
+            Mock -ModuleName PlexAutomationToolkit Get-PatStoredServer {
+                return $script:mockDefaultServer
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Get-PatLibrary {
+                return $script:mockSectionsResponse
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Invoke-PatApi {
+                return $null
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Join-PatUri {
+                param($BaseUri, $Endpoint, $QueryString)
+                return "$BaseUri$Endpoint"
+            }
+        }
+
+        It 'Calls Get-PatLibrary without ServerUri for section name resolution' {
+            Update-PatLibrary -SectionName 'Movies' -Confirm:$false
+            Should -Invoke -ModuleName PlexAutomationToolkit Get-PatLibrary -ParameterFilter {
+                -not $ServerUri
+            }
+        }
+    }
+
+    Context 'Parameter validation' {
+        It 'Validates Timeout is between 1 and 3600' {
+            { Update-PatLibrary -ServerUri 'http://plex.local:32400' -SectionId 2 -Wait -Timeout 0 } | Should -Throw
+            { Update-PatLibrary -ServerUri 'http://plex.local:32400' -SectionId 2 -Wait -Timeout 3601 } | Should -Throw
+        }
+
+        It 'Does not allow empty SectionName' {
+            { Update-PatLibrary -ServerUri 'http://plex.local:32400' -SectionName '' } | Should -Throw
+        }
+
+        It 'Does not allow empty Path' {
+            { Update-PatLibrary -ServerUri 'http://plex.local:32400' -SectionId 2 -Path '' } | Should -Throw
+        }
+    }
 }
