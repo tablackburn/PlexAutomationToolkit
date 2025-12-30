@@ -464,4 +464,159 @@ Describe 'Add-PatCollectionItem' {
                 Should -Throw
         }
     }
+
+    Context 'When machine identifier retrieval fails' {
+        BeforeAll {
+            Mock -ModuleName PlexAutomationToolkit Resolve-PatServerContext {
+                return $script:mockServerContext
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Invoke-PatApi {
+                throw 'Failed to retrieve server info'
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Join-PatUri {
+                param($BaseUri, $Endpoint)
+                return "$BaseUri$Endpoint"
+            }
+        }
+
+        It 'Throws error with context about machine identifier' {
+            { Add-PatCollectionItem -CollectionId 12345 -RatingKey 1001 -ServerUri 'http://plex.local:32400' } |
+                Should -Throw '*Failed to retrieve server machine identifier*'
+        }
+    }
+
+    Context 'When collection info cannot be retrieved for ID' {
+        BeforeAll {
+            Mock -ModuleName PlexAutomationToolkit Resolve-PatServerContext {
+                return $script:mockServerContext
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Invoke-PatApi {
+                param($Uri, $Method)
+                if ($Uri -match '/$' -or $Uri -match ':32400$') {
+                    return @{ machineIdentifier = 'test-machine-id' }
+                }
+                return $null
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Join-PatUri {
+                param($BaseUri, $Endpoint, $QueryString)
+                if ($QueryString) {
+                    return "$BaseUri$Endpoint`?$QueryString"
+                }
+                return "$BaseUri$Endpoint"
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Get-PatCollection {
+                throw 'Collection not found'
+            }
+        }
+
+        It 'Still adds items when collection lookup fails' {
+            Add-PatCollectionItem -CollectionId 12345 -RatingKey 1001 -ServerUri 'http://plex.local:32400'
+            Should -Invoke -ModuleName PlexAutomationToolkit Invoke-PatApi -ParameterFilter {
+                $Method -eq 'PUT'
+            }
+        }
+
+        It 'Uses fallback description without collection info' {
+            { Add-PatCollectionItem -CollectionId 12345 -RatingKey 1001 -ServerUri 'http://plex.local:32400' } |
+                Should -Not -Throw
+        }
+    }
+
+    Context 'When PassThru with collection name resolution' {
+        BeforeAll {
+            Mock -ModuleName PlexAutomationToolkit Resolve-PatServerContext {
+                return $script:mockServerContext
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Invoke-PatApi {
+                param($Uri)
+                if ($Uri -match '/$' -or $Uri -match ':32400$') {
+                    return @{ machineIdentifier = 'test-machine-id' }
+                }
+                return $null
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Join-PatUri {
+                param($BaseUri, $Endpoint, $QueryString)
+                if ($QueryString) {
+                    return "$BaseUri$Endpoint`?$QueryString"
+                }
+                return "$BaseUri$Endpoint"
+            }
+
+            $script:getCollectionCallCount = 0
+            Mock -ModuleName PlexAutomationToolkit Get-PatCollection {
+                param($CollectionName, $CollectionId, $LibraryName)
+                $script:getCollectionCallCount++
+                if ($CollectionName -eq 'Test Collection') {
+                    return $script:mockCollection
+                }
+                if ($CollectionId) {
+                    return $script:mockUpdatedCollection
+                }
+                return $null
+            }
+        }
+
+        BeforeEach {
+            $script:getCollectionCallCount = 0
+        }
+
+        It 'Returns updated collection with PassThru from name lookup' {
+            $result = Add-PatCollectionItem -CollectionName 'Test Collection' -LibraryName 'Movies' -RatingKey 1001 -ServerUri 'http://plex.local:32400' -PassThru
+            $result | Should -Not -BeNullOrEmpty
+        }
+    }
+
+    Context 'When using LibraryId parameter set' {
+        BeforeAll {
+            Mock -ModuleName PlexAutomationToolkit Resolve-PatServerContext {
+                return $script:mockServerContext
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Invoke-PatApi {
+                param($Uri)
+                if ($Uri -match '/$' -or $Uri -match ':32400$') {
+                    return @{ machineIdentifier = 'test-machine-id' }
+                }
+                return $null
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Join-PatUri {
+                param($BaseUri, $Endpoint, $QueryString)
+                if ($QueryString) {
+                    return "$BaseUri$Endpoint`?$QueryString"
+                }
+                return "$BaseUri$Endpoint"
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Get-PatCollection {
+                param($CollectionName, $CollectionId, $LibraryId)
+                if ($CollectionName -eq 'Test Collection' -and $LibraryId -eq 1) {
+                    return $script:mockCollection
+                }
+                if ($CollectionId) {
+                    return $script:mockUpdatedCollection
+                }
+                return $null
+            }
+        }
+
+        It 'Passes LibraryId to Get-PatCollection' {
+            Add-PatCollectionItem -CollectionName 'Test Collection' -LibraryId 1 -RatingKey 1001 -ServerUri 'http://plex.local:32400'
+            Should -Invoke -ModuleName PlexAutomationToolkit Get-PatCollection -ParameterFilter {
+                $CollectionName -eq 'Test Collection' -and $LibraryId -eq 1
+            }
+        }
+
+        It 'Throws when collection not found with LibraryId' {
+            { Add-PatCollectionItem -CollectionName 'Nonexistent' -LibraryId 1 -RatingKey 1001 -ServerUri 'http://plex.local:32400' } |
+                Should -Throw "*No collection found with name*library 1*"
+        }
+    }
 }

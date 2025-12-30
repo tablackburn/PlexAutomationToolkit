@@ -470,4 +470,137 @@ Describe 'Remove-PatCollectionItem' {
                 Should -Throw
         }
     }
+
+    Context 'When PassThru with collection name resolution' {
+        BeforeAll {
+            Mock -ModuleName PlexAutomationToolkit Resolve-PatServerContext {
+                return $script:mockServerContext
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Invoke-PatApi {
+                return $null
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Join-PatUri {
+                param($BaseUri, $Endpoint)
+                return "$BaseUri$Endpoint"
+            }
+
+            $script:getCollectionCallCount = 0
+            Mock -ModuleName PlexAutomationToolkit Get-PatCollection {
+                param($CollectionName, $CollectionId, $LibraryName)
+                $script:getCollectionCallCount++
+                if ($CollectionName -eq 'Test Collection') {
+                    return $script:mockCollection
+                }
+                if ($CollectionId) {
+                    return $script:mockUpdatedCollection
+                }
+                return $null
+            }
+        }
+
+        BeforeEach {
+            $script:getCollectionCallCount = 0
+        }
+
+        It 'Returns updated collection with PassThru from name lookup' {
+            $result = Remove-PatCollectionItem -CollectionName 'Test Collection' -LibraryName 'Movies' -RatingKey 1001 -ServerUri 'http://plex.local:32400' -PassThru
+            $result | Should -Not -BeNullOrEmpty
+        }
+    }
+
+    Context 'When collection info unavailable for target description' {
+        BeforeAll {
+            Mock -ModuleName PlexAutomationToolkit Resolve-PatServerContext {
+                return $script:mockServerContext
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Invoke-PatApi {
+                return $null
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Join-PatUri {
+                param($BaseUri, $Endpoint)
+                return "$BaseUri$Endpoint"
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Get-PatCollection {
+                throw 'Collection not found'
+            }
+        }
+
+        It 'Uses fallback description without collection info' {
+            { Remove-PatCollectionItem -CollectionId 12345 -RatingKey 1001 -ServerUri 'http://plex.local:32400' } |
+                Should -Not -Throw
+        }
+
+        It 'Still processes removal request' {
+            Remove-PatCollectionItem -CollectionId 12345 -RatingKey 1001 -ServerUri 'http://plex.local:32400'
+            Should -Invoke -ModuleName PlexAutomationToolkit Invoke-PatApi -Times 1
+        }
+    }
+
+    Context 'When using LibraryId parameter set' {
+        BeforeAll {
+            Mock -ModuleName PlexAutomationToolkit Resolve-PatServerContext {
+                return $script:mockServerContext
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Invoke-PatApi {
+                return $null
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Join-PatUri {
+                param($BaseUri, $Endpoint)
+                return "$BaseUri$Endpoint"
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Get-PatCollection {
+                param($CollectionName, $CollectionId, $LibraryId)
+                if ($CollectionName -eq 'Test Collection' -and $LibraryId -eq 1) {
+                    return $script:mockCollection
+                }
+                if ($CollectionId) {
+                    return $script:mockUpdatedCollection
+                }
+                return $null
+            }
+        }
+
+        It 'Passes LibraryId to Get-PatCollection' {
+            Remove-PatCollectionItem -CollectionName 'Test Collection' -LibraryId 1 -RatingKey 1001 -ServerUri 'http://plex.local:32400'
+            Should -Invoke -ModuleName PlexAutomationToolkit Get-PatCollection -ParameterFilter {
+                $CollectionName -eq 'Test Collection' -and $LibraryId -eq 1
+            }
+        }
+    }
+
+    Context 'When processing multiple items via pipeline' {
+        BeforeAll {
+            Mock -ModuleName PlexAutomationToolkit Resolve-PatServerContext {
+                return $script:mockServerContext
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Invoke-PatApi {
+                return $null
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Join-PatUri {
+                param($BaseUri, $Endpoint)
+                return "$BaseUri$Endpoint"
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Get-PatCollection {
+                return $script:mockCollection
+            }
+        }
+
+        It 'Accumulates all rating keys before processing' {
+            @(1001, 1002, 1003, 1004) | Remove-PatCollectionItem -CollectionId 12345 -ServerUri 'http://plex.local:32400'
+            Should -Invoke -ModuleName PlexAutomationToolkit Invoke-PatApi -Times 4 -ParameterFilter {
+                $Method -eq 'DELETE'
+            }
+        }
+    }
 }

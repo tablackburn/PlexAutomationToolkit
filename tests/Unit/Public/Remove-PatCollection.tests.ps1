@@ -458,4 +458,68 @@ Describe 'Remove-PatCollection' {
                 Should -Throw
         }
     }
+
+    Context 'When using PassThru without collection info available' {
+        BeforeAll {
+            Mock -ModuleName PlexAutomationToolkit Resolve-PatServerContext {
+                return $script:mockServerContext
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Invoke-PatApi {
+                return $null
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Join-PatUri {
+                param($BaseUri, $Endpoint)
+                return "$BaseUri$Endpoint"
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Get-PatCollection {
+                throw 'Collection not found'
+            }
+        }
+
+        It 'Does not return anything with PassThru when collection info unavailable' {
+            $result = Remove-PatCollection -CollectionId 99999 -ServerUri 'http://plex.local:32400' -Confirm:$false -PassThru
+            $result | Should -BeNullOrEmpty
+        }
+
+        It 'Uses fallback target description when collection info unavailable' {
+            Remove-PatCollection -CollectionId 99999 -ServerUri 'http://plex.local:32400' -Confirm:$false
+            # Should still call the API even without collection info
+            Should -Invoke -ModuleName PlexAutomationToolkit Invoke-PatApi -Times 1
+        }
+    }
+
+    Context 'When using Token with collection name lookup' {
+        BeforeAll {
+            Mock -ModuleName PlexAutomationToolkit Resolve-PatServerContext {
+                return $script:mockServerContext
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Invoke-PatApi {
+                return $null
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Join-PatUri {
+                param($BaseUri, $Endpoint)
+                return "$BaseUri$Endpoint"
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Get-PatCollection {
+                param($CollectionName, $LibraryId)
+                if ($CollectionName -eq 'Test Collection') {
+                    return $script:mockCollection
+                }
+                return $null
+            }
+        }
+
+        It 'Passes Token through for collection name lookup' {
+            Remove-PatCollection -CollectionName 'Test Collection' -LibraryId 1 -ServerUri 'http://plex.local:32400' -Token 'my-token' -Confirm:$false
+            Should -Invoke -ModuleName PlexAutomationToolkit Resolve-PatServerContext -ParameterFilter {
+                $Token -eq 'my-token'
+            }
+        }
+    }
 }

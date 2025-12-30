@@ -463,4 +463,99 @@ Describe 'Get-PatLibraryItem' {
                 Should -Throw '*Failed to get library items*'
         }
     }
+
+    Context 'When resolving SectionName with explicit ServerUri' {
+        BeforeAll {
+            Mock -ModuleName PlexAutomationToolkit Get-PatLibrary {
+                return $script:mockSectionsResponse
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Invoke-PatApi {
+                return $script:mockLibraryItemsResponse
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Join-PatUri {
+                return 'http://plex-test-server.local:32400/library/sections/2/all'
+            }
+        }
+
+        It 'Passes ServerUri to Get-PatLibrary during name resolution' {
+            Get-PatLibraryItem -ServerUri 'http://plex-test-server.local:32400' -SectionName 'Movies'
+            Should -Invoke -ModuleName PlexAutomationToolkit Get-PatLibrary -ParameterFilter {
+                $ServerUri -eq 'http://plex-test-server.local:32400'
+            }
+        }
+
+        It 'Resolves section ID correctly from explicit server' {
+            Get-PatLibraryItem -ServerUri 'http://plex-test-server.local:32400' -SectionName 'TV Shows'
+            Should -Invoke -ModuleName PlexAutomationToolkit Join-PatUri -ParameterFilter {
+                $Endpoint -eq '/library/sections/3/all'
+            }
+        }
+    }
+
+    Context 'When building headers without server object' {
+        BeforeAll {
+            Mock -ModuleName PlexAutomationToolkit Invoke-PatApi {
+                return $script:mockLibraryItemsResponse
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Join-PatUri {
+                return 'http://plex-test-server.local:32400/library/sections/2/all'
+            }
+        }
+
+        It 'Sets Accept header to application/json' {
+            Get-PatLibraryItem -ServerUri 'http://plex-test-server.local:32400' -SectionId 2
+            Should -Invoke -ModuleName PlexAutomationToolkit Invoke-PatApi -ParameterFilter {
+                $Headers['Accept'] -eq 'application/json'
+            }
+        }
+
+        It 'Does not include X-Plex-Token when Token not provided' {
+            Get-PatLibraryItem -ServerUri 'http://plex-test-server.local:32400' -SectionId 2
+            Should -Invoke -ModuleName PlexAutomationToolkit Invoke-PatApi -ParameterFilter {
+                -not $Headers.ContainsKey('X-Plex-Token') -or $Headers['X-Plex-Token'] -eq $null
+            }
+        }
+    }
+
+    Context 'When result has no Metadata property' {
+        BeforeAll {
+            Mock -ModuleName PlexAutomationToolkit Invoke-PatApi {
+                return @{
+                    size = 0
+                    allowSync = $true
+                    # No Metadata property
+                }
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Join-PatUri {
+                return 'http://plex-test-server.local:32400/library/sections/2/all'
+            }
+        }
+
+        It 'Returns nothing when Metadata property is missing' {
+            $result = Get-PatLibraryItem -ServerUri 'http://plex-test-server.local:32400' -SectionId 2
+            $result | Should -BeNullOrEmpty
+        }
+    }
+
+    Context 'When processing multiple sections via pipeline' {
+        BeforeAll {
+            Mock -ModuleName PlexAutomationToolkit Invoke-PatApi {
+                return $script:mockLibraryItemsResponse
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Join-PatUri {
+                param($BaseUri, $Endpoint)
+                return "$BaseUri$Endpoint"
+            }
+        }
+
+        It 'Processes each section ID from pipeline' {
+            $result = @(2, 3, 9) | Get-PatLibraryItem -ServerUri 'http://plex-test-server.local:32400'
+            Should -Invoke -ModuleName PlexAutomationToolkit Invoke-PatApi -Times 3
+        }
+    }
 }

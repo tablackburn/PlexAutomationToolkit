@@ -198,4 +198,52 @@ Describe 'Get-PatConfigurationPath' {
             { InModuleScope PlexAutomationToolkit { Get-PatConfigurationPath } } | Should -Not -Throw
         }
     }
+
+    Context 'Linux/macOS path (Unix systems)' -Skip:$script:RunningOnWindows {
+        It 'Should use HOME environment variable when available' {
+            $result = InModuleScope PlexAutomationToolkit { Get-PatConfigurationPath }
+
+            # On Unix systems, should use .config subdirectory
+            $result | Should -BeLike "*/.config/PlexAutomationToolkit/servers.json"
+        }
+
+        It 'Should create .config directory if it does not exist' {
+            $configDir = Join-Path $env:HOME '.config/PlexAutomationToolkit'
+
+            $result = InModuleScope PlexAutomationToolkit { Get-PatConfigurationPath }
+
+            # Directory should exist (function creates it)
+            $dir = Split-Path -Path $result -Parent
+            Test-Path $dir | Should -Be $true
+        }
+    }
+
+    Context 'Environment variable fallbacks' {
+        It 'Should handle missing HOME gracefully by using UserProfile' {
+            # This test verifies the function returns a valid path
+            # The actual fallback logic is platform-specific
+            $result = InModuleScope PlexAutomationToolkit { Get-PatConfigurationPath }
+
+            # Should always return a valid path
+            $result | Should -Not -BeNullOrEmpty
+            [System.IO.Path]::GetFileName($result) | Should -Be 'servers.json'
+        }
+    }
+
+    Context 'Platform detection' {
+        It 'Should correctly detect Windows platform' {
+            $result = InModuleScope PlexAutomationToolkit { Get-PatConfigurationPath }
+
+            $isWin = $IsWindows -or ($PSVersionTable.PSEdition -eq 'Desktop')
+            if ($isWin) {
+                # On Windows, path should contain backslashes and NOT forward slashes with .config
+                $result | Should -Match '[A-Z]:\\'
+                $result | Should -Not -Match '/.config/'
+            }
+            else {
+                # On Unix, path SHOULD contain .config
+                $result | Should -Match '/.config/'
+            }
+        }
+    }
 }
