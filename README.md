@@ -5,6 +5,7 @@
 ![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/tablackburn/PlexAutomationToolkit/.github/workflows/CI.yaml?branch=main)
 [![codecov](https://codecov.io/gh/tablackburn/PlexAutomationToolkit/graph/badge.svg)](https://codecov.io/gh/tablackburn/PlexAutomationToolkit)
 ![PowerShell Gallery](https://img.shields.io/powershellgallery/p/PlexAutomationToolkit)
+[![AI Assisted](https://img.shields.io/badge/AI-Assisted-blue)](https://claude.ai)
 
 A PowerShell module for managing Plex Media Servers through automation and scripting.
 
@@ -331,6 +332,7 @@ This project follows [Semantic Versioning](http://semver.org/). See [CHANGELOG.m
 ## Acknowledgments
 
 This project was developed with assistance from [Claude](https://claude.ai) by Anthropic.
+
 ## License
 
 Copyright (c) Trent Blackburn. All rights reserved.
