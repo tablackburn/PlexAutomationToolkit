@@ -32,10 +32,30 @@ Describe 'Add-PatCollectionItem' {
             default = $true
             token   = 'test-token'
         }
+
+        $script:mockServerContext = [PSCustomObject]@{
+            Uri            = 'http://plex.local:32400'
+            Headers        = @{ Accept = 'application/json'; 'X-Plex-Token' = 'test-token' }
+            WasExplicitUri = $true
+            Server         = $null
+            Token          = 'test-token'
+        }
+
+        $script:mockDefaultServerContext = [PSCustomObject]@{
+            Uri            = 'http://plex-test-server.local:32400'
+            Headers        = @{ Accept = 'application/json'; 'X-Plex-Token' = 'test-token' }
+            WasExplicitUri = $false
+            Server         = $script:mockDefaultServer
+            Token          = $null
+        }
     }
 
     Context 'When adding items by collection ID' {
         BeforeAll {
+            Mock -ModuleName PlexAutomationToolkit Resolve-PatServerContext {
+                return $script:mockServerContext
+            }
+
             Mock -ModuleName PlexAutomationToolkit Invoke-PatApi {
                 param($Uri)
                 # Return machine identifier for server info call
@@ -89,6 +109,10 @@ Describe 'Add-PatCollectionItem' {
 
     Context 'When adding items by collection name with LibraryId' {
         BeforeAll {
+            Mock -ModuleName PlexAutomationToolkit Resolve-PatServerContext {
+                return $script:mockServerContext
+            }
+
             Mock -ModuleName PlexAutomationToolkit Invoke-PatApi {
                 param($Uri)
                 if ($Uri -match '/$' -or $Uri -match ':32400$') {
@@ -130,6 +154,10 @@ Describe 'Add-PatCollectionItem' {
 
     Context 'When adding items by collection name with LibraryName' {
         BeforeAll {
+            Mock -ModuleName PlexAutomationToolkit Resolve-PatServerContext {
+                return $script:mockServerContext
+            }
+
             Mock -ModuleName PlexAutomationToolkit Invoke-PatApi {
                 param($Uri)
                 if ($Uri -match '/$' -or $Uri -match ':32400$') {
@@ -171,6 +199,10 @@ Describe 'Add-PatCollectionItem' {
 
     Context 'When using pipeline input' {
         BeforeAll {
+            Mock -ModuleName PlexAutomationToolkit Resolve-PatServerContext {
+                return $script:mockServerContext
+            }
+
             Mock -ModuleName PlexAutomationToolkit Invoke-PatApi {
                 param($Uri)
                 if ($Uri -match '/$' -or $Uri -match ':32400$') {
@@ -208,20 +240,28 @@ Describe 'Add-PatCollectionItem' {
 
     Context 'When no rating keys provided' {
         BeforeAll {
+            Mock -ModuleName PlexAutomationToolkit Resolve-PatServerContext {
+                return $script:mockServerContext
+            }
+
             Mock -ModuleName PlexAutomationToolkit Get-PatCollection {
                 return $script:mockCollection
             }
         }
 
-        It 'Does nothing and returns without error' {
-            # Since RatingKey is mandatory, this test validates early exit when empty array somehow passed
+        It 'Rejects empty rating keys array (mandatory parameter)' {
+            # Since RatingKey is mandatory, this test validates that empty arrays are rejected
             { Add-PatCollectionItem -CollectionId 12345 -RatingKey @() -ServerUri 'http://plex.local:32400' } |
-                Should -Throw
+                Should -Throw '*empty array*'
         }
     }
 
     Context 'When using default server' {
         BeforeAll {
+            Mock -ModuleName PlexAutomationToolkit Resolve-PatServerContext {
+                return $script:mockDefaultServerContext
+            }
+
             Mock -ModuleName PlexAutomationToolkit Get-PatStoredServer {
                 return $script:mockDefaultServer
             }
@@ -250,26 +290,41 @@ Describe 'Add-PatCollectionItem' {
 
         It 'Uses default server when ServerUri not specified' {
             Add-PatCollectionItem -CollectionId 12345 -RatingKey 1001
-            Should -Invoke -ModuleName PlexAutomationToolkit Get-PatStoredServer -ParameterFilter {
-                $Default -eq $true
+            Should -Invoke -ModuleName PlexAutomationToolkit Resolve-PatServerContext -ParameterFilter {
+                -not $ServerUri
+            }
+        }
+
+        It 'Uses URI from server context' {
+            Add-PatCollectionItem -CollectionId 12345 -RatingKey 1001
+            Should -Invoke -ModuleName PlexAutomationToolkit Join-PatUri -ParameterFilter {
+                $BaseUri -eq 'http://plex-test-server.local:32400'
             }
         }
     }
 
     Context 'When no default server is configured' {
         BeforeAll {
-            Mock -ModuleName PlexAutomationToolkit Get-PatStoredServer {
-                return $null
+            Mock -ModuleName PlexAutomationToolkit Resolve-PatServerContext {
+                throw 'No default server configured. Use Add-PatServer with -Default or specify -ServerUri.'
             }
         }
 
         It 'Throws an error indicating no default server' {
             { Add-PatCollectionItem -CollectionId 12345 -RatingKey 1001 } | Should -Throw '*No default server configured*'
         }
+
+        It 'Wraps error with context' {
+            { Add-PatCollectionItem -CollectionId 12345 -RatingKey 1001 } | Should -Throw '*Failed to resolve server*'
+        }
     }
 
     Context 'When API call fails' {
         BeforeAll {
+            Mock -ModuleName PlexAutomationToolkit Resolve-PatServerContext {
+                return $script:mockServerContext
+            }
+
             $script:apiCallCount = 0
             Mock -ModuleName PlexAutomationToolkit Invoke-PatApi {
                 $script:apiCallCount++
@@ -303,6 +358,10 @@ Describe 'Add-PatCollectionItem' {
 
     Context 'When using WhatIf' {
         BeforeAll {
+            Mock -ModuleName PlexAutomationToolkit Resolve-PatServerContext {
+                return $script:mockServerContext
+            }
+
             Mock -ModuleName PlexAutomationToolkit Invoke-PatApi {
                 param($Uri)
                 if ($Uri -match '/$' -or $Uri -match ':32400$') {
@@ -326,6 +385,83 @@ Describe 'Add-PatCollectionItem' {
             Should -Invoke -ModuleName PlexAutomationToolkit Invoke-PatApi -Times 0 -ParameterFilter {
                 $Method -eq 'PUT'
             }
+        }
+
+        It 'Still retrieves machine identifier with WhatIf' {
+            Add-PatCollectionItem -CollectionId 12345 -RatingKey 1001 -ServerUri 'http://plex.local:32400' -WhatIf
+            Should -Invoke -ModuleName PlexAutomationToolkit Invoke-PatApi -Times 1 -ParameterFilter {
+                $Uri -match '/$'
+            }
+        }
+    }
+
+    Context 'When using Token parameter' {
+        BeforeAll {
+            Mock -ModuleName PlexAutomationToolkit Resolve-PatServerContext {
+                return $script:mockServerContext
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Invoke-PatApi {
+                param($Uri)
+                if ($Uri -match '/$' -or $Uri -match ':32400$') {
+                    return @{ machineIdentifier = 'test-machine-id' }
+                }
+                return $null
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Join-PatUri {
+                param($BaseUri, $Endpoint)
+                return "$BaseUri$Endpoint"
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Get-PatCollection {
+                return $script:mockCollection
+            }
+        }
+
+        It 'Passes Token to Resolve-PatServerContext' {
+            Add-PatCollectionItem -CollectionId 12345 -RatingKey 1001 -ServerUri 'http://plex.local:32400' -Token 'my-token'
+            Should -Invoke -ModuleName PlexAutomationToolkit Resolve-PatServerContext -ParameterFilter {
+                $Token -eq 'my-token'
+            }
+        }
+    }
+
+    Context 'Parameter validation' {
+        BeforeAll {
+            Mock -ModuleName PlexAutomationToolkit Resolve-PatServerContext {
+                return $script:mockServerContext
+            }
+        }
+
+        It 'Rejects CollectionId of 0' {
+            { Add-PatCollectionItem -CollectionId 0 -RatingKey 1001 -ServerUri 'http://plex.local:32400' } |
+                Should -Throw
+        }
+
+        It 'Rejects negative CollectionId' {
+            { Add-PatCollectionItem -CollectionId -1 -RatingKey 1001 -ServerUri 'http://plex.local:32400' } |
+                Should -Throw
+        }
+
+        It 'Rejects RatingKey of 0' {
+            { Add-PatCollectionItem -CollectionId 12345 -RatingKey 0 -ServerUri 'http://plex.local:32400' } |
+                Should -Throw
+        }
+
+        It 'Rejects negative RatingKey' {
+            { Add-PatCollectionItem -CollectionId 12345 -RatingKey -1 -ServerUri 'http://plex.local:32400' } |
+                Should -Throw
+        }
+
+        It 'Rejects LibraryId of 0' {
+            { Add-PatCollectionItem -CollectionName 'Test' -LibraryId 0 -RatingKey 1001 -ServerUri 'http://plex.local:32400' } |
+                Should -Throw
+        }
+
+        It 'Rejects empty CollectionName' {
+            { Add-PatCollectionItem -CollectionName '' -LibraryId 1 -RatingKey 1001 -ServerUri 'http://plex.local:32400' } |
+                Should -Throw
         }
     }
 }

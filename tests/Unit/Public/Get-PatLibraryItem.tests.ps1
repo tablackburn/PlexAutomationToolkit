@@ -361,4 +361,106 @@ Describe 'Get-PatLibraryItem' {
             { Get-PatLibraryItem -ServerUri 'http://plex.local:32400' -SectionName '' } | Should -Throw
         }
     }
+
+    Context 'When using Token with explicit ServerUri' {
+        BeforeAll {
+            Mock -ModuleName PlexAutomationToolkit Invoke-PatApi {
+                return $script:mockLibraryItemsResponse
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Join-PatUri {
+                return 'http://plex-test-server.local:32400/library/sections/2/all'
+            }
+        }
+
+        It 'Includes token in headers when provided' {
+            Get-PatLibraryItem -ServerUri 'http://plex-test-server.local:32400' -Token 'my-test-token' -SectionId 2
+            Should -Invoke -ModuleName PlexAutomationToolkit Invoke-PatApi -ParameterFilter {
+                $Headers['X-Plex-Token'] -eq 'my-test-token'
+            }
+        }
+
+        It 'Returns items successfully with Token' {
+            $result = Get-PatLibraryItem -ServerUri 'http://plex-test-server.local:32400' -Token 'my-test-token' -SectionId 2
+            $result | Should -Not -BeNullOrEmpty
+            $result | Should -HaveCount 3
+        }
+    }
+
+    Context 'When resolving SectionName with default server' {
+        BeforeAll {
+            Mock -ModuleName PlexAutomationToolkit Get-PatStoredServer {
+                return $script:mockDefaultServer
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Get-PatAuthenticationHeader {
+                return @{
+                    Accept             = 'application/json'
+                    'X-Plex-Token'     = 'test-token-12345'
+                }
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Get-PatLibrary {
+                return $script:mockSectionsResponse
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Invoke-PatApi {
+                return $script:mockLibraryItemsResponse
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Join-PatUri {
+                return 'http://plex-test-server.local:32400/library/sections/2/all'
+            }
+        }
+
+        It 'Resolves SectionName using default server authentication' {
+            $result = Get-PatLibraryItem -SectionName 'Movies'
+            $result | Should -Not -BeNullOrEmpty
+        }
+
+        It 'Calls Get-PatLibrary without ServerUri when using default' {
+            Get-PatLibraryItem -SectionName 'Movies'
+            Should -Invoke -ModuleName PlexAutomationToolkit Get-PatLibrary -ParameterFilter {
+                -not $PSBoundParameters.ContainsKey('ServerUri')
+            }
+        }
+
+        It 'Resolves correct section ID from name' {
+            Get-PatLibraryItem -SectionName 'Movies'
+            Should -Invoke -ModuleName PlexAutomationToolkit Join-PatUri -ParameterFilter {
+                $Endpoint -eq '/library/sections/2/all'
+            }
+        }
+
+        It 'Returns items with expected properties when using SectionName' {
+            $result = Get-PatLibraryItem -SectionName 'Movies'
+            $result[0].title | Should -Be 'Test Movie 1'
+            $result[0].type | Should -Be 'movie'
+        }
+    }
+
+    Context 'When Get-PatStoredServer throws' {
+        BeforeAll {
+            Mock -ModuleName PlexAutomationToolkit Get-PatStoredServer {
+                throw 'Failed to read configuration'
+            }
+        }
+
+        It 'Throws wrapped error message' {
+            { Get-PatLibraryItem -SectionId 2 } | Should -Throw '*Failed to get default server*'
+        }
+    }
+
+    Context 'When Get-PatLibrary fails during name resolution' {
+        BeforeAll {
+            Mock -ModuleName PlexAutomationToolkit Get-PatLibrary {
+                throw 'Failed to get libraries'
+            }
+        }
+
+        It 'Throws error when libraries cannot be retrieved' {
+            { Get-PatLibraryItem -ServerUri 'http://plex.local:32400' -SectionName 'Movies' } |
+                Should -Throw '*Failed to get library items*'
+        }
+    }
 }

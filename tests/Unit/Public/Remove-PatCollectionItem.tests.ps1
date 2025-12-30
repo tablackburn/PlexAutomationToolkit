@@ -26,16 +26,47 @@ Describe 'Remove-PatCollectionItem' {
             ServerUri    = 'http://plex.local:32400'
         }
 
-        $script:mockDefaultServer = @{
-            name    = 'Test Server'
-            uri     = 'http://plex-test-server.local:32400'
-            default = $true
-            token   = 'test-token'
+        $script:mockServerContext = [PSCustomObject]@{
+            Uri            = 'http://plex.local:32400'
+            Headers        = @{ Accept = 'application/json'; 'X-Plex-Token' = 'test-token' }
+            WasExplicitUri = $true
+            Server         = $null
+            Token          = 'test-token'
+        }
+
+        $script:mockDefaultServerContext = [PSCustomObject]@{
+            Uri            = 'http://plex-default.local:32400'
+            Headers        = @{ Accept = 'application/json'; 'X-Plex-Token' = 'default-token' }
+            WasExplicitUri = $false
+            Server         = @{ name = 'Default'; uri = 'http://plex-default.local:32400' }
+            Token          = $null
+        }
+    }
+
+    Context 'Function definition' {
+        It 'Should exist as a public function' {
+            Get-Command Remove-PatCollectionItem -Module PlexAutomationToolkit | Should -Not -BeNullOrEmpty
+        }
+
+        It 'Should support ShouldProcess' {
+            $cmd = Get-Command Remove-PatCollectionItem -Module PlexAutomationToolkit
+            $cmd.Parameters.ContainsKey('WhatIf') | Should -Be $true
+            $cmd.Parameters.ContainsKey('Confirm') | Should -Be $true
+        }
+
+        It 'Should have Medium ConfirmImpact' {
+            $cmd = Get-Command Remove-PatCollectionItem -Module PlexAutomationToolkit
+            $cmdletBinding = $cmd.ScriptBlock.Attributes | Where-Object { $_ -is [System.Management.Automation.CmdletBindingAttribute] }
+            $cmdletBinding.ConfirmImpact | Should -Be 'Medium'
         }
     }
 
     Context 'When removing items by collection ID' {
         BeforeAll {
+            Mock -ModuleName PlexAutomationToolkit Resolve-PatServerContext {
+                return $script:mockServerContext
+            }
+
             Mock -ModuleName PlexAutomationToolkit Invoke-PatApi {
                 return $null
             }
@@ -59,6 +90,13 @@ Describe 'Remove-PatCollectionItem' {
                 Should -Not -Throw
         }
 
+        It 'Calls Resolve-PatServerContext' {
+            Remove-PatCollectionItem -CollectionId 12345 -RatingKey 1001 -ServerUri 'http://plex.local:32400'
+            Should -Invoke -ModuleName PlexAutomationToolkit Resolve-PatServerContext -ParameterFilter {
+                $ServerUri -eq 'http://plex.local:32400'
+            }
+        }
+
         It 'Calls the delete endpoint for each item' {
             Remove-PatCollectionItem -CollectionId 12345 -RatingKey 1001 -ServerUri 'http://plex.local:32400'
             Should -Invoke -ModuleName PlexAutomationToolkit Join-PatUri -ParameterFilter {
@@ -80,14 +118,58 @@ Describe 'Remove-PatCollectionItem' {
             }
         }
 
+        It 'Passes Token to Resolve-PatServerContext' {
+            Remove-PatCollectionItem -CollectionId 12345 -RatingKey 1001 -ServerUri 'http://plex.local:32400' -Token 'my-token'
+            Should -Invoke -ModuleName PlexAutomationToolkit Resolve-PatServerContext -ParameterFilter {
+                $Token -eq 'my-token'
+            }
+        }
+
         It 'Returns updated collection with PassThru' {
             $result = Remove-PatCollectionItem -CollectionId 12345 -RatingKey 1001, 1002 -ServerUri 'http://plex.local:32400' -PassThru
             $result.ItemCount | Should -Be 3
+        }
+
+        It 'Does not return anything without PassThru' {
+            $result = Remove-PatCollectionItem -CollectionId 12345 -RatingKey 1001 -ServerUri 'http://plex.local:32400'
+            $result | Should -BeNullOrEmpty
+        }
+    }
+
+    Context 'When collection info cannot be retrieved for ID' {
+        BeforeAll {
+            Mock -ModuleName PlexAutomationToolkit Resolve-PatServerContext {
+                return $script:mockServerContext
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Invoke-PatApi {
+                return $null
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Join-PatUri {
+                param($BaseUri, $Endpoint)
+                return "$BaseUri$Endpoint"
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Get-PatCollection {
+                throw 'Collection not found'
+            }
+        }
+
+        It 'Still attempts to remove items' {
+            Remove-PatCollectionItem -CollectionId 99999 -RatingKey 1001 -ServerUri 'http://plex.local:32400'
+            Should -Invoke -ModuleName PlexAutomationToolkit Invoke-PatApi -ParameterFilter {
+                $Method -eq 'DELETE'
+            }
         }
     }
 
     Context 'When removing items by collection name with LibraryId' {
         BeforeAll {
+            Mock -ModuleName PlexAutomationToolkit Resolve-PatServerContext {
+                return $script:mockServerContext
+            }
+
             Mock -ModuleName PlexAutomationToolkit Invoke-PatApi {
                 return $null
             }
@@ -105,7 +187,7 @@ Describe 'Remove-PatCollectionItem' {
                 if ($CollectionId) {
                     return $script:mockUpdatedCollection
                 }
-                throw "No collection found with name '$CollectionName'"
+                return $null
             }
         }
 
@@ -114,14 +196,28 @@ Describe 'Remove-PatCollectionItem' {
                 Should -Not -Throw
         }
 
+        It 'Calls Get-PatCollection with correct parameters' {
+            Remove-PatCollectionItem -CollectionName 'Test Collection' -LibraryId 1 -RatingKey 1001 -ServerUri 'http://plex.local:32400'
+            Should -Invoke -ModuleName PlexAutomationToolkit Get-PatCollection -ParameterFilter {
+                $CollectionName -eq 'Test Collection' -and $LibraryId -eq 1
+            }
+        }
+
         It 'Throws when collection name not found' {
+            Mock -ModuleName PlexAutomationToolkit Get-PatCollection {
+                return $null
+            }
             { Remove-PatCollectionItem -CollectionName 'Nonexistent' -LibraryId 1 -RatingKey 1001 -ServerUri 'http://plex.local:32400' } |
-                Should -Throw "*No collection found with name*"
+                Should -Throw "*No collection found with name 'Nonexistent' in library 1*"
         }
     }
 
     Context 'When removing items by collection name with LibraryName' {
         BeforeAll {
+            Mock -ModuleName PlexAutomationToolkit Resolve-PatServerContext {
+                return $script:mockServerContext
+            }
+
             Mock -ModuleName PlexAutomationToolkit Invoke-PatApi {
                 return $null
             }
@@ -139,7 +235,7 @@ Describe 'Remove-PatCollectionItem' {
                 if ($CollectionId) {
                     return $script:mockUpdatedCollection
                 }
-                throw "No collection found with name '$CollectionName'"
+                return $null
             }
         }
 
@@ -148,14 +244,49 @@ Describe 'Remove-PatCollectionItem' {
                 Should -Not -Throw
         }
 
-        It 'Throws when collection name not found in library' {
+        It 'Passes LibraryName to Get-PatCollection' {
+            Remove-PatCollectionItem -CollectionName 'Test Collection' -LibraryName 'Movies' -RatingKey 1001 -ServerUri 'http://plex.local:32400'
+            Should -Invoke -ModuleName PlexAutomationToolkit Get-PatCollection -ParameterFilter {
+                $CollectionName -eq 'Test Collection' -and $LibraryName -eq 'Movies'
+            }
+        }
+
+        It 'Throws when collection not found in library' {
+            Mock -ModuleName PlexAutomationToolkit Get-PatCollection {
+                return $null
+            }
             { Remove-PatCollectionItem -CollectionName 'Nonexistent' -LibraryName 'Movies' -RatingKey 1001 -ServerUri 'http://plex.local:32400' } |
-                Should -Throw "*No collection found with name*"
+                Should -Throw "*No collection found with name 'Nonexistent' in library 'Movies'*"
+        }
+    }
+
+    Context 'When no rating keys provided' {
+        BeforeAll {
+            Mock -ModuleName PlexAutomationToolkit Resolve-PatServerContext {
+                return $script:mockServerContext
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Get-PatCollection {
+                return $script:mockCollection
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Invoke-PatApi {
+                return $null
+            }
+        }
+
+        It 'Rejects empty rating keys array (mandatory parameter)' {
+            { Remove-PatCollectionItem -CollectionId 12345 -RatingKey @() -ServerUri 'http://plex.local:32400' } |
+                Should -Throw '*empty array*'
         }
     }
 
     Context 'When using pipeline input' {
         BeforeAll {
+            Mock -ModuleName PlexAutomationToolkit Resolve-PatServerContext {
+                return $script:mockServerContext
+            }
+
             Mock -ModuleName PlexAutomationToolkit Invoke-PatApi {
                 return $null
             }
@@ -174,12 +305,19 @@ Describe 'Remove-PatCollectionItem' {
             { 1001, 1002, 1003 | Remove-PatCollectionItem -CollectionId 12345 -ServerUri 'http://plex.local:32400' } |
                 Should -Not -Throw
         }
+
+        It 'Processes all piped rating keys' {
+            1001, 1002 | Remove-PatCollectionItem -CollectionId 12345 -ServerUri 'http://plex.local:32400'
+            Should -Invoke -ModuleName PlexAutomationToolkit Invoke-PatApi -Times 2 -ParameterFilter {
+                $Method -eq 'DELETE'
+            }
+        }
     }
 
     Context 'When using default server' {
         BeforeAll {
-            Mock -ModuleName PlexAutomationToolkit Get-PatStoredServer {
-                return $script:mockDefaultServer
+            Mock -ModuleName PlexAutomationToolkit Resolve-PatServerContext {
+                return $script:mockDefaultServerContext
             }
 
             Mock -ModuleName PlexAutomationToolkit Invoke-PatApi {
@@ -191,10 +329,6 @@ Describe 'Remove-PatCollectionItem' {
                 return "$BaseUri$Endpoint"
             }
 
-            Mock -ModuleName PlexAutomationToolkit Get-PatAuthenticationHeader {
-                return @{ Accept = 'application/json'; 'X-Plex-Token' = 'test-token' }
-            }
-
             Mock -ModuleName PlexAutomationToolkit Get-PatCollection {
                 return $script:mockCollection
             }
@@ -202,26 +336,50 @@ Describe 'Remove-PatCollectionItem' {
 
         It 'Uses default server when ServerUri not specified' {
             Remove-PatCollectionItem -CollectionId 12345 -RatingKey 1001
-            Should -Invoke -ModuleName PlexAutomationToolkit Get-PatStoredServer -ParameterFilter {
-                $Default -eq $true
+            Should -Invoke -ModuleName PlexAutomationToolkit Resolve-PatServerContext -ParameterFilter {
+                -not $ServerUri
+            }
+        }
+
+        It 'Uses URI from server context' {
+            Remove-PatCollectionItem -CollectionId 12345 -RatingKey 1001
+            Should -Invoke -ModuleName PlexAutomationToolkit Join-PatUri -ParameterFilter {
+                $BaseUri -eq 'http://plex-default.local:32400'
+            }
+        }
+
+        It 'Does not pass ServerUri to Get-PatCollection when using default' {
+            Remove-PatCollectionItem -CollectionId 12345 -RatingKey 1001
+            Should -Invoke -ModuleName PlexAutomationToolkit Get-PatCollection -ParameterFilter {
+                -not $PSBoundParameters.ContainsKey('ServerUri')
             }
         }
     }
 
-    Context 'When no default server is configured' {
+    Context 'When server resolution fails' {
         BeforeAll {
-            Mock -ModuleName PlexAutomationToolkit Get-PatStoredServer {
-                return $null
+            Mock -ModuleName PlexAutomationToolkit Resolve-PatServerContext {
+                throw 'No default server configured. Use Add-PatServer with -Default or specify -ServerUri.'
             }
         }
 
         It 'Throws an error indicating no default server' {
-            { Remove-PatCollectionItem -CollectionId 12345 -RatingKey 1001 } | Should -Throw '*No default server configured*'
+            { Remove-PatCollectionItem -CollectionId 12345 -RatingKey 1001 } |
+                Should -Throw '*No default server configured*'
+        }
+
+        It 'Wraps error with context' {
+            { Remove-PatCollectionItem -CollectionId 12345 -RatingKey 1001 } |
+                Should -Throw '*Failed to resolve server*'
         }
     }
 
     Context 'When API call fails' {
         BeforeAll {
+            Mock -ModuleName PlexAutomationToolkit Resolve-PatServerContext {
+                return $script:mockServerContext
+            }
+
             Mock -ModuleName PlexAutomationToolkit Invoke-PatApi {
                 throw 'Connection refused'
             }
@@ -244,6 +402,10 @@ Describe 'Remove-PatCollectionItem' {
 
     Context 'When using WhatIf' {
         BeforeAll {
+            Mock -ModuleName PlexAutomationToolkit Resolve-PatServerContext {
+                return $script:mockServerContext
+            }
+
             Mock -ModuleName PlexAutomationToolkit Invoke-PatApi {
                 return $null
             }
@@ -263,6 +425,49 @@ Describe 'Remove-PatCollectionItem' {
             Should -Invoke -ModuleName PlexAutomationToolkit Invoke-PatApi -Times 0 -ParameterFilter {
                 $Method -eq 'DELETE'
             }
+        }
+
+        It 'Still resolves server context with WhatIf' {
+            Remove-PatCollectionItem -CollectionId 12345 -RatingKey 1001 -ServerUri 'http://plex.local:32400' -WhatIf
+            Should -Invoke -ModuleName PlexAutomationToolkit Resolve-PatServerContext -Times 1
+        }
+    }
+
+    Context 'Parameter validation' {
+        BeforeAll {
+            Mock -ModuleName PlexAutomationToolkit Resolve-PatServerContext {
+                return $script:mockServerContext
+            }
+        }
+
+        It 'Rejects CollectionId of 0' {
+            { Remove-PatCollectionItem -CollectionId 0 -RatingKey 1001 -ServerUri 'http://plex.local:32400' } |
+                Should -Throw
+        }
+
+        It 'Rejects negative CollectionId' {
+            { Remove-PatCollectionItem -CollectionId -1 -RatingKey 1001 -ServerUri 'http://plex.local:32400' } |
+                Should -Throw
+        }
+
+        It 'Rejects RatingKey of 0' {
+            { Remove-PatCollectionItem -CollectionId 12345 -RatingKey 0 -ServerUri 'http://plex.local:32400' } |
+                Should -Throw
+        }
+
+        It 'Rejects negative RatingKey' {
+            { Remove-PatCollectionItem -CollectionId 12345 -RatingKey -1 -ServerUri 'http://plex.local:32400' } |
+                Should -Throw
+        }
+
+        It 'Rejects LibraryId of 0' {
+            { Remove-PatCollectionItem -CollectionName 'Test' -LibraryId 0 -RatingKey 1001 -ServerUri 'http://plex.local:32400' } |
+                Should -Throw
+        }
+
+        It 'Rejects empty CollectionName' {
+            { Remove-PatCollectionItem -CollectionName '' -LibraryId 1 -RatingKey 1001 -ServerUri 'http://plex.local:32400' } |
+                Should -Throw
         }
     }
 }

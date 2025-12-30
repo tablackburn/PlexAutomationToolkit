@@ -1,5 +1,4 @@
 BeforeAll {
-    # Import the module from source
     $ProjectRoot = Split-Path -Parent (Split-Path -Parent (Split-Path -Parent $PSScriptRoot))
     $ModuleRoot = Join-Path $ProjectRoot 'PlexAutomationToolkit'
     $moduleManifestPath = Join-Path $ModuleRoot 'PlexAutomationToolkit.psd1'
@@ -11,7 +10,6 @@ BeforeAll {
 Describe 'Remove-PatPlaylist' {
 
     BeforeAll {
-        # Mock playlist response
         $script:mockPlaylist = [PSCustomObject]@{
             PSTypeName  = 'PlexAutomationToolkit.Playlist'
             PlaylistId  = 12345
@@ -23,17 +21,53 @@ Describe 'Remove-PatPlaylist' {
             ServerUri   = 'http://plex.local:32400'
         }
 
-        # Mock default server
-        $script:mockDefaultServer = @{
-            name    = 'Test Server'
-            uri     = 'http://plex-test-server.local:32400'
-            default = $true
-            token   = 'test-token'
+        $script:mockServerContext = [PSCustomObject]@{
+            Uri            = 'http://plex.local:32400'
+            Headers        = @{ Accept = 'application/json'; 'X-Plex-Token' = 'test-token' }
+            WasExplicitUri = $true
+            Server         = $null
+            Token          = 'test-token'
+        }
+
+        $script:mockDefaultServerContext = [PSCustomObject]@{
+            Uri            = 'http://plex-default.local:32400'
+            Headers        = @{ Accept = 'application/json'; 'X-Plex-Token' = 'default-token' }
+            WasExplicitUri = $false
+            Server         = @{ name = 'Default'; uri = 'http://plex-default.local:32400' }
+            Token          = $null
+        }
+    }
+
+    Context 'Function definition' {
+        It 'Should exist as a public function' {
+            Get-Command Remove-PatPlaylist -Module PlexAutomationToolkit | Should -Not -BeNullOrEmpty
+        }
+
+        It 'Should support ShouldProcess' {
+            $cmd = Get-Command Remove-PatPlaylist -Module PlexAutomationToolkit
+            $cmd.Parameters.ContainsKey('WhatIf') | Should -Be $true
+            $cmd.Parameters.ContainsKey('Confirm') | Should -Be $true
+        }
+
+        It 'Should have High ConfirmImpact' {
+            $cmd = Get-Command Remove-PatPlaylist -Module PlexAutomationToolkit
+            $cmdletBinding = $cmd.ScriptBlock.Attributes | Where-Object { $_ -is [System.Management.Automation.CmdletBindingAttribute] }
+            $cmdletBinding.ConfirmImpact | Should -Be 'High'
+        }
+
+        It 'Should have ById as default parameter set' {
+            $cmd = Get-Command Remove-PatPlaylist -Module PlexAutomationToolkit
+            $cmdletBinding = $cmd.ScriptBlock.Attributes | Where-Object { $_ -is [System.Management.Automation.CmdletBindingAttribute] }
+            $cmdletBinding.DefaultParameterSetName | Should -Be 'ById'
         }
     }
 
     Context 'When removing playlist by ID' {
         BeforeAll {
+            Mock -ModuleName PlexAutomationToolkit Resolve-PatServerContext {
+                return $script:mockServerContext
+            }
+
             Mock -ModuleName PlexAutomationToolkit Get-PatPlaylist {
                 return $script:mockPlaylist
             }
@@ -53,6 +87,13 @@ Describe 'Remove-PatPlaylist' {
                 Should -Not -Throw
         }
 
+        It 'Calls Resolve-PatServerContext with ServerUri' {
+            Remove-PatPlaylist -PlaylistId 12345 -ServerUri 'http://plex.local:32400' -Confirm:$false
+            Should -Invoke -ModuleName PlexAutomationToolkit Resolve-PatServerContext -ParameterFilter {
+                $ServerUri -eq 'http://plex.local:32400'
+            }
+        }
+
         It 'Calls DELETE on the playlist endpoint' {
             Remove-PatPlaylist -PlaylistId 12345 -ServerUri 'http://plex.local:32400' -Confirm:$false
             Should -Invoke -ModuleName PlexAutomationToolkit Invoke-PatApi -ParameterFilter {
@@ -67,6 +108,13 @@ Describe 'Remove-PatPlaylist' {
             }
         }
 
+        It 'Passes Token to Resolve-PatServerContext' {
+            Remove-PatPlaylist -PlaylistId 12345 -ServerUri 'http://plex.local:32400' -Token 'my-token' -Confirm:$false
+            Should -Invoke -ModuleName PlexAutomationToolkit Resolve-PatServerContext -ParameterFilter {
+                $Token -eq 'my-token'
+            }
+        }
+
         It 'Returns nothing when PassThru not specified' {
             $result = Remove-PatPlaylist -PlaylistId 12345 -ServerUri 'http://plex.local:32400' -Confirm:$false
             $result | Should -BeNullOrEmpty
@@ -77,12 +125,58 @@ Describe 'Remove-PatPlaylist' {
             $result | Should -Not -BeNullOrEmpty
             $result.Title | Should -Be 'Test Playlist'
         }
+
+        It 'Retrieves playlist info for confirmation message' {
+            Remove-PatPlaylist -PlaylistId 12345 -ServerUri 'http://plex.local:32400' -Confirm:$false
+            Should -Invoke -ModuleName PlexAutomationToolkit Get-PatPlaylist -Times 1
+        }
+    }
+
+    Context 'When playlist info cannot be retrieved for ID' {
+        BeforeAll {
+            Mock -ModuleName PlexAutomationToolkit Resolve-PatServerContext {
+                return $script:mockServerContext
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Get-PatPlaylist {
+                throw 'Playlist not found'
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Invoke-PatApi {
+                return $null
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Join-PatUri {
+                param($BaseUri, $Endpoint)
+                return "$BaseUri$Endpoint"
+            }
+        }
+
+        It 'Still attempts to delete the playlist' {
+            Remove-PatPlaylist -PlaylistId 99999 -ServerUri 'http://plex.local:32400' -Confirm:$false
+            Should -Invoke -ModuleName PlexAutomationToolkit Invoke-PatApi -ParameterFilter {
+                $Method -eq 'DELETE'
+            }
+        }
+
+        It 'Does not return anything with PassThru when playlist info unavailable' {
+            $result = Remove-PatPlaylist -PlaylistId 99999 -ServerUri 'http://plex.local:32400' -Confirm:$false -PassThru
+            $result | Should -BeNullOrEmpty
+        }
     }
 
     Context 'When removing playlist by Name' {
         BeforeAll {
+            Mock -ModuleName PlexAutomationToolkit Resolve-PatServerContext {
+                return $script:mockServerContext
+            }
+
             Mock -ModuleName PlexAutomationToolkit Get-PatPlaylist {
-                return $script:mockPlaylist
+                param($PlaylistName, $PlaylistId)
+                if ($PlaylistName -eq 'Test Playlist') {
+                    return $script:mockPlaylist
+                }
+                return $null
             }
 
             Mock -ModuleName PlexAutomationToolkit Invoke-PatApi {
@@ -108,10 +202,19 @@ Describe 'Remove-PatPlaylist' {
                 $Endpoint -eq '/playlists/12345'
             }
         }
+
+        It 'Returns playlist with PassThru' {
+            $result = Remove-PatPlaylist -PlaylistName 'Test Playlist' -ServerUri 'http://plex.local:32400' -PassThru -Confirm:$false
+            $result.Title | Should -Be 'Test Playlist'
+        }
     }
 
     Context 'When playlist does not exist' {
         BeforeAll {
+            Mock -ModuleName PlexAutomationToolkit Resolve-PatServerContext {
+                return $script:mockServerContext
+            }
+
             Mock -ModuleName PlexAutomationToolkit Get-PatPlaylist {
                 return $null
             }
@@ -119,14 +222,14 @@ Describe 'Remove-PatPlaylist' {
 
         It 'Throws when playlist name not found' {
             { Remove-PatPlaylist -PlaylistName 'Nonexistent' -ServerUri 'http://plex.local:32400' -Confirm:$false } |
-                Should -Throw "*No playlist found*"
+                Should -Throw "*No playlist found with name 'Nonexistent'*"
         }
     }
 
     Context 'When using default server' {
         BeforeAll {
-            Mock -ModuleName PlexAutomationToolkit Get-PatStoredServer {
-                return $script:mockDefaultServer
+            Mock -ModuleName PlexAutomationToolkit Resolve-PatServerContext {
+                return $script:mockDefaultServerContext
             }
 
             Mock -ModuleName PlexAutomationToolkit Get-PatPlaylist {
@@ -141,34 +244,54 @@ Describe 'Remove-PatPlaylist' {
                 param($BaseUri, $Endpoint)
                 return "$BaseUri$Endpoint"
             }
-
-            Mock -ModuleName PlexAutomationToolkit Get-PatAuthenticationHeader {
-                return @{ Accept = 'application/json'; 'X-Plex-Token' = 'test-token' }
-            }
         }
 
         It 'Uses default server when ServerUri not specified' {
             Remove-PatPlaylist -PlaylistId 12345 -Confirm:$false
-            Should -Invoke -ModuleName PlexAutomationToolkit Get-PatStoredServer -ParameterFilter {
-                $Default -eq $true
+            Should -Invoke -ModuleName PlexAutomationToolkit Resolve-PatServerContext -ParameterFilter {
+                -not $ServerUri
+            }
+        }
+
+        It 'Uses URI from server context' {
+            Remove-PatPlaylist -PlaylistId 12345 -Confirm:$false
+            Should -Invoke -ModuleName PlexAutomationToolkit Join-PatUri -ParameterFilter {
+                $BaseUri -eq 'http://plex-default.local:32400'
+            }
+        }
+
+        It 'Does not pass ServerUri to Get-PatPlaylist when using default' {
+            Remove-PatPlaylist -PlaylistId 12345 -Confirm:$false
+            Should -Invoke -ModuleName PlexAutomationToolkit Get-PatPlaylist -ParameterFilter {
+                -not $PSBoundParameters.ContainsKey('ServerUri')
             }
         }
     }
 
-    Context 'When no default server is configured' {
+    Context 'When server resolution fails' {
         BeforeAll {
-            Mock -ModuleName PlexAutomationToolkit Get-PatStoredServer {
-                return $null
+            Mock -ModuleName PlexAutomationToolkit Resolve-PatServerContext {
+                throw 'No default server configured. Use Add-PatServer with -Default or specify -ServerUri.'
             }
         }
 
         It 'Throws an error indicating no default server' {
-            { Remove-PatPlaylist -PlaylistId 12345 -Confirm:$false } | Should -Throw '*No default server configured*'
+            { Remove-PatPlaylist -PlaylistId 12345 -Confirm:$false } |
+                Should -Throw '*No default server configured*'
+        }
+
+        It 'Wraps error with context' {
+            { Remove-PatPlaylist -PlaylistId 12345 -Confirm:$false } |
+                Should -Throw '*Failed to resolve server*'
         }
     }
 
     Context 'When API call fails' {
         BeforeAll {
+            Mock -ModuleName PlexAutomationToolkit Resolve-PatServerContext {
+                return $script:mockServerContext
+            }
+
             Mock -ModuleName PlexAutomationToolkit Get-PatPlaylist {
                 return $script:mockPlaylist
             }
@@ -191,6 +314,10 @@ Describe 'Remove-PatPlaylist' {
 
     Context 'ShouldProcess behavior' {
         BeforeAll {
+            Mock -ModuleName PlexAutomationToolkit Resolve-PatServerContext {
+                return $script:mockServerContext
+            }
+
             Mock -ModuleName PlexAutomationToolkit Get-PatPlaylist {
                 return $script:mockPlaylist
             }
@@ -212,24 +339,16 @@ Describe 'Remove-PatPlaylist' {
             }
         }
 
-        It 'Has High confirm impact' {
-            $cmd = Get-Command Remove-PatPlaylist
-            $cmd.Parameters['Confirm'].Attributes | Where-Object { $_ -is [System.Management.Automation.ParameterAttribute] } |
-                ForEach-Object { $_.Mandatory } | Should -Be $false
+        It 'Still resolves server context with WhatIf' {
+            Remove-PatPlaylist -PlaylistId 12345 -ServerUri 'http://plex.local:32400' -WhatIf
+            Should -Invoke -ModuleName PlexAutomationToolkit Resolve-PatServerContext -Times 1
         }
     }
 
     Context 'Pipeline input' {
         BeforeAll {
-            Mock -ModuleName PlexAutomationToolkit Get-PatStoredServer {
-                return [PSCustomObject]$script:mockDefaultServer
-            }
-
-            Mock -ModuleName PlexAutomationToolkit Get-PatAuthenticationHeader {
-                return @{
-                    Accept         = 'application/json'
-                    'X-Plex-Token' = 'test-token'
-                }
+            Mock -ModuleName PlexAutomationToolkit Resolve-PatServerContext {
+                return $script:mockServerContext
             }
 
             Mock -ModuleName PlexAutomationToolkit Get-PatPlaylist {
@@ -247,7 +366,48 @@ Describe 'Remove-PatPlaylist' {
         }
 
         It 'Accepts PlaylistId from pipeline' {
-            { $script:mockPlaylist | Remove-PatPlaylist -Confirm:$false } | Should -Not -Throw
+            { $script:mockPlaylist | Remove-PatPlaylist -ServerUri 'http://plex.local:32400' -Confirm:$false } |
+                Should -Not -Throw
+        }
+
+        It 'Accepts integer PlaylistId from pipeline' {
+            { 12345 | Remove-PatPlaylist -ServerUri 'http://plex.local:32400' -Confirm:$false } |
+                Should -Not -Throw
+        }
+
+        It 'Processes multiple playlists from pipeline' {
+            @(
+                [PSCustomObject]@{ PlaylistId = 111 }
+                [PSCustomObject]@{ PlaylistId = 222 }
+                [PSCustomObject]@{ PlaylistId = 333 }
+            ) | Remove-PatPlaylist -ServerUri 'http://plex.local:32400' -Confirm:$false
+
+            Should -Invoke -ModuleName PlexAutomationToolkit Invoke-PatApi -Times 3 -ParameterFilter {
+                $Method -eq 'DELETE'
+            }
+        }
+    }
+
+    Context 'Parameter validation' {
+        BeforeAll {
+            Mock -ModuleName PlexAutomationToolkit Resolve-PatServerContext {
+                return $script:mockServerContext
+            }
+        }
+
+        It 'Rejects PlaylistId of 0' {
+            { Remove-PatPlaylist -PlaylistId 0 -ServerUri 'http://plex.local:32400' -Confirm:$false } |
+                Should -Throw
+        }
+
+        It 'Rejects negative PlaylistId' {
+            { Remove-PatPlaylist -PlaylistId -1 -ServerUri 'http://plex.local:32400' -Confirm:$false } |
+                Should -Throw
+        }
+
+        It 'Rejects empty PlaylistName' {
+            { Remove-PatPlaylist -PlaylistName '' -ServerUri 'http://plex.local:32400' -Confirm:$false } |
+                Should -Throw
         }
     }
 }

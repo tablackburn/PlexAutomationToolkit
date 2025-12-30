@@ -172,6 +172,10 @@ Describe 'Update-PatLibrary' {
             Mock -ModuleName PlexAutomationToolkit Join-PatUri {
                 return 'http://plex-test-server.local:32400/library/sections/2/refresh'
             }
+
+            Mock -ModuleName PlexAutomationToolkit Get-PatAuthenticationHeader {
+                return @{ Accept = 'application/json'; 'X-Plex-Token' = 'test-token' }
+            }
         }
 
         It 'Uses the default server URI' {
@@ -185,6 +189,13 @@ Describe 'Update-PatLibrary' {
             Update-PatLibrary -SectionId 2 -Confirm:$false
             Should -Invoke -ModuleName PlexAutomationToolkit Join-PatUri -ParameterFilter {
                 $BaseUri -eq 'http://plex-test-server.local:32400'
+            }
+        }
+
+        It 'Uses Get-PatAuthenticationHeader for stored server' {
+            Update-PatLibrary -SectionId 2 -Confirm:$false
+            Should -Invoke -ModuleName PlexAutomationToolkit Get-PatAuthenticationHeader -ParameterFilter {
+                $Server.name -eq 'Test Server'
             }
         }
     }
