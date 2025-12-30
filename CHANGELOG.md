@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [0.8.2] - 2025-12-30
+
+### Changed
+
+- Refactor ArgumentCompleters to use testable helper functions
+  - Extract duplicated quote handling into `ConvertFrom-PatCompleterInput` private function
+  - Extract CompletionResult creation into `New-PatCompletionResult` private function
+  - Remove ~430 lines of duplicated code across 15 public functions
+  - Add 46 unit tests for the extracted logic
+
 ## [0.8.1] - 2025-12-29
 
 ### Fixed
