@@ -1,10 +1,9 @@
 # PlexAutomationToolkit
 
-[![PowerShell Gallery](https://img.shields.io/powershellgallery/dt/PlexAutomationToolkit)](https://www.powershellgallery.com/packages/PlexAutomationToolkit/)
-![PowerShell Gallery Version](https://img.shields.io/powershellgallery/v/PlexAutomationToolkit)
-![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/tablackburn/PlexAutomationToolkit/.github/workflows/CI.yaml?branch=main)
-[![codecov](https://codecov.io/gh/tablackburn/PlexAutomationToolkit/graph/badge.svg)](https://codecov.io/gh/tablackburn/PlexAutomationToolkit)
-![PowerShell Gallery](https://img.shields.io/powershellgallery/p/PlexAutomationToolkit)
+[![PowerShell Gallery Downloads](https://img.shields.io/powershellgallery/dt/PlexAutomationToolkit)](https://www.powershellgallery.com/packages/PlexAutomationToolkit/)
+[![PowerShell Gallery Version](https://img.shields.io/powershellgallery/v/PlexAutomationToolkit)](https://www.powershellgallery.com/packages/PlexAutomationToolkit/)
+[![CI](https://img.shields.io/github/actions/workflow/status/tablackburn/PlexAutomationToolkit/CI.yaml?branch=main)](https://github.com/tablackburn/PlexAutomationToolkit/actions/workflows/CI.yaml)
+![Platform](https://img.shields.io/powershellgallery/p/PlexAutomationToolkit)
 [![AI Assisted](https://img.shields.io/badge/AI-Assisted-blue)](https://claude.ai)
 
 A PowerShell module for managing Plex Media Servers through automation and scripting.
