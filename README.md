@@ -5,6 +5,7 @@
 [![CI](https://img.shields.io/github/actions/workflow/status/tablackburn/PlexAutomationToolkit/CI.yaml?branch=main)](https://github.com/tablackburn/PlexAutomationToolkit/actions/workflows/CI.yaml)
 ![Platform](https://img.shields.io/powershellgallery/p/PlexAutomationToolkit)
 [![AI Assisted](https://img.shields.io/badge/AI-Assisted-blue)](https://claude.ai)
+[![License](https://img.shields.io/github/license/tablackburn/PlexAutomationToolkit)](LICENSE)
 
 A PowerShell module for managing Plex Media Servers through automation and scripting.
 
