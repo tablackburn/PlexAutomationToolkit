@@ -313,4 +313,160 @@ Describe 'Add-PatPlaylistItem' {
             }
         }
     }
+
+    Context 'PlaylistName argument completer' {
+        BeforeAll {
+            $command = Get-Command -Module PlexAutomationToolkit -Name Add-PatPlaylistItem
+            $playlistNameParam = $command.Parameters['PlaylistName']
+            $script:playlistNameCompleter = $playlistNameParam.Attributes | Where-Object { $_ -is [ArgumentCompleter] } | Select-Object -ExpandProperty ScriptBlock
+        }
+
+        It 'Returns matching playlist names' {
+            $results = InModuleScope PlexAutomationToolkit -Parameters @{ completer = $script:playlistNameCompleter } {
+                Mock Get-PatPlaylist {
+                    return @(
+                        [PSCustomObject]@{ Title = 'My Favorites' }
+                        [PSCustomObject]@{ Title = 'Party Mix' }
+                    )
+                }
+                & $completer 'Add-PatPlaylistItem' 'PlaylistName' 'My' $null @{}
+            }
+            $results | Should -Not -BeNullOrEmpty
+        }
+
+        It 'Passes ServerUri when provided' {
+            $results = InModuleScope PlexAutomationToolkit -Parameters @{ completer = $script:playlistNameCompleter } {
+                Mock Get-PatPlaylist {
+                    return @(
+                        [PSCustomObject]@{ Title = 'My Favorites' }
+                    )
+                }
+                & $completer 'Add-PatPlaylistItem' 'PlaylistName' '' $null @{ ServerUri = 'http://custom:32400' }
+            }
+            Should -Invoke Get-PatPlaylist -ModuleName PlexAutomationToolkit -ParameterFilter {
+                $ServerUri -eq 'http://custom:32400'
+            }
+        }
+    }
+
+    Context 'When machine identifier retrieval fails' {
+        BeforeAll {
+            Mock -ModuleName PlexAutomationToolkit Invoke-PatApi {
+                throw 'Connection failed'
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Join-PatUri {
+                param($BaseUri, $Endpoint)
+                return "$BaseUri$Endpoint"
+            }
+        }
+
+        It 'Throws error with machine identifier context' {
+            { Add-PatPlaylistItem -PlaylistId 12345 -RatingKey 111 -ServerUri 'http://plex.local:32400' -Confirm:$false } |
+                Should -Throw '*Failed to retrieve server machine identifier*'
+        }
+    }
+
+    Context 'Token parameter' {
+        BeforeAll {
+            Mock -ModuleName PlexAutomationToolkit Resolve-PatServerContext {
+                return [PSCustomObject]@{
+                    Uri            = 'http://plex.local:32400'
+                    Headers        = @{ Accept = 'application/json'; 'X-Plex-Token' = 'my-token' }
+                    WasExplicitUri = $true
+                    Server         = $null
+                    Token          = 'my-token'
+                }
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Get-PatPlaylist {
+                return $script:mockPlaylist
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Invoke-PatApi {
+                param($Uri, $Method)
+                if ($Method -eq 'PUT') {
+                    return $null
+                }
+                return $script:mockServerInfo
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Join-PatUri {
+                param($BaseUri, $Endpoint, $QueryString)
+                if ($QueryString) {
+                    return "$BaseUri$Endpoint`?$QueryString"
+                }
+                return "$BaseUri$Endpoint"
+            }
+        }
+
+        It 'Passes Token to Resolve-PatServerContext' {
+            Add-PatPlaylistItem -PlaylistId 12345 -RatingKey 111 -ServerUri 'http://plex.local:32400' -Token 'my-token' -Confirm:$false
+            Should -Invoke -ModuleName PlexAutomationToolkit Resolve-PatServerContext -ParameterFilter {
+                $Token -eq 'my-token'
+            }
+        }
+    }
+
+    Context 'When playlist info lookup fails for ID' {
+        BeforeAll {
+            Mock -ModuleName PlexAutomationToolkit Get-PatPlaylist {
+                throw 'Playlist not found'
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Invoke-PatApi {
+                param($Uri, $Method)
+                if ($Method -eq 'PUT') {
+                    return $null
+                }
+                return $script:mockServerInfo
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Join-PatUri {
+                param($BaseUri, $Endpoint, $QueryString)
+                if ($QueryString) {
+                    return "$BaseUri$Endpoint`?$QueryString"
+                }
+                return "$BaseUri$Endpoint"
+            }
+        }
+
+        It 'Still adds items when playlist lookup fails' {
+            Add-PatPlaylistItem -PlaylistId 12345 -RatingKey 111 -ServerUri 'http://plex.local:32400' -Confirm:$false
+            Should -Invoke -ModuleName PlexAutomationToolkit Invoke-PatApi -ParameterFilter {
+                $Method -eq 'PUT'
+            }
+        }
+
+        It 'Uses fallback description without playlist info' {
+            { Add-PatPlaylistItem -PlaylistId 12345 -RatingKey 111 -ServerUri 'http://plex.local:32400' -Confirm:$false } |
+                Should -Not -Throw
+        }
+    }
+
+    Context 'When no rating keys provided in pipeline' {
+        BeforeAll {
+            Mock -ModuleName PlexAutomationToolkit Get-PatPlaylist {
+                return $script:mockPlaylist
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Invoke-PatApi {
+                param($Uri, $Method)
+                return $script:mockServerInfo
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Join-PatUri {
+                param($BaseUri, $Endpoint)
+                return "$BaseUri$Endpoint"
+            }
+        }
+
+        It 'Returns early when no rating keys after pipeline' {
+            # This tests the "nothing to add" path
+            @() | Add-PatPlaylistItem -PlaylistId 12345 -ServerUri 'http://plex.local:32400' -Confirm:$false
+            Should -Invoke -ModuleName PlexAutomationToolkit Invoke-PatApi -Times 0 -ParameterFilter {
+                $Method -eq 'PUT'
+            }
+        }
+    }
 }
