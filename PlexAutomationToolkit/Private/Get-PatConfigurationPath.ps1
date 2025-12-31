@@ -15,9 +15,9 @@ function Get-PatConfigurationPath {
     [CmdletBinding()]
     param ()
 
-    $isWindows = $PSVersionTable.PSVersion.Major -lt 6 -or $IsWindows
+    $isWindowsPlatform = $PSVersionTable.PSVersion.Major -lt 6 -or $IsWindows
 
-    if ($isWindows) {
+    if ($isWindowsPlatform) {
         # Try OneDrive location first (syncs across machines)
         if ($env:OneDrive) {
             $configurationDirectory = Join-Path $env:OneDrive 'Documents\PlexAutomationToolkit'

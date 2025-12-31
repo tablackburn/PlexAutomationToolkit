@@ -119,9 +119,9 @@ function Get-IntegrationConfigPath {
     [CmdletBinding()]
     param()
 
-    $isWindows = $PSVersionTable.PSVersion.Major -lt 6 -or $IsWindows
+    $isWindowsPlatform = $PSVersionTable.PSVersion.Major -lt 6 -or $IsWindows
 
-    if ($isWindows) {
+    if ($isWindowsPlatform) {
         # Try OneDrive location first
         if ($env:OneDrive) {
             $configurationPath = Join-Path $env:OneDrive 'Documents\PlexAutomationToolkit\servers.json'
