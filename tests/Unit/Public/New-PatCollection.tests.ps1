@@ -267,4 +267,276 @@ Describe 'New-PatCollection' {
             }
         }
     }
+
+    Context 'When using LibraryName parameter' {
+        BeforeAll {
+            Mock -ModuleName PlexAutomationToolkit Invoke-PatApi {
+                param($Uri, $Method)
+                if ($Uri -match '/$' -or $Uri -match ':32400$') {
+                    return @{ machineIdentifier = 'test-machine-id' }
+                }
+                if ($Method -eq 'POST') {
+                    return $script:mockCreatedCollection
+                }
+                return $script:mockLibraryResponse
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Join-PatUri {
+                param($BaseUri, $Endpoint, $QueryString)
+                if ($QueryString) {
+                    return "$BaseUri$Endpoint`?$QueryString"
+                }
+                return "$BaseUri$Endpoint"
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Get-PatLibrary {
+                return @{
+                    Directory = @(
+                        @{ key = '1'; title = 'Movies'; type = 'movie' }
+                        @{ key = '2'; title = 'TV Shows'; type = 'show' }
+                    )
+                }
+            }
+        }
+
+        It 'Resolves LibraryName to LibraryId' {
+            { New-PatCollection -Title 'Test' -LibraryName 'Movies' -RatingKey 1001 -ServerUri 'http://plex.local:32400' } |
+                Should -Not -Throw
+        }
+
+        It 'Throws when LibraryName not found' {
+            { New-PatCollection -Title 'Test' -LibraryName 'Nonexistent' -RatingKey 1001 -ServerUri 'http://plex.local:32400' } |
+                Should -Throw "*No library found with name*"
+        }
+    }
+
+    Context 'When using different library types' {
+        BeforeAll {
+            Mock -ModuleName PlexAutomationToolkit Invoke-PatApi {
+                param($Uri, $Method)
+                if ($Uri -match '/$' -or $Uri -match ':32400$') {
+                    return @{ machineIdentifier = 'test-machine-id' }
+                }
+                if ($Method -eq 'POST') {
+                    return $script:mockCreatedCollection
+                }
+                return $script:mockLibraryResponse
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Join-PatUri {
+                param($BaseUri, $Endpoint, $QueryString)
+                if ($QueryString) {
+                    return "$BaseUri$Endpoint`?$QueryString"
+                }
+                return "$BaseUri$Endpoint"
+            }
+        }
+
+        It 'Uses correct type for show library' {
+            Mock -ModuleName PlexAutomationToolkit Get-PatLibrary {
+                return @{
+                    Directory = @(
+                        @{ key = '2'; title = 'TV Shows'; type = 'show' }
+                    )
+                }
+            }
+
+            New-PatCollection -Title 'Test' -LibraryId 2 -RatingKey 1001 -ServerUri 'http://plex.local:32400'
+            Should -Invoke -ModuleName PlexAutomationToolkit Join-PatUri -ParameterFilter {
+                $QueryString -match 'type=2'
+            }
+        }
+
+        It 'Uses correct type for artist library' {
+            Mock -ModuleName PlexAutomationToolkit Get-PatLibrary {
+                return @{
+                    Directory = @(
+                        @{ key = '3'; title = 'Music'; type = 'artist' }
+                    )
+                }
+            }
+
+            New-PatCollection -Title 'Test' -LibraryId 3 -RatingKey 1001 -ServerUri 'http://plex.local:32400'
+            Should -Invoke -ModuleName PlexAutomationToolkit Join-PatUri -ParameterFilter {
+                $QueryString -match 'type=8'
+            }
+        }
+
+        It 'Uses correct type for photo library' {
+            Mock -ModuleName PlexAutomationToolkit Get-PatLibrary {
+                return @{
+                    Directory = @(
+                        @{ key = '4'; title = 'Photos'; type = 'photo' }
+                    )
+                }
+            }
+
+            New-PatCollection -Title 'Test' -LibraryId 4 -RatingKey 1001 -ServerUri 'http://plex.local:32400'
+            Should -Invoke -ModuleName PlexAutomationToolkit Join-PatUri -ParameterFilter {
+                $QueryString -match 'type=13'
+            }
+        }
+
+        It 'Defaults to type 1 for unknown library type' {
+            Mock -ModuleName PlexAutomationToolkit Get-PatLibrary {
+                return @{
+                    Directory = @(
+                        @{ key = '5'; title = 'Unknown'; type = 'custom' }
+                    )
+                }
+            }
+
+            New-PatCollection -Title 'Test' -LibraryId 5 -RatingKey 1001 -ServerUri 'http://plex.local:32400'
+            Should -Invoke -ModuleName PlexAutomationToolkit Join-PatUri -ParameterFilter {
+                $QueryString -match 'type=1'
+            }
+        }
+    }
+
+    Context 'When PassThru result has no Metadata' {
+        BeforeAll {
+            Mock -ModuleName PlexAutomationToolkit Invoke-PatApi {
+                param($Uri, $Method)
+                if ($Uri -match '/$' -or $Uri -match ':32400$') {
+                    return @{ machineIdentifier = 'test-machine-id' }
+                }
+                if ($Method -eq 'POST') {
+                    # Return result without Metadata wrapper
+                    return @{
+                        ratingKey  = '99999'
+                        title      = 'Direct Result'
+                        childCount = 1
+                    }
+                }
+                return $script:mockLibraryResponse
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Join-PatUri {
+                param($BaseUri, $Endpoint, $QueryString)
+                if ($QueryString) {
+                    return "$BaseUri$Endpoint`?$QueryString"
+                }
+                return "$BaseUri$Endpoint"
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Get-PatLibrary {
+                return @{
+                    Directory = @(
+                        @{ key = '1'; title = 'Movies'; type = 'movie' }
+                    )
+                }
+            }
+        }
+
+        It 'Handles result without Metadata wrapper' {
+            $result = New-PatCollection -Title 'Test' -LibraryId 1 -RatingKey 1001 -ServerUri 'http://plex.local:32400' -PassThru
+            $result.CollectionId | Should -Be 99999
+            $result.Title | Should -Be 'Direct Result'
+        }
+    }
+
+    Context 'LibraryName argument completer' {
+        BeforeAll {
+            $command = Get-Command -Module PlexAutomationToolkit -Name New-PatCollection
+            $libraryNameParam = $command.Parameters['LibraryName']
+            $script:libraryNameCompleter = $libraryNameParam.Attributes | Where-Object { $_ -is [ArgumentCompleter] } | Select-Object -ExpandProperty ScriptBlock
+        }
+
+        It 'Returns matching library names' {
+            $results = InModuleScope PlexAutomationToolkit -Parameters @{ completer = $script:libraryNameCompleter } {
+                Mock Get-PatLibrary {
+                    return @{
+                        Directory = @(
+                            @{ title = 'Movies' }
+                            @{ title = 'TV Shows' }
+                        )
+                    }
+                }
+                & $completer 'New-PatCollection' 'LibraryName' 'Mov' $null @{}
+            }
+            $results | Should -Not -BeNullOrEmpty
+        }
+
+        It 'Passes ServerUri when provided' {
+            $results = InModuleScope PlexAutomationToolkit -Parameters @{ completer = $script:libraryNameCompleter } {
+                Mock Get-PatLibrary {
+                    return @{
+                        Directory = @(
+                            @{ title = 'Movies' }
+                        )
+                    }
+                }
+                & $completer 'New-PatCollection' 'LibraryName' '' $null @{ ServerUri = 'http://custom:32400' }
+            }
+            Should -Invoke Get-PatLibrary -ModuleName PlexAutomationToolkit -ParameterFilter {
+                $ServerUri -eq 'http://custom:32400'
+            }
+        }
+    }
+
+    Context 'When machine identifier retrieval fails' {
+        BeforeAll {
+            Mock -ModuleName PlexAutomationToolkit Invoke-PatApi {
+                throw 'Connection failed'
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Join-PatUri {
+                param($BaseUri, $Endpoint)
+                return "$BaseUri$Endpoint"
+            }
+        }
+
+        It 'Throws error with machine identifier context' {
+            { New-PatCollection -Title 'Test' -LibraryId 1 -RatingKey 1001 -ServerUri 'http://plex.local:32400' } |
+                Should -Throw '*Failed to retrieve server machine identifier*'
+        }
+    }
+
+    Context 'Token parameter' {
+        BeforeAll {
+            Mock -ModuleName PlexAutomationToolkit Resolve-PatServerContext {
+                return [PSCustomObject]@{
+                    Uri            = 'http://plex.local:32400'
+                    Headers        = @{ Accept = 'application/json'; 'X-Plex-Token' = 'my-token' }
+                    WasExplicitUri = $true
+                    Server         = $null
+                    Token          = 'my-token'
+                }
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Invoke-PatApi {
+                param($Uri, $Method)
+                if ($Uri -match '/$' -or $Uri -match ':32400$') {
+                    return @{ machineIdentifier = 'test-machine-id' }
+                }
+                if ($Method -eq 'POST') {
+                    return $script:mockCreatedCollection
+                }
+                return $script:mockLibraryResponse
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Join-PatUri {
+                param($BaseUri, $Endpoint, $QueryString)
+                if ($QueryString) {
+                    return "$BaseUri$Endpoint`?$QueryString"
+                }
+                return "$BaseUri$Endpoint"
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Get-PatLibrary {
+                return @{
+                    Directory = @(
+                        @{ key = '1'; title = 'Movies'; type = 'movie' }
+                    )
+                }
+            }
+        }
+
+        It 'Passes Token to Resolve-PatServerContext' {
+            New-PatCollection -Title 'Test' -LibraryId 1 -RatingKey 1001 -ServerUri 'http://plex.local:32400' -Token 'my-token'
+            Should -Invoke -ModuleName PlexAutomationToolkit Resolve-PatServerContext -ParameterFilter {
+                $Token -eq 'my-token'
+            }
+        }
+    }
 }
