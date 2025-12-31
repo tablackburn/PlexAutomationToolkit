@@ -257,4 +257,160 @@ Describe 'Get-PatLibraryPath' {
             $result | Should -BeNullOrEmpty
         }
     }
+
+    Context 'When Directory is null' {
+        BeforeEach {
+            Mock -CommandName Get-PatLibrary -ModuleName PlexAutomationToolkit -MockWith {
+                return [PSCustomObject]@{
+                    Directory = $null
+                }
+            }
+        }
+
+        It 'Should return nothing when Directory is null' {
+            $result = Get-PatLibraryPath
+
+            $result | Should -BeNullOrEmpty
+        }
+    }
+
+    Context 'Token parameter' {
+        It 'Passes Token to Get-PatLibrary when using explicit ServerUri' {
+            Mock -CommandName Get-PatLibrary -ModuleName PlexAutomationToolkit -MockWith {
+                return $script:mockLibrariesWithPaths
+            }
+
+            Get-PatLibraryPath -ServerUri 'http://explicit:32400' -Token 'my-token'
+
+            Should -Invoke Get-PatLibrary -ModuleName PlexAutomationToolkit -ParameterFilter {
+                $Token -eq 'my-token'
+            }
+        }
+    }
+
+    Context 'SectionName argument completer' {
+        BeforeAll {
+            $command = Get-Command -Module PlexAutomationToolkit -Name Get-PatLibraryPath
+            $sectionNameParam = $command.Parameters['SectionName']
+            $script:sectionNameCompleter = $sectionNameParam.Attributes | Where-Object { $_ -is [ArgumentCompleter] } | Select-Object -ExpandProperty ScriptBlock
+        }
+
+        It 'Returns matching section names' {
+            $results = InModuleScope PlexAutomationToolkit -Parameters @{ completer = $script:sectionNameCompleter } {
+                Mock Get-PatLibrary {
+                    return @{
+                        Directory = @(
+                            @{ title = 'Movies' }
+                            @{ title = 'TV Shows' }
+                        )
+                    }
+                }
+                & $completer 'Get-PatLibraryPath' 'SectionName' 'Mov' $null @{}
+            }
+            $results | Should -Not -BeNullOrEmpty
+        }
+
+        It 'Passes ServerUri when provided in fakeBoundParameters' {
+            $results = InModuleScope PlexAutomationToolkit -Parameters @{ completer = $script:sectionNameCompleter } {
+                Mock Get-PatLibrary {
+                    return @{
+                        Directory = @(
+                            @{ title = 'Movies' }
+                        )
+                    }
+                }
+                & $completer 'Get-PatLibraryPath' 'SectionName' '' $null @{ ServerUri = 'http://custom:32400' }
+            }
+            Should -Invoke Get-PatLibrary -ModuleName PlexAutomationToolkit -ParameterFilter {
+                $ServerUri -eq 'http://custom:32400'
+            }
+        }
+
+        It 'Passes Token when provided in fakeBoundParameters' {
+            $results = InModuleScope PlexAutomationToolkit -Parameters @{ completer = $script:sectionNameCompleter } {
+                Mock Get-PatLibrary {
+                    return @{
+                        Directory = @(
+                            @{ title = 'Movies' }
+                        )
+                    }
+                }
+                & $completer 'Get-PatLibraryPath' 'SectionName' '' $null @{ Token = 'my-token' }
+            }
+            Should -Invoke Get-PatLibrary -ModuleName PlexAutomationToolkit -ParameterFilter {
+                $Token -eq 'my-token'
+            }
+        }
+
+        It 'Handles errors gracefully' {
+            $results = InModuleScope PlexAutomationToolkit -Parameters @{ completer = $script:sectionNameCompleter } {
+                Mock Get-PatLibrary { throw 'Connection failed' }
+                & $completer 'Get-PatLibraryPath' 'SectionName' '' $null @{}
+            }
+            $results | Should -BeNullOrEmpty
+        }
+    }
+
+    Context 'SectionId argument completer' {
+        BeforeAll {
+            $command = Get-Command -Module PlexAutomationToolkit -Name Get-PatLibraryPath
+            $sectionIdParam = $command.Parameters['SectionId']
+            $script:sectionIdCompleter = $sectionIdParam.Attributes | Where-Object { $_ -is [ArgumentCompleter] } | Select-Object -ExpandProperty ScriptBlock
+        }
+
+        It 'Returns matching section IDs' {
+            $results = InModuleScope PlexAutomationToolkit -Parameters @{ completer = $script:sectionIdCompleter } {
+                Mock Get-PatLibrary {
+                    return @{
+                        Directory = @(
+                            @{ key = '/library/sections/1'; title = 'Movies' }
+                            @{ key = '/library/sections/2'; title = 'TV Shows' }
+                        )
+                    }
+                }
+                & $completer 'Get-PatLibraryPath' 'SectionId' '1' $null @{}
+            }
+            $results | Should -Not -BeNullOrEmpty
+        }
+
+        It 'Passes ServerUri when provided' {
+            $results = InModuleScope PlexAutomationToolkit -Parameters @{ completer = $script:sectionIdCompleter } {
+                Mock Get-PatLibrary {
+                    return @{
+                        Directory = @(
+                            @{ key = '/library/sections/1'; title = 'Movies' }
+                        )
+                    }
+                }
+                & $completer 'Get-PatLibraryPath' 'SectionId' '' $null @{ ServerUri = 'http://custom:32400' }
+            }
+            Should -Invoke Get-PatLibrary -ModuleName PlexAutomationToolkit -ParameterFilter {
+                $ServerUri -eq 'http://custom:32400'
+            }
+        }
+
+        It 'Passes Token when provided' {
+            $results = InModuleScope PlexAutomationToolkit -Parameters @{ completer = $script:sectionIdCompleter } {
+                Mock Get-PatLibrary {
+                    return @{
+                        Directory = @(
+                            @{ key = '/library/sections/1'; title = 'Movies' }
+                        )
+                    }
+                }
+                & $completer 'Get-PatLibraryPath' 'SectionId' '' $null @{ Token = 'my-token' }
+            }
+            Should -Invoke Get-PatLibrary -ModuleName PlexAutomationToolkit -ParameterFilter {
+                $Token -eq 'my-token'
+            }
+        }
+
+        It 'Handles errors gracefully' {
+            $results = InModuleScope PlexAutomationToolkit -Parameters @{ completer = $script:sectionIdCompleter } {
+                Mock Get-PatLibrary { throw 'Connection failed' }
+                & $completer 'Get-PatLibraryPath' 'SectionId' '' $null @{}
+            }
+            $results | Should -BeNullOrEmpty
+        }
+    }
 }

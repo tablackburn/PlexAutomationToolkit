@@ -1,4 +1,9 @@
 function Remove-PatServerToken {
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+        'PSUseShouldProcessForStateChangingFunctions',
+        '',
+        Justification = 'Internal helper called by public functions that implement ShouldProcess'
+    )]
     <#
     .SYNOPSIS
         Removes an authentication token for a server from the vault.

@@ -79,4 +79,74 @@ Describe 'Remove-PatServerToken' {
             }
         }
     }
+
+    Context 'When vault is available and secret exists' {
+        # Note: Remove-Secret is a binary cmdlet that's difficult to mock directly
+        # We test behavior instead of invocation
+
+        It 'Checks for secret using Get-SecretInfo' {
+            InModuleScope PlexAutomationToolkit {
+                Mock Get-PatSecretManagementAvailable { $true }
+                Mock Get-SecretInfo { [PSCustomObject]@{ Name = 'PlexAutomationToolkit/TestServer' } }
+                Mock Remove-Secret { }
+
+                Remove-PatServerToken -ServerName 'TestServer'
+
+                Should -Invoke Get-SecretInfo -Times 1 -ParameterFilter {
+                    $Name -eq 'PlexAutomationToolkit/TestServer'
+                }
+            }
+        }
+
+        It 'Attempts to remove the secret when it exists (emits warning on failure)' {
+            # Since Remove-Secret binary cmdlet is hard to mock, we verify by checking
+            # that when the secret exists, an attempt is made (which fails with a warning)
+            InModuleScope PlexAutomationToolkit {
+                Mock Get-PatSecretManagementAvailable { $true }
+                Mock Get-SecretInfo { [PSCustomObject]@{ Name = 'PlexAutomationToolkit/TestServer' } }
+
+                $warnings = Remove-PatServerToken -ServerName 'TestServer' 3>&1
+                # When Remove-Secret is called but fails (not properly mocked), we get a warning
+                $warnings | Should -Not -BeNullOrEmpty
+            }
+        }
+    }
+
+    Context 'When vault is available but secret does not exist' {
+        It 'Does not attempt to remove secret' {
+            InModuleScope PlexAutomationToolkit {
+                Mock Get-PatSecretManagementAvailable { $true }
+                Mock Get-SecretInfo { $null }
+                Mock Remove-Secret { }
+
+                Remove-PatServerToken -ServerName 'TestServer'
+
+                Should -Invoke Remove-Secret -Times 0
+            }
+        }
+    }
+
+    Context 'When Remove-Secret throws an error' {
+        It 'Catches the error and emits a warning' {
+            InModuleScope PlexAutomationToolkit {
+                Mock Get-PatSecretManagementAvailable { $true }
+                Mock Get-SecretInfo { [PSCustomObject]@{ Name = 'PlexAutomationToolkit/TestServer' } }
+                Mock Remove-Secret { throw 'Vault access denied' }
+
+                $warnings = Remove-PatServerToken -ServerName 'TestServer' 3>&1
+                $warnings | Should -Not -BeNullOrEmpty
+                $warnings[0].Message | Should -Match 'Failed to remove token from vault'
+            }
+        }
+
+        It 'Does not throw' {
+            InModuleScope PlexAutomationToolkit {
+                Mock Get-PatSecretManagementAvailable { $true }
+                Mock Get-SecretInfo { [PSCustomObject]@{ Name = 'PlexAutomationToolkit/TestServer' } }
+                Mock Remove-Secret { throw 'Vault access denied' }
+
+                { Remove-PatServerToken -ServerName 'TestServer' } | Should -Not -Throw
+            }
+        }
+    }
 }

@@ -55,9 +55,8 @@ function Sync-PatWatchStatus {
         Shows what would be synced without making changes.
 
     .OUTPUTS
-        PlexAutomationToolkit.WatchStatusSyncResult (with -PassThru)
-
-        Objects with properties:
+        PSCustomObject[]
+        With -PassThru, returns an array of PlexAutomationToolkit.WatchStatusSyncResult objects with properties:
         - Title: Item title
         - Type: 'movie' or 'episode'
         - ShowName: Series name (episodes only)
@@ -68,6 +67,7 @@ function Sync-PatWatchStatus {
         - Error: Error message if failed
     #>
     [CmdletBinding(SupportsShouldProcess, ConfirmImpact = 'Medium')]
+    [OutputType([System.Object[]])]
     param (
         [Parameter(Mandatory = $true)]
         [ValidateNotNullOrEmpty()]

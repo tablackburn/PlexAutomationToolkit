@@ -1,4 +1,9 @@
 function New-PatCompletionResult {
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+        'PSUseShouldProcessForStateChangingFunctions',
+        '',
+        Justification = 'New-* creates an in-memory object, does not change system state'
+    )]
     <#
     .SYNOPSIS
         Creates a CompletionResult with proper quoting for values containing spaces.

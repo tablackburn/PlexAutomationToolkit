@@ -619,4 +619,97 @@ Describe 'Add-PatCollectionItem' {
                 Should -Throw "*No collection found with name*library 1*"
         }
     }
+
+    Context 'CollectionName argument completer' {
+        BeforeAll {
+            $command = Get-Command -Module PlexAutomationToolkit -Name Add-PatCollectionItem
+            $collectionNameParam = $command.Parameters['CollectionName']
+            $script:collectionNameCompleter = $collectionNameParam.Attributes | Where-Object { $_ -is [ArgumentCompleter] } | Select-Object -ExpandProperty ScriptBlock
+        }
+
+        It 'Returns nothing when no LibraryName or LibraryId provided' {
+            $results = InModuleScope PlexAutomationToolkit -Parameters @{ completer = $script:collectionNameCompleter } {
+                & $completer 'Add-PatCollectionItem' 'CollectionName' '' $null @{}
+            }
+            $results | Should -BeNullOrEmpty
+        }
+
+        It 'Returns matching collections when LibraryName provided' {
+            $results = InModuleScope PlexAutomationToolkit -Parameters @{ completer = $script:collectionNameCompleter } {
+                Mock Get-PatCollection {
+                    return @(
+                        [PSCustomObject]@{ Title = 'Marvel Movies' }
+                        [PSCustomObject]@{ Title = 'DC Movies' }
+                    )
+                }
+                & $completer 'Add-PatCollectionItem' 'CollectionName' 'Marv' $null @{ LibraryName = 'Movies' }
+            }
+            $results | Should -Not -BeNullOrEmpty
+        }
+
+        It 'Returns matching collections when LibraryId provided' {
+            $results = InModuleScope PlexAutomationToolkit -Parameters @{ completer = $script:collectionNameCompleter } {
+                Mock Get-PatCollection {
+                    return @(
+                        [PSCustomObject]@{ Title = 'Marvel Movies' }
+                    )
+                }
+                & $completer 'Add-PatCollectionItem' 'CollectionName' '' $null @{ LibraryId = 1 }
+            }
+            $results | Should -Not -BeNullOrEmpty
+        }
+
+        It 'Passes ServerUri when provided' {
+            $results = InModuleScope PlexAutomationToolkit -Parameters @{ completer = $script:collectionNameCompleter } {
+                Mock Get-PatCollection {
+                    return @(
+                        [PSCustomObject]@{ Title = 'Marvel Movies' }
+                    )
+                }
+                & $completer 'Add-PatCollectionItem' 'CollectionName' '' $null @{ LibraryName = 'Movies'; ServerUri = 'http://custom:32400' }
+            }
+            Should -Invoke Get-PatCollection -ModuleName PlexAutomationToolkit -ParameterFilter {
+                $ServerUri -eq 'http://custom:32400'
+            }
+        }
+    }
+
+    Context 'LibraryName argument completer' {
+        BeforeAll {
+            $command = Get-Command -Module PlexAutomationToolkit -Name Add-PatCollectionItem
+            $libraryNameParam = $command.Parameters['LibraryName']
+            $script:libraryNameCompleter = $libraryNameParam.Attributes | Where-Object { $_ -is [ArgumentCompleter] } | Select-Object -ExpandProperty ScriptBlock
+        }
+
+        It 'Returns matching library names' {
+            $results = InModuleScope PlexAutomationToolkit -Parameters @{ completer = $script:libraryNameCompleter } {
+                Mock Get-PatLibrary {
+                    return @{
+                        Directory = @(
+                            @{ title = 'Movies' }
+                            @{ title = 'TV Shows' }
+                        )
+                    }
+                }
+                & $completer 'Add-PatCollectionItem' 'LibraryName' 'Mov' $null @{}
+            }
+            $results | Should -Not -BeNullOrEmpty
+        }
+
+        It 'Passes ServerUri when provided' {
+            $results = InModuleScope PlexAutomationToolkit -Parameters @{ completer = $script:libraryNameCompleter } {
+                Mock Get-PatLibrary {
+                    return @{
+                        Directory = @(
+                            @{ title = 'Movies' }
+                        )
+                    }
+                }
+                & $completer 'Add-PatCollectionItem' 'LibraryName' '' $null @{ ServerUri = 'http://custom:32400' }
+            }
+            Should -Invoke Get-PatLibrary -ModuleName PlexAutomationToolkit -ParameterFilter {
+                $ServerUri -eq 'http://custom:32400'
+            }
+        }
+    }
 }

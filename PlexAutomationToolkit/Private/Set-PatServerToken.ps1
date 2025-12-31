@@ -1,4 +1,9 @@
 function Set-PatServerToken {
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+        'PSUseShouldProcessForStateChangingFunctions',
+        '',
+        Justification = 'Internal helper called by public functions that implement ShouldProcess'
+    )]
     <#
     .SYNOPSIS
         Stores an authentication token for a server.
