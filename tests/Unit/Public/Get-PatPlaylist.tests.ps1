@@ -322,4 +322,140 @@ Describe 'Get-PatPlaylist' {
             { Get-PatPlaylist -ServerUri 'http://plex.local:32400' } | Should -Throw '*Failed to retrieve playlists*'
         }
     }
+
+    Context 'When API returns null' {
+        BeforeAll {
+            Mock -ModuleName PlexAutomationToolkit Invoke-PatApi {
+                return $null
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Join-PatUri {
+                param($BaseUri, $Endpoint)
+                return "$BaseUri$Endpoint"
+            }
+        }
+
+        It 'Returns nothing when API returns null' {
+            $result = Get-PatPlaylist -ServerUri 'http://plex.local:32400'
+            $result | Should -BeNullOrEmpty
+        }
+    }
+
+    Context 'When fetching items fails' {
+        BeforeAll {
+            Mock -ModuleName PlexAutomationToolkit Invoke-PatApi {
+                param($Uri)
+                if ($Uri -like '*/items') {
+                    throw 'Items retrieval failed'
+                }
+                return @{
+                    Metadata = @(
+                        @{
+                            ratingKey    = '12345'
+                            title        = 'Test Playlist'
+                            playlistType = 'video'
+                            leafCount    = 5
+                            duration     = 18000000
+                            smart        = '0'
+                        }
+                    )
+                }
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Join-PatUri {
+                param($BaseUri, $Endpoint)
+                return "$BaseUri$Endpoint"
+            }
+        }
+
+        It 'Emits warning when items retrieval fails' {
+            $result = Get-PatPlaylist -IncludeItems -ServerUri 'http://plex.local:32400' 3>&1
+            $warnings = $result | Where-Object { $_ -is [System.Management.Automation.WarningRecord] }
+            $warnings | Should -Not -BeNullOrEmpty
+        }
+
+        It 'Returns playlist with empty Items array on failure' {
+            $result = Get-PatPlaylist -IncludeItems -ServerUri 'http://plex.local:32400'
+            $result.Items | Should -BeNullOrEmpty
+        }
+    }
+
+    Context 'PlaylistName argument completer' {
+        BeforeAll {
+            $command = Get-Command -Module PlexAutomationToolkit -Name Get-PatPlaylist
+            $playlistNameParam = $command.Parameters['PlaylistName']
+            $script:playlistNameCompleter = $playlistNameParam.Attributes | Where-Object { $_ -is [ArgumentCompleter] } | Select-Object -ExpandProperty ScriptBlock
+        }
+
+        It 'Returns matching playlist names' {
+            $results = InModuleScope PlexAutomationToolkit -Parameters @{ completer = $script:playlistNameCompleter } {
+                Mock Get-PatPlaylist {
+                    return @(
+                        [PSCustomObject]@{ Title = 'My Favorites' }
+                        [PSCustomObject]@{ Title = 'Party Mix' }
+                    )
+                }
+                & $completer 'Get-PatPlaylist' 'PlaylistName' 'My' $null @{}
+            }
+            $results | Should -Not -BeNullOrEmpty
+        }
+
+        It 'Passes ServerUri when provided' {
+            $results = InModuleScope PlexAutomationToolkit -Parameters @{ completer = $script:playlistNameCompleter } {
+                Mock Get-PatPlaylist {
+                    return @(
+                        [PSCustomObject]@{ Title = 'My Favorites' }
+                    )
+                }
+                & $completer 'Get-PatPlaylist' 'PlaylistName' '' $null @{ ServerUri = 'http://custom:32400' }
+            }
+            Should -Invoke Get-PatPlaylist -ModuleName PlexAutomationToolkit -ParameterFilter {
+                $ServerUri -eq 'http://custom:32400'
+            }
+        }
+
+        It 'Passes Token when provided' {
+            $results = InModuleScope PlexAutomationToolkit -Parameters @{ completer = $script:playlistNameCompleter } {
+                Mock Get-PatPlaylist {
+                    return @(
+                        [PSCustomObject]@{ Title = 'My Favorites' }
+                    )
+                }
+                & $completer 'Get-PatPlaylist' 'PlaylistName' '' $null @{ Token = 'my-token' }
+            }
+            Should -Invoke Get-PatPlaylist -ModuleName PlexAutomationToolkit -ParameterFilter {
+                $Token -eq 'my-token'
+            }
+        }
+    }
+
+    Context 'Token parameter' {
+        BeforeAll {
+            Mock -ModuleName PlexAutomationToolkit Resolve-PatServerContext {
+                return [PSCustomObject]@{
+                    Uri            = 'http://plex.local:32400'
+                    Headers        = @{ Accept = 'application/json'; 'X-Plex-Token' = 'my-token' }
+                    WasExplicitUri = $true
+                    Server         = $null
+                    Token          = 'my-token'
+                }
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Invoke-PatApi {
+                return $script:mockPlaylistsResponse
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Join-PatUri {
+                param($BaseUri, $Endpoint)
+                return "$BaseUri$Endpoint"
+            }
+        }
+
+        It 'Passes Token to Resolve-PatServerContext' {
+            Get-PatPlaylist -ServerUri 'http://plex.local:32400' -Token 'my-token'
+            Should -Invoke -ModuleName PlexAutomationToolkit Resolve-PatServerContext -ParameterFilter {
+                $Token -eq 'my-token'
+            }
+        }
+    }
 }

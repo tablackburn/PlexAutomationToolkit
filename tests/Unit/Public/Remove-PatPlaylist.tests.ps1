@@ -410,4 +410,39 @@ Describe 'Remove-PatPlaylist' {
                 Should -Throw
         }
     }
+
+    Context 'PlaylistName argument completer' {
+        BeforeAll {
+            $command = Get-Command -Module PlexAutomationToolkit -Name Remove-PatPlaylist
+            $playlistNameParam = $command.Parameters['PlaylistName']
+            $script:playlistNameCompleter = $playlistNameParam.Attributes | Where-Object { $_ -is [ArgumentCompleter] } | Select-Object -ExpandProperty ScriptBlock
+        }
+
+        It 'Returns matching playlist names' {
+            $results = InModuleScope PlexAutomationToolkit -Parameters @{ completer = $script:playlistNameCompleter } {
+                Mock Get-PatPlaylist {
+                    return @(
+                        [PSCustomObject]@{ Title = 'My Favorites' }
+                        [PSCustomObject]@{ Title = 'Party Mix' }
+                    )
+                }
+                & $completer 'Remove-PatPlaylist' 'PlaylistName' 'My' $null @{}
+            }
+            $results | Should -Not -BeNullOrEmpty
+        }
+
+        It 'Passes ServerUri when provided' {
+            $results = InModuleScope PlexAutomationToolkit -Parameters @{ completer = $script:playlistNameCompleter } {
+                Mock Get-PatPlaylist {
+                    return @(
+                        [PSCustomObject]@{ Title = 'My Favorites' }
+                    )
+                }
+                & $completer 'Remove-PatPlaylist' 'PlaylistName' '' $null @{ ServerUri = 'http://custom:32400' }
+            }
+            Should -Invoke Get-PatPlaylist -ModuleName PlexAutomationToolkit -ParameterFilter {
+                $ServerUri -eq 'http://custom:32400'
+            }
+        }
+    }
 }
