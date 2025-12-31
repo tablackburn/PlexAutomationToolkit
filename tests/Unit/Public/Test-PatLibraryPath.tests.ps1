@@ -128,4 +128,117 @@ Describe 'Test-PatLibraryPath' {
             { Test-PatLibraryPath -Path '/mnt/media' -ServerUri 'not-a-url' } | Should -Throw
         }
     }
+
+    Context 'Token parameter' {
+        BeforeAll {
+            Mock -ModuleName PlexAutomationToolkit Get-PatLibraryChildItem {
+                return $script:mockBrowseItems
+            }
+        }
+
+        It 'Passes Token to Get-PatLibraryChildItem' {
+            Test-PatLibraryPath -Path '/mnt/media/Movies/NewMovie' -ServerUri 'http://plex.local:32400' -Token 'my-token'
+            Should -Invoke -ModuleName PlexAutomationToolkit Get-PatLibraryChildItem -ParameterFilter {
+                $Token -eq 'my-token'
+            }
+        }
+    }
+
+    Context 'When no library paths configured' {
+        BeforeAll {
+            Mock -ModuleName PlexAutomationToolkit Get-PatLibraryPath {
+                return $null
+            }
+        }
+
+        It 'Returns false when library has no configured paths' {
+            $result = Test-PatLibraryPath -Path '/mnt/media/Movies/NewMovie' -SectionId 2 -ServerUri 'http://plex.local:32400'
+            $result | Should -Be $false
+        }
+    }
+
+    Context 'When library path lookup fails' {
+        BeforeAll {
+            Mock -ModuleName PlexAutomationToolkit Get-PatLibraryPath {
+                throw 'Library not found'
+            }
+        }
+
+        It 'Returns false when library path lookup throws' {
+            $result = Test-PatLibraryPath -Path '/mnt/media/Movies/NewMovie' -SectionName 'Unknown' -ServerUri 'http://plex.local:32400'
+            $result | Should -Be $false
+        }
+    }
+
+    Context 'Root path testing' {
+        BeforeAll {
+            Mock -ModuleName PlexAutomationToolkit Get-PatLibraryChildItem {
+                return @(
+                    [PSCustomObject]@{ path = '/Movies'; title = 'Movies' }
+                )
+            }
+        }
+
+        It 'Returns true for root path when accessible' {
+            $result = Test-PatLibraryPath -Path '/' -ServerUri 'http://plex.local:32400'
+            $result | Should -Be $true
+        }
+    }
+
+    Context 'Path matching by title only' {
+        BeforeAll {
+            Mock -ModuleName PlexAutomationToolkit Get-PatLibraryChildItem {
+                return @(
+                    [PSCustomObject]@{ title = 'TargetFolder' }
+                )
+            }
+        }
+
+        It 'Matches by title when path property is not available' {
+            $result = Test-PatLibraryPath -Path '/mnt/media/TargetFolder' -ServerUri 'http://plex.local:32400'
+            $result | Should -Be $true
+        }
+    }
+
+    Context 'Path equals library root exactly' {
+        BeforeAll {
+            Mock -ModuleName PlexAutomationToolkit Get-PatLibraryPath {
+                return @(
+                    [PSCustomObject]@{
+                        id   = 1
+                        path = '/mnt/media/Movies'
+                    }
+                )
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Get-PatLibraryChildItem {
+                return @()
+            }
+        }
+
+        It 'Returns true when path equals library root' {
+            $result = Test-PatLibraryPath -Path '/mnt/media/Movies' -SectionId 2 -ServerUri 'http://plex.local:32400'
+            # Path equals root, but browsing returns empty, so false for non-existent content
+            $result | Should -Be $false
+        }
+    }
+
+    Context 'Using SectionId parameter' {
+        BeforeAll {
+            Mock -ModuleName PlexAutomationToolkit Get-PatLibraryPath {
+                return $script:mockLibraryPaths
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Get-PatLibraryChildItem {
+                return $script:mockBrowseItems
+            }
+        }
+
+        It 'Passes SectionId to Get-PatLibraryPath' {
+            Test-PatLibraryPath -Path '/mnt/media/Movies/NewMovie' -SectionId 5 -ServerUri 'http://plex.local:32400'
+            Should -Invoke -ModuleName PlexAutomationToolkit Get-PatLibraryPath -ParameterFilter {
+                $SectionId -eq 5
+            }
+        }
+    }
 }

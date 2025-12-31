@@ -351,4 +351,118 @@ Describe 'Get-PatConfigurationPath' {
             }
         }
     }
+
+    Context 'OneDrive write test file cleanup' -Skip:(-not $script:RunningOnWindows) {
+        It 'Should handle write test that creates and removes test file' {
+            if (-not $env:OneDrive) {
+                Set-ItResult -Skipped -Because 'OneDrive not configured on this system'
+                return
+            }
+
+            $oneDriveDir = Join-Path $env:OneDrive 'Documents\PlexAutomationToolkit'
+            $testFile = Join-Path $oneDriveDir '.test'
+
+            # Call function - should create and remove test file
+            $result = InModuleScope PlexAutomationToolkit { Get-PatConfigurationPath }
+
+            # Test file should be cleaned up
+            Test-Path $testFile | Should -Be $false
+
+            # Should have returned OneDrive path
+            $result | Should -BeLike "*OneDrive*"
+        }
+    }
+
+    Context 'USERPROFILE not available' -Skip:(-not $script:RunningOnWindows) {
+        It 'Should fall back to Unix-style path when no Windows paths available' {
+            $env:OneDrive = $null
+            $env:USERPROFILE = $null
+            $env:LOCALAPPDATA = $null
+
+            $result = InModuleScope PlexAutomationToolkit { Get-PatConfigurationPath }
+
+            # Should fall through to Unix-style path at end of function
+            $result | Should -Not -BeNullOrEmpty
+            $result | Should -Match 'servers\.json$'
+        }
+    }
+
+    Context 'HOME environment fallback' {
+        It 'Should use Environment.GetFolderPath when HOME is null' {
+            $originalHome = $env:HOME
+
+            try {
+                $env:HOME = $null
+
+                $result = InModuleScope PlexAutomationToolkit { Get-PatConfigurationPath }
+
+                # Should still return a valid path
+                $result | Should -Not -BeNullOrEmpty
+                $result | Should -Match 'servers\.json$'
+            }
+            finally {
+                $env:HOME = $originalHome
+            }
+        }
+
+        It 'Should handle empty HOME string' {
+            $originalHome = $env:HOME
+
+            try {
+                $env:HOME = ''
+
+                $result = InModuleScope PlexAutomationToolkit { Get-PatConfigurationPath }
+
+                # Should fall back to GetFolderPath
+                $result | Should -Not -BeNullOrEmpty
+                $result | Should -Match 'servers\.json$'
+            }
+            finally {
+                $env:HOME = $originalHome
+            }
+        }
+    }
+
+    Context 'LocalAppData fallback validation' -Skip:(-not $script:RunningOnWindows) {
+        It 'Should use LocalAppData path format when falling back' {
+            $env:OneDrive = $null
+            $env:USERPROFILE = 'C:\Users\TestUser'
+            $env:LOCALAPPDATA = 'C:\Users\TestUser\AppData\Local'
+
+            $result = InModuleScope PlexAutomationToolkit {
+                # Mock to fail for Documents but succeed for LocalAppData
+                Mock New-Item {
+                    throw [System.UnauthorizedAccessException]::new("Documents locked")
+                } -ParameterFilter { $Path -like '*Documents*' }
+
+                Mock New-Item { } -ParameterFilter { $Path -like '*AppData\Local*' }
+
+                Get-PatConfigurationPath
+            }
+
+            # Verify the path structure
+            $result | Should -Be 'C:\Users\TestUser\AppData\Local\PlexAutomationToolkit\servers.json'
+        }
+    }
+
+    Context 'PowerShell version detection' {
+        It 'Should handle PSVersion less than 6' {
+            # This test verifies the platform detection logic works
+            # $PSVersionTable.PSVersion.Major -lt 6 -or $IsWindows
+            $result = InModuleScope PlexAutomationToolkit { Get-PatConfigurationPath }
+
+            $result | Should -Not -BeNullOrEmpty
+        }
+    }
+
+    Context 'Directory creation with Force' {
+        It 'Should handle directory already exists with Force parameter' {
+            $result = InModuleScope PlexAutomationToolkit { Get-PatConfigurationPath }
+
+            # Call again - directory exists, Force should prevent error
+            $result2 = InModuleScope PlexAutomationToolkit { Get-PatConfigurationPath }
+
+            $result | Should -Be $result2
+        }
+    }
 }

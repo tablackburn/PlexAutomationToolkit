@@ -898,6 +898,169 @@ Describe 'Get-PatSyncPlan' {
         }
     }
 
+    Context 'No default server configured' {
+        BeforeAll {
+            Mock -ModuleName PlexAutomationToolkit Get-PatStoredServer {
+                return $null
+            }
+        }
+
+        It 'Throws when no default server and no ServerUri provided' {
+            { Get-PatSyncPlan -Destination $script:TestDir } |
+                Should -Throw "*No default server configured*"
+        }
+    }
+
+    Context 'Failed to get default server' {
+        BeforeAll {
+            Mock -ModuleName PlexAutomationToolkit Get-PatStoredServer {
+                throw "Configuration file corrupted"
+            }
+        }
+
+        It 'Throws with context when Get-PatStoredServer fails' {
+            { Get-PatSyncPlan -Destination $script:TestDir } |
+                Should -Throw "*Failed to get default server*"
+        }
+    }
+
+    Context 'ServerUri with Token parameter' {
+        BeforeAll {
+            Mock -ModuleName PlexAutomationToolkit Get-PatPlaylist {
+                return [PSCustomObject]@{
+                    PlaylistId = 100
+                    Title      = 'Travel'
+                    ItemCount  = 0
+                    Items      = @()
+                    ServerUri  = 'http://explicit.test:32400'
+                }
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Get-PSDrive {
+                return [PSCustomObject]@{
+                    Free = 100000000000
+                }
+            }
+        }
+
+        It 'Passes ServerUri and Token to Get-PatPlaylist' {
+            Get-PatSyncPlan -PlaylistName 'Travel' -Destination $script:TestDir -ServerUri 'http://explicit.test:32400' -Token 'my-token'
+            Should -Invoke -ModuleName PlexAutomationToolkit Get-PatPlaylist -ParameterFilter {
+                $ServerUri -eq 'http://explicit.test:32400' -and $Token -eq 'my-token'
+            }
+        }
+
+        It 'Does not call Get-PatStoredServer when ServerUri specified' {
+            Get-PatSyncPlan -PlaylistName 'Travel' -Destination $script:TestDir -ServerUri 'http://explicit.test:32400'
+            Should -Invoke -ModuleName PlexAutomationToolkit Get-PatStoredServer -Times 0
+        }
+    }
+
+    Context 'TV Shows folder file removal' {
+        BeforeAll {
+            # Create temp directory for this context
+            $script:TVTestDir = Join-Path -Path ([System.IO.Path]::GetTempPath()) -ChildPath "PatSyncPlanTVTests_$([Guid]::NewGuid().ToString('N'))"
+            New-Item -Path $script:TVTestDir -ItemType Directory -Force | Out-Null
+
+            # Create an orphan TV episode that's not in the playlist
+            $orphanDir = [System.IO.Path]::Combine($script:TVTestDir, 'TV Shows', 'Orphan Show', 'Season 01')
+            New-Item -Path $orphanDir -ItemType Directory -Force | Out-Null
+            $orphanFile = Join-Path -Path $orphanDir -ChildPath 'Orphan Show - S01E01.mkv'
+            [System.IO.File]::WriteAllBytes($orphanFile, [byte[]](1, 2, 3))
+
+            Mock -ModuleName PlexAutomationToolkit Get-PatPlaylist {
+                return [PSCustomObject]@{
+                    PlaylistId = 100
+                    Title      = 'Empty'
+                    ItemCount  = 0
+                    Items      = @()
+                    ServerUri  = 'http://plex.test:32400'
+                }
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Get-PSDrive {
+                return [PSCustomObject]@{
+                    Free = 100000000000
+                }
+            }
+        }
+
+        AfterAll {
+            if ($script:TVTestDir -and (Test-Path -Path $script:TVTestDir)) {
+                Remove-Item -Path $script:TVTestDir -Recurse -Force -ErrorAction SilentlyContinue
+            }
+        }
+
+        It 'Identifies TV Show files to remove that are not in playlist' {
+            $result = Get-PatSyncPlan -PlaylistName 'Empty' -Destination $script:TVTestDir
+
+            $result.ItemsToRemove | Should -BeGreaterThan 0
+            $orphanOp = $result.RemoveOperations | Where-Object { $_.Path -match 'Orphan Show' }
+            $orphanOp | Should -Not -BeNullOrEmpty
+            $orphanOp.Type | Should -Be 'episode'
+        }
+    }
+
+    Context 'Drive space detection failure' {
+        BeforeAll {
+            Mock -ModuleName PlexAutomationToolkit Get-PatPlaylist {
+                return [PSCustomObject]@{
+                    PlaylistId = 100
+                    Title      = 'Travel'
+                    ItemCount  = 0
+                    Items      = @()
+                    ServerUri  = 'http://plex.test:32400'
+                }
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Get-PSDrive {
+                throw "Drive not found"
+            }
+        }
+
+        It 'Continues with zero free space when drive info fails' {
+            $result = Get-PatSyncPlan -PlaylistName 'Travel' -Destination $script:TestDir -WarningVariable warnings 3>$null
+
+            $result | Should -Not -BeNullOrEmpty
+            $result.DestinationFree | Should -Be 0
+        }
+    }
+
+    Context 'PlaylistName argument completer' {
+        BeforeAll {
+            $command = Get-Command -Module PlexAutomationToolkit -Name Get-PatSyncPlan
+            $playlistNameParam = $command.Parameters['PlaylistName']
+            $script:playlistNameCompleter = $playlistNameParam.Attributes | Where-Object { $_ -is [ArgumentCompleter] } | Select-Object -ExpandProperty ScriptBlock
+        }
+
+        It 'Returns matching playlist names' {
+            $results = InModuleScope PlexAutomationToolkit -Parameters @{ completer = $script:playlistNameCompleter } {
+                Mock Get-PatPlaylist {
+                    return @(
+                        [PSCustomObject]@{ Title = 'Travel' }
+                        [PSCustomObject]@{ Title = 'Vacation' }
+                    )
+                }
+                & $completer 'Get-PatSyncPlan' 'PlaylistName' 'Tra' $null @{}
+            }
+            $results | Should -Not -BeNullOrEmpty
+        }
+
+        It 'Passes ServerUri when provided' {
+            $results = InModuleScope PlexAutomationToolkit -Parameters @{ completer = $script:playlistNameCompleter } {
+                Mock Get-PatPlaylist {
+                    return @(
+                        [PSCustomObject]@{ Title = 'Travel' }
+                    )
+                }
+                & $completer 'Get-PatSyncPlan' 'PlaylistName' '' $null @{ ServerUri = 'http://custom:32400' }
+            }
+            Should -Invoke Get-PatPlaylist -ModuleName PlexAutomationToolkit -ParameterFilter {
+                $ServerUri -eq 'http://custom:32400'
+            }
+        }
+    }
+
     Context 'Subtitle count detection' {
         BeforeAll {
             Mock -ModuleName PlexAutomationToolkit Get-PSDrive {
