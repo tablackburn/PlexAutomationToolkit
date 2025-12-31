@@ -738,4 +738,352 @@ Describe 'Update-PatLibrary' {
             }
         }
     }
+
+    Context 'SectionName argument completer' {
+        BeforeAll {
+            # Get the completer script block from the parameter
+            $command = Get-Command -Module PlexAutomationToolkit -Name Update-PatLibrary
+            $sectionNameParam = $command.Parameters['SectionName']
+            $script:sectionNameCompleter = $sectionNameParam.Attributes | Where-Object { $_ -is [ArgumentCompleter] } | Select-Object -ExpandProperty ScriptBlock
+        }
+
+        It 'Returns matching section names' {
+            $results = InModuleScope PlexAutomationToolkit -Parameters @{ completer = $script:sectionNameCompleter } {
+                Mock Get-PatLibrary {
+                    return @{
+                        Directory = @(
+                            @{ title = 'Movies' }
+                            @{ title = 'TV Shows' }
+                            @{ title = 'Music' }
+                        )
+                    }
+                }
+
+                & $completer 'Update-PatLibrary' 'SectionName' 'Mov' $null @{}
+            }
+            # Results are CompletionResult objects
+            $completionTexts = $results | ForEach-Object { if ($_ -is [System.Management.Automation.CompletionResult]) { $_.CompletionText } else { $_ } }
+            $completionTexts | Should -Contain 'Movies'
+            $completionTexts | Should -Not -Contain 'TV Shows'
+        }
+
+        It 'Uses ServerUri from bound parameters' {
+            InModuleScope PlexAutomationToolkit -Parameters @{ completer = $script:sectionNameCompleter } {
+                Mock Get-PatLibrary {
+                    return @{
+                        Directory = @(
+                            @{ title = 'Movies' }
+                        )
+                    }
+                }
+
+                $fakeBoundParams = @{ ServerUri = 'http://custom-server:32400' }
+                & $completer 'Update-PatLibrary' 'SectionName' '' $null $fakeBoundParams
+
+                Should -Invoke Get-PatLibrary -ParameterFilter {
+                    $ServerUri -eq 'http://custom-server:32400'
+                }
+            }
+        }
+
+        It 'Handles errors gracefully' {
+            $results = InModuleScope PlexAutomationToolkit -Parameters @{ completer = $script:sectionNameCompleter } {
+                Mock Get-PatLibrary {
+                    throw 'Connection failed'
+                }
+
+                # Should not throw, just return empty
+                & $completer 'Update-PatLibrary' 'SectionName' '' $null @{}
+            }
+            $results | Should -BeNullOrEmpty
+        }
+
+        It 'Handles quoted input' {
+            $results = InModuleScope PlexAutomationToolkit -Parameters @{ completer = $script:sectionNameCompleter } {
+                Mock Get-PatLibrary {
+                    return @{
+                        Directory = @(
+                            @{ title = 'TV Shows' }
+                        )
+                    }
+                }
+
+                & $completer 'Update-PatLibrary' 'SectionName' "'TV" $null @{}
+            }
+            # Result should be a CompletionResult with the value quoted
+            $results | Should -Not -BeNullOrEmpty
+        }
+    }
+
+    Context 'Path argument completer' {
+        BeforeAll {
+            $command = Get-Command -Module PlexAutomationToolkit -Name Update-PatLibrary
+            $pathParam = $command.Parameters['Path']
+            $script:pathCompleter = $pathParam.Attributes | Where-Object { $_ -is [ArgumentCompleter] } | Select-Object -ExpandProperty ScriptBlock
+        }
+
+        It 'Returns root paths when no input provided' {
+            $results = InModuleScope PlexAutomationToolkit -Parameters @{ completer = $script:pathCompleter } {
+                Mock Get-PatStoredServer {
+                    return @{ name = 'Default'; uri = 'http://plex:32400' }
+                }
+
+                Mock Get-PatLibraryPath {
+                    return @(
+                        @{ path = '/mnt/movies' }
+                        @{ path = '/mnt/tv' }
+                    )
+                }
+
+                $fakeBoundParams = @{ SectionId = 2 }
+                & $completer 'Update-PatLibrary' 'Path' '' $null $fakeBoundParams
+            }
+
+            $results | Should -Not -BeNullOrEmpty
+        }
+
+        It 'Resolves SectionId from SectionName' {
+            $results = InModuleScope PlexAutomationToolkit -Parameters @{ completer = $script:pathCompleter } {
+                Mock Get-PatStoredServer {
+                    return @{ name = 'Default'; uri = 'http://plex:32400' }
+                }
+
+                Mock Get-PatLibrary {
+                    return @{
+                        Directory = @(
+                            @{ key = '/library/sections/2'; title = 'Movies' }
+                        )
+                    }
+                }
+
+                Mock Get-PatLibraryPath {
+                    return @(
+                        @{ path = '/mnt/movies' }
+                    )
+                }
+
+                $fakeBoundParams = @{ SectionName = 'Movies' }
+                & $completer 'Update-PatLibrary' 'Path' '' $null $fakeBoundParams
+            }
+            $results | Should -Not -BeNullOrEmpty
+        }
+
+        It 'Uses explicit ServerUri when provided' {
+            InModuleScope PlexAutomationToolkit -Parameters @{ completer = $script:pathCompleter } {
+                Mock Get-PatLibraryPath {
+                    return @(
+                        @{ path = '/mnt/movies' }
+                    )
+                }
+
+                $fakeBoundParams = @{ ServerUri = 'http://custom:32400'; SectionId = 2 }
+                & $completer 'Update-PatLibrary' 'Path' '' $null $fakeBoundParams
+
+                Should -Invoke Get-PatLibraryPath -ParameterFilter {
+                    $ServerUri -eq 'http://custom:32400'
+                }
+            }
+        }
+
+        It 'Browses subdirectories when input provided' {
+            # This test verifies the browse code path is exercised
+            InModuleScope PlexAutomationToolkit -Parameters @{ completer = $script:pathCompleter } {
+                Mock Get-PatStoredServer {
+                    return @{ name = 'Default'; uri = 'http://plex:32400' }
+                }
+
+                Mock Get-PatLibraryPath {
+                    return @(
+                        @{ path = '/mnt/movies' }
+                    )
+                }
+
+                Mock Get-PatLibraryChildItem {
+                    return @(
+                        [PSCustomObject]@{ path = '/mnt/movies/Action' }
+                        [PSCustomObject]@{ path = '/mnt/movies/Comedy' }
+                    )
+                }
+
+                $fakeBoundParams = @{ SectionId = 2 }
+                # Execute the completer - should not throw
+                { & $completer 'Update-PatLibrary' 'Path' '/mnt/movies/A' $null $fakeBoundParams } | Should -Not -Throw
+
+                # Verify the browse function was called
+                Should -Invoke Get-PatLibraryChildItem
+            }
+        }
+
+        It 'Falls back to root paths when browse returns null' {
+            $results = InModuleScope PlexAutomationToolkit -Parameters @{ completer = $script:pathCompleter } {
+                Mock Get-PatStoredServer {
+                    return @{ name = 'Default'; uri = 'http://plex:32400' }
+                }
+
+                Mock Get-PatLibraryPath {
+                    return @(
+                        @{ path = '/mnt/movies' }
+                        @{ path = '/mnt/movies-backup' }
+                    )
+                }
+
+                Mock Get-PatLibraryChildItem {
+                    return $null
+                }
+
+                $fakeBoundParams = @{ SectionId = 2 }
+                & $completer 'Update-PatLibrary' 'Path' '/mnt/movies' $null $fakeBoundParams
+            }
+            $results | Should -Not -BeNullOrEmpty
+        }
+
+        It 'Returns nothing when no default server and no ServerUri' {
+            $results = InModuleScope PlexAutomationToolkit -Parameters @{ completer = $script:pathCompleter } {
+                Mock Get-PatStoredServer {
+                    return $null
+                }
+
+                $fakeBoundParams = @{ SectionId = 2 }
+                & $completer 'Update-PatLibrary' 'Path' '' $null $fakeBoundParams
+            }
+            $results | Should -BeNullOrEmpty
+        }
+
+        It 'Returns nothing when no SectionId or SectionName provided' {
+            $results = InModuleScope PlexAutomationToolkit -Parameters @{ completer = $script:pathCompleter } {
+                Mock Get-PatStoredServer {
+                    return @{ name = 'Default'; uri = 'http://plex:32400' }
+                }
+
+                $fakeBoundParams = @{}
+                & $completer 'Update-PatLibrary' 'Path' '' $null $fakeBoundParams
+            }
+            $results | Should -BeNullOrEmpty
+        }
+
+        It 'Handles browse exception gracefully' {
+            # When browse throws, should fall back to matching root paths
+            InModuleScope PlexAutomationToolkit -Parameters @{ completer = $script:pathCompleter } {
+                Mock Get-PatStoredServer {
+                    return @{ name = 'Default'; uri = 'http://plex:32400' }
+                }
+
+                Mock Get-PatLibraryPath {
+                    return @(
+                        @{ path = '/mnt/movies' }
+                    )
+                }
+
+                Mock Get-PatLibraryChildItem {
+                    throw 'Access denied'
+                }
+
+                $fakeBoundParams = @{ SectionId = 2 }
+                # Should not throw - exception is caught internally
+                { & $completer 'Update-PatLibrary' 'Path' '/mnt/movies/test' $null $fakeBoundParams } | Should -Not -Throw
+            }
+        }
+
+        It 'Handles Get-PatStoredServer exception gracefully' {
+            $results = InModuleScope PlexAutomationToolkit -Parameters @{ completer = $script:pathCompleter } {
+                Mock Get-PatStoredServer {
+                    throw 'Config error'
+                }
+
+                $fakeBoundParams = @{ SectionId = 2 }
+                # Should not throw
+                & $completer 'Update-PatLibrary' 'Path' '' $null $fakeBoundParams
+            }
+            $results | Should -BeNullOrEmpty
+        }
+
+        It 'Handles exact root path match for browsing' {
+            # When input exactly matches a root path, browse that path directly
+            InModuleScope PlexAutomationToolkit -Parameters @{ completer = $script:pathCompleter } {
+                Mock Get-PatStoredServer {
+                    return @{ name = 'Default'; uri = 'http://plex:32400' }
+                }
+
+                Mock Get-PatLibraryPath {
+                    return @(
+                        [PSCustomObject]@{ path = '/mnt/movies' }
+                    )
+                }
+
+                Mock Get-PatLibraryChildItem {
+                    return @(
+                        [PSCustomObject]@{ path = '/mnt/movies/Action' }
+                        [PSCustomObject]@{ path = '/mnt/movies/Comedy' }
+                    )
+                }
+
+                $fakeBoundParams = @{ SectionId = 2 }
+                # Execute the completer
+                { & $completer 'Update-PatLibrary' 'Path' '/mnt/movies' $null $fakeBoundParams } | Should -Not -Throw
+
+                # Verify browse was called with the exact root path
+                Should -Invoke Get-PatLibraryChildItem -ParameterFilter {
+                    $Path -eq '/mnt/movies'
+                }
+            }
+        }
+
+        It 'Handles SectionName resolution failure gracefully' {
+            $results = InModuleScope PlexAutomationToolkit -Parameters @{ completer = $script:pathCompleter } {
+                Mock Get-PatStoredServer {
+                    return @{ name = 'Default'; uri = 'http://plex:32400' }
+                }
+
+                Mock Get-PatLibrary {
+                    throw 'API error'
+                }
+
+                $fakeBoundParams = @{ SectionName = 'Movies' }
+                # Should not throw
+                & $completer 'Update-PatLibrary' 'Path' '' $null $fakeBoundParams
+            }
+            $results | Should -BeNullOrEmpty
+        }
+
+        It 'Handles Get-PatLibraryPath exception gracefully' {
+            $results = InModuleScope PlexAutomationToolkit -Parameters @{ completer = $script:pathCompleter } {
+                Mock Get-PatStoredServer {
+                    return @{ name = 'Default'; uri = 'http://plex:32400' }
+                }
+
+                Mock Get-PatLibraryPath {
+                    throw 'Cannot get paths'
+                }
+
+                $fakeBoundParams = @{ SectionId = 2 }
+                # Should not throw
+                & $completer 'Update-PatLibrary' 'Path' '' $null $fakeBoundParams
+            }
+            $results | Should -BeNullOrEmpty
+        }
+
+        It 'Handles items with Path property (capital P)' {
+            $results = InModuleScope PlexAutomationToolkit -Parameters @{ completer = $script:pathCompleter } {
+                Mock Get-PatStoredServer {
+                    return @{ name = 'Default'; uri = 'http://plex:32400' }
+                }
+
+                Mock Get-PatLibraryPath {
+                    return @(
+                        @{ path = '/mnt/movies' }
+                    )
+                }
+
+                Mock Get-PatLibraryChildItem {
+                    return @(
+                        [PSCustomObject]@{ Path = '/mnt/movies/Action' }
+                    )
+                }
+
+                $fakeBoundParams = @{ SectionId = 2 }
+                & $completer 'Update-PatLibrary' 'Path' '/mnt/movies/A' $null $fakeBoundParams
+            }
+            $results | Should -Not -BeNullOrEmpty
+        }
+    }
 }

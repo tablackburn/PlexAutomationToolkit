@@ -460,4 +460,365 @@ Describe 'Search-PatMedia' {
             { Search-PatMedia -Query 'test' -ServerUri 'not-a-valid-uri' } | Should -Throw
         }
     }
+
+    Context 'When searching by SectionId with explicit ServerUri' {
+        BeforeAll {
+            Mock -ModuleName PlexAutomationToolkit Resolve-PatServerContext {
+                return [PSCustomObject]@{
+                    Uri            = 'http://explicit-server.local:32400'
+                    Headers        = @{ Accept = 'application/json' }
+                    WasExplicitUri = $true
+                    Server         = $null
+                }
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Get-PatLibrary {
+                return $script:mockSectionsResponse
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Invoke-PatApi {
+                return $script:mockSearchResponse
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Join-PatUri {
+                param($BaseUri, $Endpoint, $QueryString)
+                return "$BaseUri$Endpoint`?$QueryString"
+            }
+        }
+
+        It 'Passes ServerUri to Get-PatLibrary when explicit' {
+            Search-PatMedia -Query 'matrix' -SectionId 2 -ServerUri 'http://explicit-server.local:32400'
+            Should -Invoke -ModuleName PlexAutomationToolkit Get-PatLibrary -ParameterFilter {
+                $ServerUri -eq 'http://explicit-server.local:32400'
+            }
+        }
+
+        It 'Gets section name for output' {
+            $result = Search-PatMedia -Query 'matrix' -SectionId 2 -ServerUri 'http://explicit-server.local:32400'
+            # Should resolve the section name from the ID
+            Should -Invoke -ModuleName PlexAutomationToolkit Get-PatLibrary
+        }
+    }
+
+    Context 'When searching by SectionName with explicit ServerUri' {
+        BeforeAll {
+            Mock -ModuleName PlexAutomationToolkit Resolve-PatServerContext {
+                return [PSCustomObject]@{
+                    Uri            = 'http://explicit-server.local:32400'
+                    Headers        = @{ Accept = 'application/json' }
+                    WasExplicitUri = $true
+                    Server         = $null
+                }
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Get-PatLibrary {
+                return $script:mockSectionsResponse
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Invoke-PatApi {
+                return $script:mockSearchResponse
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Join-PatUri {
+                param($BaseUri, $Endpoint, $QueryString)
+                return "$BaseUri$Endpoint`?$QueryString"
+            }
+        }
+
+        It 'Passes ServerUri to Get-PatLibrary when resolving section name' {
+            Search-PatMedia -Query 'matrix' -SectionName 'Movies' -ServerUri 'http://explicit-server.local:32400'
+            Should -Invoke -ModuleName PlexAutomationToolkit Get-PatLibrary -ParameterFilter {
+                $ServerUri -eq 'http://explicit-server.local:32400'
+            }
+        }
+    }
+
+    Context 'When result items have missing library info' {
+        BeforeAll {
+            $script:mockSearchNoLibraryInfo = @{
+                size = 1
+                Hub  = @(
+                    @{
+                        hubKey      = 'movie'
+                        type        = 'movie'
+                        size        = 1
+                        title       = 'Movies'
+                        Metadata    = @(
+                            @{
+                                ratingKey = '12345'
+                                title     = 'Test Movie'
+                                year      = 2023
+                                # No librarySectionID or librarySectionTitle
+                            }
+                        )
+                    }
+                )
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Resolve-PatServerContext {
+                return [PSCustomObject]$script:mockServerContext
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Invoke-PatApi {
+                return $script:mockSearchNoLibraryInfo
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Join-PatUri {
+                param($BaseUri, $Endpoint, $QueryString)
+                return "$BaseUri$Endpoint`?$QueryString"
+            }
+        }
+
+        It 'Returns null for library info when not provided' {
+            $result = Search-PatMedia -Query 'test'
+            $result[0].LibraryId | Should -BeNullOrEmpty
+            $result[0].LibraryName | Should -BeNullOrEmpty
+        }
+    }
+
+    Context 'When result items have missing optional properties' {
+        BeforeAll {
+            $script:mockSearchMinimalItem = @{
+                size = 1
+                Hub  = @(
+                    @{
+                        hubKey   = 'movie'
+                        type     = 'movie'
+                        size     = 1
+                        title    = 'Movies'
+                        Metadata = @(
+                            @{
+                                title = 'Test Movie'
+                                # No ratingKey, year, summary, thumb
+                            }
+                        )
+                    }
+                )
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Resolve-PatServerContext {
+                return [PSCustomObject]$script:mockServerContext
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Invoke-PatApi {
+                return $script:mockSearchMinimalItem
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Join-PatUri {
+                param($BaseUri, $Endpoint, $QueryString)
+                return "$BaseUri$Endpoint`?$QueryString"
+            }
+        }
+
+        It 'Handles items without ratingKey' {
+            $result = Search-PatMedia -Query 'test'
+            $result[0].RatingKey | Should -BeNullOrEmpty
+        }
+
+        It 'Handles items without year' {
+            $result = Search-PatMedia -Query 'test'
+            $result[0].Year | Should -BeNullOrEmpty
+        }
+    }
+
+    Context 'When hub has empty Metadata' {
+        BeforeAll {
+            $script:mockSearchEmptyHub = @{
+                size = 1
+                Hub  = @(
+                    @{
+                        hubKey   = 'movie'
+                        type     = 'movie'
+                        size     = 0
+                        title    = 'Movies'
+                        # Metadata is null or missing
+                    }
+                )
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Resolve-PatServerContext {
+                return [PSCustomObject]$script:mockServerContext
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Invoke-PatApi {
+                return $script:mockSearchEmptyHub
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Join-PatUri {
+                param($BaseUri, $Endpoint, $QueryString)
+                return "$BaseUri$Endpoint`?$QueryString"
+            }
+        }
+
+        It 'Skips hubs with no Metadata' {
+            $result = Search-PatMedia -Query 'test'
+            $result | Should -BeNullOrEmpty
+        }
+    }
+
+    Context 'When using Token parameter' {
+        BeforeAll {
+            Mock -ModuleName PlexAutomationToolkit Resolve-PatServerContext {
+                return [PSCustomObject]$script:mockServerContext
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Invoke-PatApi {
+                return $script:mockSearchResponse
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Join-PatUri {
+                param($BaseUri, $Endpoint, $QueryString)
+                return "$BaseUri$Endpoint`?$QueryString"
+            }
+        }
+
+        It 'Passes Token to Resolve-PatServerContext' {
+            Search-PatMedia -Query 'matrix' -ServerUri 'http://test:32400' -Token 'my-token'
+            Should -Invoke -ModuleName PlexAutomationToolkit Resolve-PatServerContext -ParameterFilter {
+                $Token -eq 'my-token'
+            }
+        }
+    }
+
+    Context 'SectionName argument completer' {
+        BeforeAll {
+            $command = Get-Command -Module PlexAutomationToolkit -Name Search-PatMedia
+            $sectionNameParam = $command.Parameters['SectionName']
+            $script:sectionNameCompleter = $sectionNameParam.Attributes | Where-Object { $_ -is [ArgumentCompleter] } | Select-Object -ExpandProperty ScriptBlock
+        }
+
+        It 'Returns matching section names' {
+            $results = InModuleScope PlexAutomationToolkit -Parameters @{ completer = $script:sectionNameCompleter } {
+                Mock Get-PatLibrary {
+                    return @{
+                        Directory = @(
+                            @{ title = 'Movies' }
+                            @{ title = 'TV Shows' }
+                            @{ title = 'Music' }
+                        )
+                    }
+                }
+
+                & $completer 'Search-PatMedia' 'SectionName' 'Mov' $null @{}
+            }
+            $results | Should -Not -BeNullOrEmpty
+        }
+
+        It 'Passes ServerUri when provided' {
+            InModuleScope PlexAutomationToolkit -Parameters @{ completer = $script:sectionNameCompleter } {
+                Mock Get-PatLibrary {
+                    return @{
+                        Directory = @(
+                            @{ title = 'Movies' }
+                        )
+                    }
+                }
+
+                $fakeBoundParams = @{ ServerUri = 'http://custom:32400' }
+                & $completer 'Search-PatMedia' 'SectionName' '' $null $fakeBoundParams
+
+                Should -Invoke Get-PatLibrary -ParameterFilter {
+                    $ServerUri -eq 'http://custom:32400'
+                }
+            }
+        }
+
+        It 'Handles errors gracefully' {
+            $results = InModuleScope PlexAutomationToolkit -Parameters @{ completer = $script:sectionNameCompleter } {
+                Mock Get-PatLibrary {
+                    throw 'Connection failed'
+                }
+
+                & $completer 'Search-PatMedia' 'SectionName' '' $null @{}
+            }
+            $results | Should -BeNullOrEmpty
+        }
+
+        It 'Filters sections by word to complete' {
+            $results = InModuleScope PlexAutomationToolkit -Parameters @{ completer = $script:sectionNameCompleter } {
+                Mock Get-PatLibrary {
+                    return @{
+                        Directory = @(
+                            @{ title = 'Movies' }
+                            @{ title = 'TV Shows' }
+                            @{ title = 'Music' }
+                        )
+                    }
+                }
+
+                & $completer 'Search-PatMedia' 'SectionName' 'Mu' $null @{}
+            }
+            $results | Should -Not -BeNullOrEmpty
+        }
+    }
+
+    Context 'SectionId argument completer' {
+        BeforeAll {
+            $command = Get-Command -Module PlexAutomationToolkit -Name Search-PatMedia
+            $sectionIdParam = $command.Parameters['SectionId']
+            $script:sectionIdCompleter = $sectionIdParam.Attributes | Where-Object { $_ -is [ArgumentCompleter] } | Select-Object -ExpandProperty ScriptBlock
+        }
+
+        It 'Returns matching section IDs' {
+            $results = InModuleScope PlexAutomationToolkit -Parameters @{ completer = $script:sectionIdCompleter } {
+                Mock Get-PatLibrary {
+                    return @{
+                        Directory = @(
+                            @{ key = '/library/sections/1'; title = 'Movies' }
+                            @{ key = '/library/sections/2'; title = 'TV Shows' }
+                            @{ key = '/library/sections/12'; title = 'Music' }
+                        )
+                    }
+                }
+
+                & $completer 'Search-PatMedia' 'SectionId' '1' $null @{}
+            }
+            $results | Should -Not -BeNullOrEmpty
+        }
+
+        It 'Passes ServerUri when provided' {
+            InModuleScope PlexAutomationToolkit -Parameters @{ completer = $script:sectionIdCompleter } {
+                Mock Get-PatLibrary {
+                    return @{
+                        Directory = @(
+                            @{ key = '/library/sections/1'; title = 'Movies' }
+                        )
+                    }
+                }
+
+                $fakeBoundParams = @{ ServerUri = 'http://custom:32400' }
+                & $completer 'Search-PatMedia' 'SectionId' '' $null $fakeBoundParams
+
+                Should -Invoke Get-PatLibrary -ParameterFilter {
+                    $ServerUri -eq 'http://custom:32400'
+                }
+            }
+        }
+
+        It 'Handles errors gracefully' {
+            $results = InModuleScope PlexAutomationToolkit -Parameters @{ completer = $script:sectionIdCompleter } {
+                Mock Get-PatLibrary {
+                    throw 'Connection failed'
+                }
+
+                & $completer 'Search-PatMedia' 'SectionId' '' $null @{}
+            }
+            $results | Should -BeNullOrEmpty
+        }
+
+        It 'Returns completion results with list item text and tooltip' {
+            $results = InModuleScope PlexAutomationToolkit -Parameters @{ completer = $script:sectionIdCompleter } {
+                Mock Get-PatLibrary {
+                    return @{
+                        Directory = @(
+                            @{ key = '/library/sections/1'; title = 'Movies' }
+                        )
+                    }
+                }
+
+                & $completer 'Search-PatMedia' 'SectionId' '' $null @{}
+            }
+            $results | Should -Not -BeNullOrEmpty
+        }
+    }
 }

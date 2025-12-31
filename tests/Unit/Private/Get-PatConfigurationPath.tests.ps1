@@ -96,6 +96,50 @@ Describe 'Get-PatConfigurationPath' {
         }
     }
 
+    Context 'OneDrive write access failure' -Skip:(-not $script:RunningOnWindows) {
+        It 'Should fall back to Documents when OneDrive write test throws IOException' {
+            # Set up OneDrive path
+            $env:OneDrive = 'C:\Users\TestUser\OneDrive'
+
+            $result = InModuleScope PlexAutomationToolkit {
+                # Mock New-Item to succeed (directory creation)
+                Mock New-Item { } -Verifiable
+
+                # Mock the static method call to throw IOException
+                # We can't easily mock [IO.File]::WriteAllText, but we can test the path
+                # by mocking New-Item to throw for OneDrive path specifically
+                Mock New-Item {
+                    throw [System.IO.IOException]::new("OneDrive is syncing")
+                } -ParameterFilter { $Path -like '*OneDrive*' }
+
+                # Mock New-Item to succeed for Documents path
+                Mock New-Item { } -ParameterFilter { $Path -like '*Documents*' -and $Path -notlike '*OneDrive*' }
+
+                Get-PatConfigurationPath
+            }
+
+            # Should have fallen back to Documents
+            $result | Should -BeLike "*Documents*PlexAutomationToolkit*servers.json"
+        }
+
+        It 'Should fall back to Documents when OneDrive write test throws other exception' {
+            $env:OneDrive = 'C:\Users\TestUser\OneDrive'
+
+            $result = InModuleScope PlexAutomationToolkit {
+                Mock New-Item {
+                    throw [System.UnauthorizedAccessException]::new("Access denied")
+                } -ParameterFilter { $Path -like '*OneDrive*' }
+
+                Mock New-Item { } -ParameterFilter { $Path -like '*Documents*' -and $Path -notlike '*OneDrive*' }
+
+                Get-PatConfigurationPath
+            }
+
+            # Should have fallen back to Documents
+            $result | Should -BeLike "*Documents*PlexAutomationToolkit*servers.json"
+        }
+    }
+
     Context 'Fallback to Documents folder' -Skip:(-not $script:RunningOnWindows) {
         It 'Should use Documents folder when OneDrive is not available' {
             # Temporarily remove OneDrive env variable
@@ -137,7 +181,52 @@ Describe 'Get-PatConfigurationPath' {
         }
     }
 
-    Context 'Final fallback to LocalAppData (Windows) or HOME (Unix)' {
+    Context 'Final fallback to LocalAppData (Windows)' -Skip:(-not $script:RunningOnWindows) {
+        It 'Should use LocalAppData when both OneDrive and Documents fail' {
+            $env:OneDrive = $null
+            $env:USERPROFILE = 'C:\Users\TestUser'
+            $env:LOCALAPPDATA = 'C:\Users\TestUser\AppData\Local'
+
+            $result = InModuleScope PlexAutomationToolkit {
+                # Mock New-Item to fail for Documents path
+                Mock New-Item {
+                    throw [System.UnauthorizedAccessException]::new("Documents not writable")
+                } -ParameterFilter { $Path -like '*Documents*' }
+
+                # Mock New-Item to succeed for LocalAppData path
+                Mock New-Item { } -ParameterFilter { $Path -like '*AppData\Local*' }
+
+                Get-PatConfigurationPath
+            }
+
+            # Should have fallen back to LocalAppData
+            $result | Should -Be 'C:\Users\TestUser\AppData\Local\PlexAutomationToolkit\servers.json'
+        }
+
+        It 'Should create LocalAppData directory when falling back' {
+            $env:OneDrive = $null
+            $env:USERPROFILE = 'C:\Users\TestUser'
+            $env:LOCALAPPDATA = 'C:\Users\TestUser\AppData\Local'
+
+            InModuleScope PlexAutomationToolkit {
+                $script:localAppDataNewItemCalled = $false
+
+                Mock New-Item {
+                    throw [System.IO.IOException]::new("Documents locked")
+                } -ParameterFilter { $Path -like '*Documents*' }
+
+                Mock New-Item {
+                    $script:localAppDataNewItemCalled = $true
+                } -ParameterFilter { $Path -like '*AppData\Local*' }
+
+                Get-PatConfigurationPath
+
+                $script:localAppDataNewItemCalled | Should -Be $true
+            }
+        }
+    }
+
+    Context 'Final fallback validation' {
         It 'Should use fallback location when primary paths are not available' {
             # This test verifies the function returns a valid path
             $result = InModuleScope PlexAutomationToolkit { Get-PatConfigurationPath }
@@ -215,6 +304,22 @@ Describe 'Get-PatConfigurationPath' {
             # Directory should exist (function creates it)
             $dir = Split-Path -Path $result -Parent
             Test-Path $dir | Should -Be $true
+        }
+
+        It 'Should fall back to GetFolderPath when HOME is not set' {
+            $originalHome = $env:HOME
+            try {
+                $env:HOME = $null
+
+                $result = InModuleScope PlexAutomationToolkit { Get-PatConfigurationPath }
+
+                # Should still return a valid path using GetFolderPath fallback
+                $result | Should -Not -BeNullOrEmpty
+                $result | Should -BeLike "*/.config/PlexAutomationToolkit/servers.json"
+            }
+            finally {
+                $env:HOME = $originalHome
+            }
         }
     }
 
