@@ -372,7 +372,12 @@ function Update-PatLibrary {
     if ($Path -and -not $SkipPathValidation) {
         Write-Verbose "Validating path: $Path"
         $testParams = @{ Path = $Path }
-        if ($effectiveUri) { $testParams['ServerUri'] = $effectiveUri }
+        # Only pass ServerUri/Token when NOT using default server, so Test-PatLibraryPath
+        # can retrieve the default server with its stored authentication token
+        if (-not $usingDefaultServer) {
+            if ($effectiveUri) { $testParams['ServerUri'] = $effectiveUri }
+            if ($Token) { $testParams['Token'] = $Token }
+        }
         if ($resolvedSectionId) { $testParams['SectionId'] = $resolvedSectionId }
 
         $pathValid = Test-PatLibraryPath @testParams

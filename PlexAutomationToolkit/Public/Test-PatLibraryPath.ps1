@@ -127,8 +127,8 @@ function Test-PatLibraryPath {
                     $normalizedRoot += '/'
                 }
 
-                # Check if path equals root or is under root
-                if ($normalizedPath -eq ($normalizedRoot.TrimEnd('/')) -or $normalizedPath.StartsWith($normalizedRoot)) {
+                # Check if path equals root or is under root (case-insensitive for cross-platform compatibility)
+                if ($normalizedPath -eq ($normalizedRoot.TrimEnd('/')) -or $normalizedPath.StartsWith($normalizedRoot, [StringComparison]::OrdinalIgnoreCase)) {
                     $isUnderRoot = $true
                     Write-Verbose "Path '$Path' is under library root '$($libPath.path)'"
                     break

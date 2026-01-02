@@ -241,4 +241,32 @@ Describe 'Test-PatLibraryPath' {
             }
         }
     }
+
+    Context 'Case-insensitive path matching' {
+        BeforeAll {
+            Mock -ModuleName PlexAutomationToolkit Get-PatLibraryPath {
+                return @(
+                    [PSCustomObject]@{
+                        id   = 1
+                        path = '/mnt/rar2fs/NAS5/Movies/TV'
+                    }
+                )
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Get-PatLibraryChildItem {
+                return @(
+                    [PSCustomObject]@{
+                        path  = '/mnt/rar2fs/nas5/movies/TV/The.Simpsons/S37'
+                        title = 'S37'
+                    }
+                )
+            }
+        }
+
+        It 'Returns true when path differs only in case from library root' {
+            # Library root is /mnt/rar2fs/NAS5/Movies/TV but user provides lowercase
+            $result = Test-PatLibraryPath -Path '/mnt/rar2fs/nas5/movies/TV/The.Simpsons/S37' -SectionId 2 -ServerUri 'http://plex.local:32400'
+            $result | Should -Be $true
+        }
+    }
 }
