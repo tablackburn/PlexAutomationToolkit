@@ -25,4 +25,7 @@
     'PSScriptAnalyzer' = @{
         Version = '1.24.0'
     }
+    'Microsoft.PowerShell.SecretManagement' = @{
+        Version = '1.1.2'
+    }
 }

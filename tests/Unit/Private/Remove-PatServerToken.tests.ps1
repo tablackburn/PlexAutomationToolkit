@@ -80,7 +80,7 @@ Describe 'Remove-PatServerToken' {
         }
     }
 
-    Context 'When vault is available and secret exists' -Skip:(-not (Get-Module -ListAvailable -Name 'Microsoft.PowerShell.SecretManagement')) {
+    Context 'When vault is available and secret exists' {
         # Note: Remove-Secret is a binary cmdlet that's difficult to mock directly
         # We test behavior instead of invocation
 
@@ -112,7 +112,7 @@ Describe 'Remove-PatServerToken' {
         }
     }
 
-    Context 'When vault is available but secret does not exist' -Skip:(-not (Get-Module -ListAvailable -Name 'Microsoft.PowerShell.SecretManagement')) {
+    Context 'When vault is available but secret does not exist' {
         It 'Does not attempt to remove secret' {
             InModuleScope PlexAutomationToolkit {
                 Mock Get-PatSecretManagementAvailable { $true }
@@ -126,7 +126,7 @@ Describe 'Remove-PatServerToken' {
         }
     }
 
-    Context 'When Remove-Secret throws an error' -Skip:(-not (Get-Module -ListAvailable -Name 'Microsoft.PowerShell.SecretManagement')) {
+    Context 'When Remove-Secret throws an error' {
         It 'Catches the error and emits a warning' {
             InModuleScope PlexAutomationToolkit {
                 Mock Get-PatSecretManagementAvailable { $true }
