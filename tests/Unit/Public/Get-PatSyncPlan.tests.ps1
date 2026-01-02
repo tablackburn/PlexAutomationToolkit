@@ -1001,7 +1001,7 @@ Describe 'Get-PatSyncPlan' {
         }
     }
 
-    Context 'Drive space detection failure' {
+    Context 'Drive space detection failure' -Skip:(-not $IsWindows) {
         BeforeAll {
             Mock -ModuleName PlexAutomationToolkit Get-PatPlaylist {
                 return [PSCustomObject]@{
