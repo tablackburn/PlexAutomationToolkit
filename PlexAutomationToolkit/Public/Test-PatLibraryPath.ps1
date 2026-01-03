@@ -89,26 +89,26 @@ function Test-PatLibraryPath {
     )
 
     # Build parameters for internal calls
-    $serverParams = @{}
+    $serverParameters = @{}
     if ($ServerUri) {
-        $serverParams['ServerUri'] = $ServerUri
+        $serverParameters['ServerUri'] = $ServerUri
     }
     if ($Token) {
-        $serverParams['Token'] = $Token
+        $serverParameters['Token'] = $Token
     }
 
     # If section is specified, validate path is under a configured root
     if ($SectionName -or $SectionId) {
         try {
-            $pathParams = $serverParams.Clone()
+            $pathParameters = $serverParameters.Clone()
             if ($SectionName) {
-                $pathParams['SectionName'] = $SectionName
+                $pathParameters['SectionName'] = $SectionName
             }
             else {
-                $pathParams['SectionId'] = $SectionId
+                $pathParameters['SectionId'] = $SectionId
             }
 
-            $libraryPaths = Get-PatLibraryPath @pathParams -ErrorAction 'Stop'
+            $libraryPaths = Get-PatLibraryPath @pathParameters -ErrorAction 'Stop'
 
             if (-not $libraryPaths) {
                 Write-Verbose "No configured paths found for the specified library section"
@@ -162,10 +162,10 @@ function Test-PatLibraryPath {
             $targetName = $null
         }
 
-        $browseParams = $serverParams.Clone()
-        $browseParams['Path'] = $parentPath
+        $browseParameters = $serverParameters.Clone()
+        $browseParameters['Path'] = $parentPath
 
-        $items = Get-PatLibraryChildItem @browseParams -ErrorAction 'Stop'
+        $items = Get-PatLibraryChildItem @browseParameters -ErrorAction 'Stop'
 
         if ($targetName) {
             # Check if the target exists in the parent directory

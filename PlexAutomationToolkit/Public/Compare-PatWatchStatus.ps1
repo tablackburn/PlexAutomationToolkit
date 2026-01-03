@@ -283,10 +283,10 @@ function Compare-PatWatchStatus {
             Write-Verbose "Found $($differences.Count) items with different watch status"
 
             if ($differences.Count -eq 0) {
-                $filterMsg = if ($WatchedOnSourceOnly) { " (filtered: watched on source only)" }
+                $filterMessage = if ($WatchedOnSourceOnly) { " (filtered: watched on source only)" }
                              elseif ($WatchedOnTargetOnly) { " (filtered: watched on target only)" }
                              else { "" }
-                Write-Information "Watch status is in sync between '$SourceServerName' and '$TargetServerName'$filterMsg" -InformationAction Continue
+                Write-Information "Watch status is in sync between '$SourceServerName' and '$TargetServerName'$filterMessage" -InformationAction Continue
             }
             else {
                 Write-Information "Found $($differences.Count) items with different watch status" -InformationAction Continue

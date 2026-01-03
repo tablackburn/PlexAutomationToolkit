@@ -121,9 +121,9 @@ function Add-PatCollectionItem {
 
         # Get machine identifier for URI construction
         try {
-            $serverInfoUri = Join-PatUri -BaseUri $effectiveUri -Endpoint '/'
-            $serverInfo = Invoke-PatApi -Uri $serverInfoUri -Headers $headers -ErrorAction 'Stop'
-            $machineIdentifier = $serverInfo.machineIdentifier
+            $serverInformationUri = Join-PatUri -BaseUri $effectiveUri -Endpoint '/'
+            $serverInformation = Invoke-PatApi -Uri $serverInformationUri -Headers $headers -ErrorAction 'Stop'
+            $machineIdentifier = $serverInformation.machineIdentifier
             Write-Verbose "Server machine identifier: $machineIdentifier"
         }
         catch {
@@ -131,36 +131,36 @@ function Add-PatCollectionItem {
         }
 
         $resolvedId = $CollectionId
-        $collectionInfo = $null
+        $collectionInformation = $null
 
         if ($PSCmdlet.ParameterSetName -like 'ByName*') {
             # Only pass ServerUri if explicitly specified, otherwise let Get-PatCollection use default server with auth
-            $getParams = @{
+            $getParameters = @{
                 CollectionName = $CollectionName
                 ErrorAction    = 'Stop'
             }
-            if ($script:serverContext.WasExplicitUri) { $getParams['ServerUri'] = $effectiveUri }
+            if ($script:serverContext.WasExplicitUri) { $getParameters['ServerUri'] = $effectiveUri }
             if ($LibraryName) {
-                $getParams['LibraryName'] = $LibraryName
+                $getParameters['LibraryName'] = $LibraryName
             }
             else {
-                $getParams['LibraryId'] = $LibraryId
+                $getParameters['LibraryId'] = $LibraryId
             }
 
-            $collection = Get-PatCollection @getParams
+            $collection = Get-PatCollection @getParameters
             if (-not $collection) {
                 $libDesc = if ($LibraryName) { "library '$LibraryName'" } else { "library $LibraryId" }
                 throw "No collection found with name '$CollectionName' in $libDesc"
             }
             $resolvedId = $collection.CollectionId
-            $collectionInfo = $collection
+            $collectionInformation = $collection
         }
         else {
             try {
                 # Only pass ServerUri if explicitly specified, otherwise let Get-PatCollection use default server with auth
-                $getParams = @{ CollectionId = $CollectionId; ErrorAction = 'Stop' }
-                if ($script:serverContext.WasExplicitUri) { $getParams['ServerUri'] = $effectiveUri }
-                $collectionInfo = Get-PatCollection @getParams
+                $getParameters = @{ CollectionId = $CollectionId; ErrorAction = 'Stop' }
+                if ($script:serverContext.WasExplicitUri) { $getParameters['ServerUri'] = $effectiveUri }
+                $collectionInformation = Get-PatCollection @getParameters
             }
             catch {
                 Write-Verbose "Could not retrieve collection info for ID $CollectionId"
@@ -182,8 +182,8 @@ function Add-PatCollectionItem {
             return
         }
 
-        $collectionDesc = if ($collectionInfo) {
-            "'$($collectionInfo.Title)'"
+        $collectionDesc = if ($collectionInformation) {
+            "'$($collectionInformation.Title)'"
         }
         else {
             "Collection $resolvedId"
@@ -212,9 +212,9 @@ function Add-PatCollectionItem {
 
             if ($PassThru) {
                 # Only pass ServerUri if explicitly specified
-                $getParams = @{ CollectionId = $resolvedId; ErrorAction = 'Stop' }
-                if ($script:serverContext.WasExplicitUri) { $getParams['ServerUri'] = $effectiveUri }
-                Get-PatCollection @getParams
+                $getParameters = @{ CollectionId = $resolvedId; ErrorAction = 'Stop' }
+                if ($script:serverContext.WasExplicitUri) { $getParameters['ServerUri'] = $effectiveUri }
+                Get-PatCollection @getParameters
             }
         }
         catch {

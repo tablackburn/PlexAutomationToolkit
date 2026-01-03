@@ -224,16 +224,16 @@ function Update-PatLibrary {
     # Pre-validation: Check if path exists (default behavior, skip with -SkipPathValidation)
     if ($Path -and -not $SkipPathValidation) {
         Write-Verbose "Validating path: $Path"
-        $testParams = @{ Path = $Path }
+        $testParameters = @{ Path = $Path }
         # Only pass ServerUri/Token when NOT using default server, so Test-PatLibraryPath
         # can retrieve the default server with its stored authentication token
         if (-not $usingDefaultServer) {
-            if ($effectiveUri) { $testParams['ServerUri'] = $effectiveUri }
-            if ($Token) { $testParams['Token'] = $Token }
+            if ($effectiveUri) { $testParameters['ServerUri'] = $effectiveUri }
+            if ($Token) { $testParameters['Token'] = $Token }
         }
-        if ($resolvedSectionId) { $testParams['SectionId'] = $resolvedSectionId }
+        if ($resolvedSectionId) { $testParameters['SectionId'] = $resolvedSectionId }
 
-        $pathValid = Test-PatLibraryPath @testParams
+        $pathValid = Test-PatLibraryPath @testParameters
         if (-not $pathValid) {
             throw "Path validation failed: '$Path' does not exist or is not within the library's configured paths. Use -SkipPathValidation to bypass this check."
         }
@@ -244,9 +244,9 @@ function Update-PatLibrary {
     $beforeItems = $null
     if ($ReportChanges) {
         Write-Verbose "Capturing library state before scan"
-        $getItemParams = @{ SectionId = $resolvedSectionId }
-        if ($effectiveUri) { $getItemParams['ServerUri'] = $effectiveUri }
-        $beforeItems = @(Get-PatLibraryItem @getItemParams -ErrorAction 'SilentlyContinue')
+        $getItemParameters = @{ SectionId = $resolvedSectionId }
+        if ($effectiveUri) { $getItemParameters['ServerUri'] = $effectiveUri }
+        $beforeItems = @(Get-PatLibraryItem @getItemParameters -ErrorAction 'SilentlyContinue')
         Write-Verbose "Captured $($beforeItems.Count) items before scan"
     }
 
@@ -286,23 +286,23 @@ function Update-PatLibrary {
             # Wait for scan to complete if requested
             if ($Wait -or $ReportChanges) {
                 Write-Verbose "Waiting for scan to complete (timeout: ${Timeout}s)"
-                $waitParams = @{
+                $waitParameters = @{
                     SectionId       = $resolvedSectionId
                     Timeout         = $Timeout
                     PollingInterval = 2
                 }
-                if ($effectiveUri) { $waitParams['ServerUri'] = $effectiveUri }
+                if ($effectiveUri) { $waitParameters['ServerUri'] = $effectiveUri }
 
-                Wait-PatLibraryScan @waitParams
+                Wait-PatLibraryScan @waitParameters
                 Write-Verbose "Scan completed"
             }
 
             # Report changes if requested
             if ($ReportChanges) {
                 Write-Verbose "Capturing library state after scan"
-                $getItemParams = @{ SectionId = $resolvedSectionId }
-                if ($effectiveUri) { $getItemParams['ServerUri'] = $effectiveUri }
-                $afterItems = @(Get-PatLibraryItem @getItemParams -ErrorAction 'SilentlyContinue')
+                $getItemParameters = @{ SectionId = $resolvedSectionId }
+                if ($effectiveUri) { $getItemParameters['ServerUri'] = $effectiveUri }
+                $afterItems = @(Get-PatLibraryItem @getItemParameters -ErrorAction 'SilentlyContinue')
                 Write-Verbose "Captured $($afterItems.Count) items after scan"
 
                 $changes = Compare-PatLibraryContent -Before $beforeItems -After $afterItems

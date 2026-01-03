@@ -109,7 +109,7 @@ function Get-PatSyncPlan {
             Write-Verbose "Resolved destination path: $resolvedDestination"
 
             # Get the playlist
-            $playlistParams = @{
+            $playlistParameters = @{
                 IncludeItems = $true
                 ErrorAction  = 'Stop'
             }
@@ -117,21 +117,21 @@ function Get-PatSyncPlan {
                 # Using default server, don't pass ServerUri
             }
             elseif ($ServerUri) {
-                $playlistParams['ServerUri'] = $ServerUri
+                $playlistParameters['ServerUri'] = $ServerUri
                 if ($Token) {
-                    $playlistParams['Token'] = $Token
+                    $playlistParameters['Token'] = $Token
                 }
             }
 
             if ($PlaylistId) {
-                $playlistParams['PlaylistId'] = $PlaylistId
+                $playlistParameters['PlaylistId'] = $PlaylistId
             }
             else {
-                $playlistParams['PlaylistName'] = $PlaylistName
+                $playlistParameters['PlaylistName'] = $PlaylistName
             }
 
             Write-Verbose "Retrieving playlist..."
-            $playlist = Get-PatPlaylist @playlistParams
+            $playlist = Get-PatPlaylist @playlistParameters
 
             if (-not $playlist) {
                 throw "Playlist not found"
@@ -142,7 +142,7 @@ function Get-PatSyncPlan {
             # Get media info for each playlist item (cache results to avoid redundant API calls)
             $addOperations = @()
             $totalBytesToDownload = 0
-            $mediaInfoCache = @{}
+            $mediaInformationCache = @{}
 
             if ($playlist.Items -and $playlist.Items.Count -gt 0) {
                 $itemCount = 0
@@ -150,29 +150,29 @@ function Get-PatSyncPlan {
                     $itemCount++
                     Write-Verbose "Analyzing item $itemCount of $($playlist.Items.Count): $($item.Title)"
 
-                    $mediaInfoParams = @{
+                    $mediaInformationParameters = @{
                         RatingKey   = $item.RatingKey
                         ErrorAction = 'Stop'
                     }
                     if ($ServerUri) {
-                        $mediaInfoParams['ServerUri'] = $ServerUri
+                        $mediaInformationParameters['ServerUri'] = $ServerUri
                     }
                     if ($Token) {
-                        $mediaInfoParams['Token'] = $Token
+                        $mediaInformationParameters['Token'] = $Token
                     }
 
-                    $mediaInfo = Get-PatMediaInfo @mediaInfoParams
+                    $mediaInformation = Get-PatMediaInfo @mediaInformationParameters
 
                     # Cache media info for reuse when building expected paths
-                    $mediaInfoCache[$item.RatingKey] = $mediaInfo
+                    $mediaInformationCache[$item.RatingKey] = $mediaInformation
 
-                    if (-not $mediaInfo.Media -or $mediaInfo.Media.Count -eq 0) {
+                    if (-not $mediaInformation.Media -or $mediaInformation.Media.Count -eq 0) {
                         Write-Warning "No media files found for '$($item.Title)'"
                         continue
                     }
 
                     # Use the first media version (default behavior)
-                    $media = $mediaInfo.Media[0]
+                    $media = $mediaInformation.Media[0]
                     if (-not $media.Part -or $media.Part.Count -eq 0) {
                         Write-Warning "No media parts found for '$($item.Title)'"
                         continue
@@ -182,7 +182,7 @@ function Get-PatSyncPlan {
 
                     # Determine destination path
                     $extension = if ($part.Container) { $part.Container } else { 'mkv' }
-                    $destPath = Get-PatMediaPath -MediaInfo $mediaInfo -BasePath $resolvedDestination -Extension $extension
+                    $destPath = Get-PatMediaPath -MediaInfo $mediaInformation -BasePath $resolvedDestination -Extension $extension
 
                     # Check if file already exists with correct size
                     $needsDownload = $true
@@ -206,13 +206,13 @@ function Get-PatSyncPlan {
 
                         $addOperations += [PSCustomObject]@{
                             PSTypeName      = 'PlexAutomationToolkit.SyncAddOperation'
-                            RatingKey       = $mediaInfo.RatingKey
-                            Title           = $mediaInfo.Title
-                            Type            = $mediaInfo.Type
-                            Year            = $mediaInfo.Year
-                            GrandparentTitle = $mediaInfo.GrandparentTitle
-                            ParentIndex     = $mediaInfo.ParentIndex
-                            Index           = $mediaInfo.Index
+                            RatingKey       = $mediaInformation.RatingKey
+                            Title           = $mediaInformation.Title
+                            Type            = $mediaInformation.Type
+                            Year            = $mediaInformation.Year
+                            GrandparentTitle = $mediaInformation.GrandparentTitle
+                            ParentIndex     = $mediaInformation.ParentIndex
+                            Index           = $mediaInformation.Index
                             DestinationPath = $destPath
                             MediaSize       = $part.Size
                             SubtitleCount   = $subtitleCount
@@ -242,12 +242,12 @@ function Get-PatSyncPlan {
             if ($playlist.Items) {
                 foreach ($item in $playlist.Items) {
                     # Use cached media info instead of making another API call
-                    $mediaInfo = $mediaInfoCache[$item.RatingKey]
-                    if ($mediaInfo -and $mediaInfo.Media -and $mediaInfo.Media.Count -gt 0) {
-                        $media = $mediaInfo.Media[0]
+                    $mediaInformation = $mediaInformationCache[$item.RatingKey]
+                    if ($mediaInformation -and $mediaInformation.Media -and $mediaInformation.Media.Count -gt 0) {
+                        $media = $mediaInformation.Media[0]
                         if ($media.Part -and $media.Part.Count -gt 0) {
                             $extension = if ($media.Part[0].Container) { $media.Part[0].Container } else { 'mkv' }
-                            $destPath = Get-PatMediaPath -MediaInfo $mediaInfo -BasePath $resolvedDestination -Extension $extension
+                            $destPath = Get-PatMediaPath -MediaInfo $mediaInformation -BasePath $resolvedDestination -Extension $extension
                             $expectedPaths[$destPath] = $true
                         }
                     }
@@ -301,11 +301,11 @@ function Get-PatSyncPlan {
                 }
                 else {
                     # For UNC paths or when drive info isn't available, try filesystem info
-                    $driveInfo = [System.IO.DriveInfo]::GetDrives() |
+                    $driveInformation = [System.IO.DriveInfo]::GetDrives() |
                         Where-Object { $resolvedDestination.StartsWith($_.Name, [StringComparison]::OrdinalIgnoreCase) } |
                         Select-Object -First 1
-                    if ($driveInfo) {
-                        $destinationFree = $driveInfo.AvailableFreeSpace
+                    if ($driveInformation) {
+                        $destinationFree = $driveInformation.AvailableFreeSpace
                     }
                 }
             }

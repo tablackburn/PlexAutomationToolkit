@@ -130,11 +130,11 @@ function Stop-PatSession {
         Write-Verbose "Terminating session $SessionId on $effectiveUri"
 
         # Get session details for ShouldProcess message and PassThru
-        $sessionInfo = $null
+        $sessionInformation = $null
         if ($PassThru -or $PSCmdlet.ShouldProcess) {
             try {
                 $sessions = Get-PatSession -ServerUri $effectiveUri
-                $sessionInfo = $sessions | Where-Object { $_.SessionId -eq $SessionId }
+                $sessionInformation = $sessions | Where-Object { $_.SessionId -eq $SessionId }
             }
             catch {
                 Write-Verbose "Could not retrieve session details: $($_.Exception.Message)"
@@ -142,8 +142,8 @@ function Stop-PatSession {
         }
 
         # Build descriptive target for ShouldProcess
-        $target = if ($sessionInfo) {
-            "'$($sessionInfo.MediaTitle)' by $($sessionInfo.Username) on $($sessionInfo.PlayerName)"
+        $target = if ($sessionInformation) {
+            "'$($sessionInformation.MediaTitle)' by $($sessionInformation.Username) on $($sessionInformation.PlayerName)"
         }
         else {
             "Session $SessionId"
@@ -153,13 +153,13 @@ function Stop-PatSession {
             # Build the termination endpoint
             # Plex uses /status/sessions/terminate with sessionId and reason as query params
             $endpoint = '/status/sessions/terminate'
-            $queryParams = "sessionId=$([System.Uri]::EscapeDataString($SessionId))"
+            $queryParameters = "sessionId=$([System.Uri]::EscapeDataString($SessionId))"
 
             if ($Reason) {
-                $queryParams += "&reason=$([System.Uri]::EscapeDataString($Reason))"
+                $queryParameters += "&reason=$([System.Uri]::EscapeDataString($Reason))"
             }
 
-            $uri = Join-PatUri -BaseUri $effectiveUri -Endpoint $endpoint -QueryString $queryParams
+            $uri = Join-PatUri -BaseUri $effectiveUri -Endpoint $endpoint -QueryString $queryParameters
 
             try {
                 Invoke-PatApi -Uri $uri -Method 'Get' -Headers $headers -ErrorAction 'Stop'
@@ -169,8 +169,8 @@ function Stop-PatSession {
                 throw "Failed to terminate session: $($_.Exception.Message)"
             }
 
-            if ($PassThru -and $sessionInfo) {
-                $sessionInfo
+            if ($PassThru -and $sessionInformation) {
+                $sessionInformation
             }
         }
     }

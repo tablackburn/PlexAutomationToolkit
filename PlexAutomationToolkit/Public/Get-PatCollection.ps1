@@ -159,12 +159,12 @@ function Get-PatCollection {
                 $libName = $null
                 $libId = [int]$apiResult.librarySectionID
                 if (-not $script:libraryCache) {
-                    $libParams = @{ ErrorAction = 'SilentlyContinue' }
+                    $libraryParameters = @{ ErrorAction = 'SilentlyContinue' }
                     if ($script:serverContext.WasExplicitUri) {
-                        $libParams['ServerUri'] = $effectiveUri
-                        if ($script:serverContext.Token) { $libParams['Token'] = $script:serverContext.Token }
+                        $libraryParameters['ServerUri'] = $effectiveUri
+                        if ($script:serverContext.Token) { $libraryParameters['Token'] = $script:serverContext.Token }
                     }
-                    $script:libraryCache = Get-PatLibrary @libParams
+                    $script:libraryCache = Get-PatLibrary @libraryParameters
                 }
                 if ($script:libraryCache -and $script:libraryCache.Directory) {
                     $lib = $script:libraryCache.Directory | Where-Object { [int]$_.key -eq $libId }
@@ -231,12 +231,12 @@ function Get-PatCollection {
 
             if ($LibraryName -or $LibraryId) {
                 if (-not $script:libraryCache) {
-                    $libParams = @{ ErrorAction = 'Stop' }
+                    $libraryParameters = @{ ErrorAction = 'Stop' }
                     if ($script:serverContext.WasExplicitUri) {
-                        $libParams['ServerUri'] = $effectiveUri
-                        if ($script:serverContext.Token) { $libParams['Token'] = $script:serverContext.Token }
+                        $libraryParameters['ServerUri'] = $effectiveUri
+                        if ($script:serverContext.Token) { $libraryParameters['Token'] = $script:serverContext.Token }
                     }
-                    $script:libraryCache = Get-PatLibrary @libParams
+                    $script:libraryCache = Get-PatLibrary @libraryParameters
                 }
 
                 if ($LibraryName) {
@@ -258,12 +258,12 @@ function Get-PatCollection {
             else {
                 # No library specified - get all libraries
                 if (-not $script:libraryCache) {
-                    $libParams = @{ ErrorAction = 'Stop' }
+                    $libraryParameters = @{ ErrorAction = 'Stop' }
                     if ($script:serverContext.WasExplicitUri) {
-                        $libParams['ServerUri'] = $effectiveUri
-                        if ($script:serverContext.Token) { $libParams['Token'] = $script:serverContext.Token }
+                        $libraryParameters['ServerUri'] = $effectiveUri
+                        if ($script:serverContext.Token) { $libraryParameters['Token'] = $script:serverContext.Token }
                     }
-                    $script:libraryCache = Get-PatLibrary @libParams
+                    $script:libraryCache = Get-PatLibrary @libraryParameters
                 }
 
                 if ($script:libraryCache -and $script:libraryCache.Directory) {

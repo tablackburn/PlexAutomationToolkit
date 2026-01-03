@@ -191,7 +191,7 @@ function Get-PatMediaInfo {
             }
 
             # Build the final MediaInfo object
-            $mediaInfo = [PSCustomObject]@{
+            $mediaInformation = [PSCustomObject]@{
                 PSTypeName       = 'PlexAutomationToolkit.MediaInfo'
                 RatingKey        = [int]$metadata.ratingKey
                 Key              = $metadata.key
@@ -221,7 +221,7 @@ function Get-PatMediaInfo {
                 ServerUri        = $effectiveUri
             }
 
-            $mediaInfo
+            $mediaInformation
         }
         catch {
             throw "Failed to get media info for ratingKey $RatingKey`: $($_.Exception.Message)"

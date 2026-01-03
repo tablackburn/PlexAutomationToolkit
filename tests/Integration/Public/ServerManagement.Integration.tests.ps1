@@ -69,7 +69,7 @@ Describe 'Add-PatServer Integration Tests' -Skip:(-not $script:integrationEnable
             $result = Get-PatStoredServer -Name 'IntegrationTest-WithToken'
             $result | Should -Not -BeNullOrEmpty
             # Token may be in vault (tokenInVault=true) or inline - use Get-PatServerToken to retrieve
-            $actualToken = InModuleScope PlexAutomationToolkit { Get-PatServerToken -ServerConfig $args[0] } -ArgumentList $result
+            $actualToken = InModuleScope PlexAutomationToolkit { Get-PatServerToken -ServerConfiguration $args[0] } -ArgumentList $result
             $actualToken | Should -Be $env:PLEX_TOKEN
         }
 

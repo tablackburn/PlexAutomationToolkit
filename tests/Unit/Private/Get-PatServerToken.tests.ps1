@@ -30,7 +30,7 @@ Describe 'Get-PatServerToken' {
                 uri  = 'http://test:32400'
             }
 
-            $token = Get-PatServerToken -ServerConfig $server
+            $token = Get-PatServerToken -ServerConfiguration $server
             $token | Should -Be 'vault-token-123'
         }
 
@@ -53,7 +53,7 @@ Describe 'Get-PatServerToken' {
                 token = 'inline-token-456'
             }
 
-            $token = Get-PatServerToken -ServerConfig $server
+            $token = Get-PatServerToken -ServerConfiguration $server
             $token | Should -Be 'inline-token-456'
         }
 
@@ -63,7 +63,7 @@ Describe 'Get-PatServerToken' {
                 uri  = 'http://test:32400'
             }
 
-            $token = Get-PatServerToken -ServerConfig $server
+            $token = Get-PatServerToken -ServerConfiguration $server
             $token | Should -BeNullOrEmpty
         }
     }
@@ -80,7 +80,7 @@ Describe 'Get-PatServerToken' {
                 token = 'inline-token-789'
             }
 
-            $token = Get-PatServerToken -ServerConfig $server
+            $token = Get-PatServerToken -ServerConfiguration $server
             $token | Should -Be 'inline-token-789'
         }
 
@@ -90,7 +90,7 @@ Describe 'Get-PatServerToken' {
                 uri  = 'http://test:32400'
             }
 
-            $token = Get-PatServerToken -ServerConfig $server
+            $token = Get-PatServerToken -ServerConfiguration $server
             $token | Should -BeNullOrEmpty
         }
     }
@@ -107,7 +107,7 @@ Describe 'Get-PatServerToken' {
                 token = ''
             }
 
-            $token = Get-PatServerToken -ServerConfig $server
+            $token = Get-PatServerToken -ServerConfiguration $server
             $token | Should -BeNullOrEmpty
         }
 
@@ -118,7 +118,7 @@ Describe 'Get-PatServerToken' {
                 token = '   '
             }
 
-            $token = Get-PatServerToken -ServerConfig $server
+            $token = Get-PatServerToken -ServerConfiguration $server
             $token | Should -BeNullOrEmpty
         }
     }

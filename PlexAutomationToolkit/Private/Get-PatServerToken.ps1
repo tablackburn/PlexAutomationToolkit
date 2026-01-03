@@ -38,10 +38,10 @@ function Get-PatServerToken {
         [Parameter(Mandatory = $true, ParameterSetName = 'ByConfig')]
         [ValidateNotNull()]
         [PSCustomObject]
-        $ServerConfig
+        $ServerConfiguration
     )
 
-    $name = if ($ServerConfig) { $ServerConfig.name } else { $ServerName }
+    $name = if ($ServerConfiguration) { $ServerConfiguration.name } else { $ServerName }
     $secretName = "PlexAutomationToolkit/$name"
 
     # Try vault first if SecretManagement is available
@@ -59,11 +59,11 @@ function Get-PatServerToken {
     }
 
     # Fall back to inline token if ServerConfig provided
-    if ($ServerConfig -and
-        $ServerConfig.PSObject.Properties['token'] -and
-        -not [string]::IsNullOrWhiteSpace($ServerConfig.token)) {
+    if ($ServerConfiguration -and
+        $ServerConfiguration.PSObject.Properties['token'] -and
+        -not [string]::IsNullOrWhiteSpace($ServerConfiguration.token)) {
         Write-Debug "Using inline token for server '$name'"
-        return $ServerConfig.token
+        return $ServerConfiguration.token
     }
 
     Write-Debug "No token found for server '$name'"

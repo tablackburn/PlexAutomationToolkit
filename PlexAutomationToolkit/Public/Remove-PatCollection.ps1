@@ -118,44 +118,44 @@ function Remove-PatCollection {
     process {
         try {
             $resolvedId = $CollectionId
-            $collectionInfo = $null
+            $collectionInformation = $null
 
             if ($PSCmdlet.ParameterSetName -like 'ByName*') {
                 # Only pass ServerUri if explicitly specified, otherwise let Get-PatCollection use default server with auth
-                $getParams = @{
+                $getParameters = @{
                     CollectionName = $CollectionName
                     ErrorAction    = 'Stop'
                 }
-                if ($script:serverContext.WasExplicitUri) { $getParams['ServerUri'] = $effectiveUri }
+                if ($script:serverContext.WasExplicitUri) { $getParameters['ServerUri'] = $effectiveUri }
                 if ($LibraryName) {
-                    $getParams['LibraryName'] = $LibraryName
+                    $getParameters['LibraryName'] = $LibraryName
                 }
                 else {
-                    $getParams['LibraryId'] = $LibraryId
+                    $getParameters['LibraryId'] = $LibraryId
                 }
 
-                $collection = Get-PatCollection @getParams
+                $collection = Get-PatCollection @getParameters
                 if (-not $collection) {
                     $libDesc = if ($LibraryName) { "library '$LibraryName'" } else { "library $LibraryId" }
                     throw "No collection found with name '$CollectionName' in $libDesc"
                 }
                 $resolvedId = $collection.CollectionId
-                $collectionInfo = $collection
+                $collectionInformation = $collection
             }
             else {
                 try {
                     # Only pass ServerUri if explicitly specified, otherwise let Get-PatCollection use default server with auth
-                    $getParams = @{ CollectionId = $CollectionId; ErrorAction = 'Stop' }
-                    if ($script:serverContext.WasExplicitUri) { $getParams['ServerUri'] = $effectiveUri }
-                    $collectionInfo = Get-PatCollection @getParams
+                    $getParameters = @{ CollectionId = $CollectionId; ErrorAction = 'Stop' }
+                    if ($script:serverContext.WasExplicitUri) { $getParameters['ServerUri'] = $effectiveUri }
+                    $collectionInformation = Get-PatCollection @getParameters
                 }
                 catch {
                     Write-Verbose "Could not retrieve collection info for ID $CollectionId"
                 }
             }
 
-            $target = if ($collectionInfo) {
-                "'$($collectionInfo.Title)' (ID: $resolvedId, $($collectionInfo.ItemCount) items)"
+            $target = if ($collectionInformation) {
+                "'$($collectionInformation.Title)' (ID: $resolvedId, $($collectionInformation.ItemCount) items)"
             }
             else {
                 "Collection ID $resolvedId"
@@ -169,8 +169,8 @@ function Remove-PatCollection {
 
                 $null = Invoke-PatApi -Uri $uri -Method 'DELETE' -Headers $headers -ErrorAction 'Stop'
 
-                if ($PassThru -and $collectionInfo) {
-                    $collectionInfo
+                if ($PassThru -and $collectionInformation) {
+                    $collectionInformation
                 }
             }
         }

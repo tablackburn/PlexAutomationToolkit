@@ -33,8 +33,8 @@ function Remove-PatServerToken {
     if (Get-PatSecretManagementAvailable) {
         try {
             # Check if secret exists using Get-SecretInfo (doesn't expose the actual secret)
-            $secretInfo = Get-SecretInfo -Name $secretName -ErrorAction SilentlyContinue
-            if ($secretInfo) {
+            $secretInformation = Get-SecretInfo -Name $secretName -ErrorAction SilentlyContinue
+            if ($secretInformation) {
                 Remove-Secret -Name $secretName -ErrorAction Stop
                 Write-Debug "Removed token from vault for server '$ServerName'"
             }

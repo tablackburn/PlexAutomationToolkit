@@ -114,9 +114,9 @@ function New-PatCollection {
 
         # Get machine identifier for URI construction
         try {
-            $serverInfoUri = Join-PatUri -BaseUri $effectiveUri -Endpoint '/'
-            $serverInfo = Invoke-PatApi -Uri $serverInfoUri -Headers $headers -ErrorAction 'Stop'
-            $machineIdentifier = $serverInfo.machineIdentifier
+            $serverInformationUri = Join-PatUri -BaseUri $effectiveUri -Endpoint '/'
+            $serverInformation = Invoke-PatApi -Uri $serverInformationUri -Headers $headers -ErrorAction 'Stop'
+            $machineIdentifier = $serverInformation.machineIdentifier
             Write-Verbose "Server machine identifier: $machineIdentifier"
         }
         catch {
@@ -129,9 +129,9 @@ function New-PatCollection {
         $resolvedLibraryType = $null
 
         if ($PSCmdlet.ParameterSetName -eq 'ByLibraryName') {
-            $libParams = @{ ErrorAction = 'Stop' }
-            if ($script:serverContext.WasExplicitUri) { $libParams['ServerUri'] = $effectiveUri }
-            $libraries = Get-PatLibrary @libParams
+            $libraryParameters = @{ ErrorAction = 'Stop' }
+            if ($script:serverContext.WasExplicitUri) { $libraryParameters['ServerUri'] = $effectiveUri }
+            $libraries = Get-PatLibrary @libraryParameters
             $matchedLib = $libraries.Directory | Where-Object { $_.title -eq $LibraryName }
             if (-not $matchedLib) {
                 throw "No library found with name '$LibraryName'"
@@ -142,9 +142,9 @@ function New-PatCollection {
             Write-Verbose "Resolved library '$LibraryName' to ID $resolvedLibraryId (type: $resolvedLibraryType)"
         }
         else {
-            $libParams = @{ ErrorAction = 'SilentlyContinue' }
-            if ($script:serverContext.WasExplicitUri) { $libParams['ServerUri'] = $effectiveUri }
-            $libraries = Get-PatLibrary @libParams
+            $libraryParameters = @{ ErrorAction = 'SilentlyContinue' }
+            if ($script:serverContext.WasExplicitUri) { $libraryParameters['ServerUri'] = $effectiveUri }
+            $libraries = Get-PatLibrary @libraryParameters
             if ($libraries -and $libraries.Directory) {
                 $matchedLib = $libraries.Directory | Where-Object { [int]$_.key -eq $LibraryId }
                 if ($matchedLib) {

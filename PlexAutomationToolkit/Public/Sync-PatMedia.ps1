@@ -170,25 +170,25 @@ function Sync-PatMedia {
     process {
         try {
             # Get the sync plan
-            $syncPlanParams = @{
+            $syncPlanParameters = @{
                 Destination = $Destination
                 ErrorAction = 'Stop'
             }
             if ($ServerUri) {
-                $syncPlanParams['ServerUri'] = $ServerUri
+                $syncPlanParameters['ServerUri'] = $ServerUri
             }
             if ($Token) {
-                $syncPlanParams['Token'] = $Token
+                $syncPlanParameters['Token'] = $Token
             }
             if ($PlaylistId) {
-                $syncPlanParams['PlaylistId'] = $PlaylistId
+                $syncPlanParameters['PlaylistId'] = $PlaylistId
             }
             else {
-                $syncPlanParams['PlaylistName'] = $PlaylistName
+                $syncPlanParameters['PlaylistName'] = $PlaylistName
             }
 
             Write-Verbose "Generating sync plan..."
-            $syncPlan = Get-PatSyncPlan @syncPlanParams
+            $syncPlan = Get-PatSyncPlan @syncPlanParameters
 
             # Display summary
             $downloadSizeGB = [math]::Round($syncPlan.BytesToDownload / 1GB, 2)
@@ -259,7 +259,7 @@ function Sync-PatMedia {
                 $effectiveToken = if ($Token) {
                     $Token
                 } elseif ($server) {
-                    Get-PatServerToken -ServerConfig $server
+                    Get-PatServerToken -ServerConfiguration $server
                 } else {
                     $null
                 }
@@ -290,7 +290,7 @@ function Sync-PatMedia {
                     Write-Verbose "Downloading: $($addOp.DestinationPath)"
 
                     try {
-                        $downloadParams = @{
+                        $downloadParameters = @{
                             Uri          = $downloadUrl
                             OutFile      = $addOp.DestinationPath
                             ExpectedSize = $addOp.MediaSize
@@ -298,28 +298,28 @@ function Sync-PatMedia {
                             ErrorAction  = 'Stop'
                         }
                         if ($effectiveToken) {
-                            $downloadParams['Token'] = $effectiveToken
+                            $downloadParameters['Token'] = $effectiveToken
                         }
-                        Invoke-PatFileDownload @downloadParams | Out-Null
+                        Invoke-PatFileDownload @downloadParameters | Out-Null
 
                         # Download subtitles if requested
                         if (-not $SkipSubtitles -and $addOp.SubtitleCount -gt 0) {
                             # Get full media info to get subtitle streams
-                            $mediaInfoParams = @{
+                            $mediaInformationParameters = @{
                                 RatingKey   = $addOp.RatingKey
                                 ErrorAction = 'Stop'
                             }
                             if ($ServerUri) {
-                                $mediaInfoParams['ServerUri'] = $ServerUri
+                                $mediaInformationParameters['ServerUri'] = $ServerUri
                             }
                             if ($Token) {
-                                $mediaInfoParams['Token'] = $Token
+                                $mediaInformationParameters['Token'] = $Token
                             }
 
-                            $mediaInfo = Get-PatMediaInfo @mediaInfoParams
+                            $mediaInformation = Get-PatMediaInfo @mediaInformationParameters
 
-                            if ($mediaInfo.Media -and $mediaInfo.Media[0].Part) {
-                                $subtitleStreams = $mediaInfo.Media[0].Part[0].Streams |
+                            if ($mediaInformation.Media -and $mediaInformation.Media[0].Part) {
+                                $subtitleStreams = $mediaInformation.Media[0].Part[0].Streams |
                                     Where-Object { $_.StreamType -eq 3 -and $_.External -and $_.Key }
 
                                 foreach ($sub in $subtitleStreams) {
@@ -335,15 +335,15 @@ function Sync-PatMedia {
                                     Write-Verbose "Downloading subtitle: $subPath"
 
                                     try {
-                                        $subDownloadParams = @{
+                                        $subtitleDownloadParameters = @{
                                             Uri         = $subUrl
                                             OutFile     = $subPath
                                             ErrorAction = 'Stop'
                                         }
                                         if ($effectiveToken) {
-                                            $subDownloadParams['Token'] = $effectiveToken
+                                            $subtitleDownloadParameters['Token'] = $effectiveToken
                                         }
-                                        Invoke-PatFileDownload @subDownloadParams | Out-Null
+                                        Invoke-PatFileDownload @subtitleDownloadParameters | Out-Null
                                     }
                                     catch {
                                         Write-Warning "Failed to download subtitle for '$itemDisplay': $($_.Exception.Message)"
@@ -398,24 +398,24 @@ function Sync-PatMedia {
                         # Remove watched items from playlist if requested
                         if ($RemoveWatched) {
                             # Get playlist with items to map RatingKey to PlaylistItemId
-                            $getPlaylistParams = @{
+                            $getPlaylistParameters = @{
                                 IncludeItems = $true
                                 ErrorAction  = 'Stop'
                             }
                             if ($PlaylistId) {
-                                $getPlaylistParams['PlaylistId'] = $PlaylistId
+                                $getPlaylistParameters['PlaylistId'] = $PlaylistId
                             }
                             else {
-                                $getPlaylistParams['PlaylistName'] = $PlaylistName
+                                $getPlaylistParameters['PlaylistName'] = $PlaylistName
                             }
                             if ($ServerUri) {
-                                $getPlaylistParams['ServerUri'] = $ServerUri
+                                $getPlaylistParameters['ServerUri'] = $ServerUri
                             }
                             if ($Token) {
-                                $getPlaylistParams['Token'] = $Token
+                                $getPlaylistParameters['Token'] = $Token
                             }
 
-                            $playlist = Get-PatPlaylist @getPlaylistParams
+                            $playlist = Get-PatPlaylist @getPlaylistParameters
 
                             # Build lookup from RatingKey to PlaylistItem
                             $ratingKeyToItem = @{}

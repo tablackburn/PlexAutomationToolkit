@@ -99,26 +99,26 @@ function Remove-PatPlaylist {
         try {
             # Resolve playlist ID if using name
             $resolvedId = $PlaylistId
-            $playlistInfo = $null
+            $playlistInformation = $null
 
             if ($PSCmdlet.ParameterSetName -eq 'ByName') {
                 # Only pass ServerUri if explicitly specified
-                $getParams = @{ PlaylistName = $PlaylistName; ErrorAction = 'Stop' }
-                if ($script:serverContext.WasExplicitUri) { $getParams['ServerUri'] = $effectiveUri }
-                $playlist = Get-PatPlaylist @getParams
+                $getParameters = @{ PlaylistName = $PlaylistName; ErrorAction = 'Stop' }
+                if ($script:serverContext.WasExplicitUri) { $getParameters['ServerUri'] = $effectiveUri }
+                $playlist = Get-PatPlaylist @getParameters
                 if (-not $playlist) {
                     throw "No playlist found with name '$PlaylistName'"
                 }
                 $resolvedId = $playlist.PlaylistId
-                $playlistInfo = $playlist
+                $playlistInformation = $playlist
             }
             else {
                 # Get playlist info for ShouldProcess message and PassThru
                 try {
                     # Only pass ServerUri if explicitly specified
-                    $getParams = @{ PlaylistId = $PlaylistId; ErrorAction = 'Stop' }
-                    if ($script:serverContext.WasExplicitUri) { $getParams['ServerUri'] = $effectiveUri }
-                    $playlistInfo = Get-PatPlaylist @getParams
+                    $getParameters = @{ PlaylistId = $PlaylistId; ErrorAction = 'Stop' }
+                    if ($script:serverContext.WasExplicitUri) { $getParameters['ServerUri'] = $effectiveUri }
+                    $playlistInformation = Get-PatPlaylist @getParameters
                 }
                 catch {
                     Write-Verbose "Could not retrieve playlist info for ID $PlaylistId"
@@ -126,8 +126,8 @@ function Remove-PatPlaylist {
             }
 
             # Build descriptive target for confirmation
-            $target = if ($playlistInfo) {
-                "'$($playlistInfo.Title)' (ID: $resolvedId, $($playlistInfo.ItemCount) items)"
+            $target = if ($playlistInformation) {
+                "'$($playlistInformation.Title)' (ID: $resolvedId, $($playlistInformation.ItemCount) items)"
             }
             else {
                 "Playlist ID $resolvedId"
@@ -141,8 +141,8 @@ function Remove-PatPlaylist {
 
                 $null = Invoke-PatApi -Uri $uri -Method 'DELETE' -Headers $headers -ErrorAction 'Stop'
 
-                if ($PassThru -and $playlistInfo) {
-                    $playlistInfo
+                if ($PassThru -and $playlistInformation) {
+                    $playlistInformation
                 }
             }
         }

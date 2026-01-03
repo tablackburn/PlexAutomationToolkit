@@ -157,7 +157,7 @@ function Sync-PatWatchStatus {
                 Write-Verbose "Syncing from '$($syncOp.FromName)' to '$($syncOp.ToName)'"
 
                 # Get differences (items watched on source but not target)
-                $compareParams = @{
+                $compareParameters = @{
                     SourceServerName    = $syncOp.FromName
                     TargetServerName    = $syncOp.ToName
                     WatchedOnSourceOnly = $true
@@ -165,10 +165,10 @@ function Sync-PatWatchStatus {
                 }
 
                 if ($SectionId) {
-                    $compareParams['SectionId'] = $SectionId
+                    $compareParameters['SectionId'] = $SectionId
                 }
 
-                $differences = @(Compare-PatWatchStatus @compareParams)
+                $differences = @(Compare-PatWatchStatus @compareParameters)
 
                 if ($differences.Count -eq 0) {
                     Write-Verbose "No differences found for $($syncOp.FromName) -> $($syncOp.ToName)"

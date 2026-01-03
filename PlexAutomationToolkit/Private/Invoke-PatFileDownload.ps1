@@ -113,7 +113,7 @@ function Invoke-PatFileDownload {
         Write-Verbose "Downloading file from: $Uri"
         Write-Verbose "Destination: $OutFile"
 
-        $webRequestParams = @{
+        $webRequestParameters = @{
             Uri                = $Uri
             Headers            = $headers
             UseBasicParsing    = $true
@@ -123,7 +123,7 @@ function Invoke-PatFileDownload {
         # For resume, we need to handle the response differently
         if ($existingSize -gt 0 -and $headers.ContainsKey('Range')) {
             # Resuming - append to existing file
-            $response = Invoke-WebRequest @webRequestParams
+            $response = Invoke-WebRequest @webRequestParameters
 
             # Check if server supports range requests (206 Partial Content)
             if ($response.StatusCode -eq 206) {
@@ -148,7 +148,7 @@ function Invoke-PatFileDownload {
         }
         else {
             # Fresh download - use -OutFile for efficient streaming
-            Invoke-WebRequest @webRequestParams -OutFile $OutFile
+            Invoke-WebRequest @webRequestParameters -OutFile $OutFile
         }
 
         # Verify download

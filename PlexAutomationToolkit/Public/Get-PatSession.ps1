@@ -182,11 +182,11 @@ function Get-PatSession {
 
     # Inform user if filtering resulted in no matches
     if (-not $sessions -or @($sessions).Count -eq 0) {
-        $filterInfo = @()
-        if ($Username) { $filterInfo += "Username='$Username'" }
-        if ($Player) { $filterInfo += "Player='$Player'" }
-        if ($filterInfo.Count -gt 0) {
-            Write-Information "No sessions match filter: $($filterInfo -join ', ')" -InformationAction Continue
+        $filterInformation = @()
+        if ($Username) { $filterInformation += "Username='$Username'" }
+        if ($Player) { $filterInformation += "Player='$Player'" }
+        if ($filterInformation.Count -gt 0) {
+            Write-Information "No sessions match filter: $($filterInformation -join ', ')" -InformationAction Continue
         }
         return
     }

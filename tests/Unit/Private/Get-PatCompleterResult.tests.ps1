@@ -7,7 +7,7 @@ BeforeAll {
     Import-Module -Name $moduleManifestPath -Verbose:$false -ErrorAction 'Stop'
 }
 
-Describe 'Get-PatSectionNameCompletions' {
+Describe 'Get-PatSectionNameCompletion' {
     Context 'Basic functionality' {
         It 'Returns matching section names' {
             InModuleScope PlexAutomationToolkit {
@@ -21,7 +21,7 @@ Describe 'Get-PatSectionNameCompletions' {
                     }
                 }
 
-                $results = Get-PatSectionNameCompletions -WordToComplete 'Mov'
+                $results = Get-PatSectionNameCompletion -WordToComplete 'Mov'
                 $results | Should -Not -BeNullOrEmpty
                 $results.CompletionText | Should -Contain 'Movies'
             }
@@ -38,7 +38,7 @@ Describe 'Get-PatSectionNameCompletions' {
                     }
                 }
 
-                $results = Get-PatSectionNameCompletions -WordToComplete ''
+                $results = Get-PatSectionNameCompletion -WordToComplete ''
                 $results.Count | Should -Be 2
             }
         }
@@ -53,7 +53,7 @@ Describe 'Get-PatSectionNameCompletions' {
                     }
                 }
 
-                $results = Get-PatSectionNameCompletions -WordToComplete 'ZZZ'
+                $results = Get-PatSectionNameCompletion -WordToComplete 'ZZZ'
                 $results | Should -BeNullOrEmpty
             }
         }
@@ -64,7 +64,7 @@ Describe 'Get-PatSectionNameCompletions' {
                     return @{ Directory = @(@{ title = 'Movies' }) }
                 }
 
-                Get-PatSectionNameCompletions -WordToComplete '' -ServerUri 'http://custom:32400'
+                Get-PatSectionNameCompletion -WordToComplete '' -ServerUri 'http://custom:32400'
 
                 Should -Invoke Get-PatLibrary -ParameterFilter {
                     $ServerUri -eq 'http://custom:32400'
@@ -78,7 +78,7 @@ Describe 'Get-PatSectionNameCompletions' {
                     return @{ Directory = @(@{ title = 'Movies' }) }
                 }
 
-                Get-PatSectionNameCompletions -WordToComplete '' -Token 'my-token'
+                Get-PatSectionNameCompletion -WordToComplete '' -Token 'my-token'
 
                 Should -Invoke Get-PatLibrary -ParameterFilter {
                     $Token -eq 'my-token'
@@ -92,7 +92,7 @@ Describe 'Get-PatSectionNameCompletions' {
                     return @{ Directory = @(@{ title = 'Movies' }) }
                 }
 
-                Get-PatSectionNameCompletions -WordToComplete '' -ServerUri 'http://custom:32400' -Token 'my-token'
+                Get-PatSectionNameCompletion -WordToComplete '' -ServerUri 'http://custom:32400' -Token 'my-token'
 
                 Should -Invoke Get-PatLibrary -ParameterFilter {
                     $ServerUri -eq 'http://custom:32400' -and $Token -eq 'my-token'
@@ -106,7 +106,7 @@ Describe 'Get-PatSectionNameCompletions' {
                     return @{ Directory = $null }
                 }
 
-                $results = Get-PatSectionNameCompletions -WordToComplete ''
+                $results = Get-PatSectionNameCompletion -WordToComplete ''
                 $results | Should -BeNullOrEmpty
             }
         }
@@ -116,7 +116,7 @@ Describe 'Get-PatSectionNameCompletions' {
                 Mock Get-PatLibrary { throw 'Connection failed' }
                 Mock Write-Debug { }
 
-                $results = Get-PatSectionNameCompletions -WordToComplete ''
+                $results = Get-PatSectionNameCompletion -WordToComplete ''
 
                 $results | Should -BeNullOrEmpty
                 Should -Invoke Write-Debug -ParameterFilter {
@@ -127,7 +127,7 @@ Describe 'Get-PatSectionNameCompletions' {
     }
 }
 
-Describe 'Get-PatSectionIdCompletions' {
+Describe 'Get-PatSectionIdCompletion' {
     Context 'Basic functionality' {
         It 'Returns matching section IDs' {
             InModuleScope PlexAutomationToolkit {
@@ -141,7 +141,7 @@ Describe 'Get-PatSectionIdCompletions' {
                     }
                 }
 
-                $results = Get-PatSectionIdCompletions -WordToComplete '1'
+                $results = Get-PatSectionIdCompletion -WordToComplete '1'
                 $results | Should -Not -BeNullOrEmpty
                 $results.CompletionText | Should -Contain '1'
                 $results.CompletionText | Should -Contain '12'
@@ -159,7 +159,7 @@ Describe 'Get-PatSectionIdCompletions' {
                     }
                 }
 
-                $results = Get-PatSectionIdCompletions -WordToComplete ''
+                $results = Get-PatSectionIdCompletion -WordToComplete ''
                 $results.Count | Should -Be 2
             }
         }
@@ -170,7 +170,7 @@ Describe 'Get-PatSectionIdCompletions' {
                     return @{ Directory = @(@{ key = '/library/sections/1'; title = 'Movies' }) }
                 }
 
-                Get-PatSectionIdCompletions -WordToComplete '' -ServerUri 'http://custom:32400' -Token 'my-token'
+                Get-PatSectionIdCompletion -WordToComplete '' -ServerUri 'http://custom:32400' -Token 'my-token'
 
                 Should -Invoke Get-PatLibrary -ParameterFilter {
                     $ServerUri -eq 'http://custom:32400' -and $Token -eq 'my-token'
@@ -183,7 +183,7 @@ Describe 'Get-PatSectionIdCompletions' {
                 Mock Get-PatLibrary { throw 'Connection failed' }
                 Mock Write-Debug { }
 
-                $results = Get-PatSectionIdCompletions -WordToComplete ''
+                $results = Get-PatSectionIdCompletion -WordToComplete ''
 
                 $results | Should -BeNullOrEmpty
                 Should -Invoke Write-Debug -ParameterFilter {
@@ -194,13 +194,13 @@ Describe 'Get-PatSectionIdCompletions' {
     }
 }
 
-Describe 'Get-PatLibraryPathCompletions' {
+Describe 'Get-PatLibraryPathCompletion' {
     Context 'Default server handling' {
         It 'Returns nothing when no default server exists' {
             InModuleScope PlexAutomationToolkit {
                 Mock Get-PatStoredServer { return $null }
 
-                $results = Get-PatLibraryPathCompletions -WordToComplete '' -SectionId 1
+                $results = Get-PatLibraryPathCompletion -WordToComplete '' -SectionId 1
                 $results | Should -BeNullOrEmpty
             }
         }
@@ -210,7 +210,7 @@ Describe 'Get-PatLibraryPathCompletions' {
                 Mock Get-PatStoredServer { throw 'No server configured' }
                 Mock Write-Debug { }
 
-                $results = Get-PatLibraryPathCompletions -WordToComplete '' -SectionId 1
+                $results = Get-PatLibraryPathCompletion -WordToComplete '' -SectionId 1
 
                 $results | Should -BeNullOrEmpty
                 Should -Invoke Write-Debug -ParameterFilter {
@@ -226,7 +226,7 @@ Describe 'Get-PatLibraryPathCompletions' {
                     return @([PSCustomObject]@{ path = '/mnt/movies' })
                 }
 
-                $results = Get-PatLibraryPathCompletions -WordToComplete '' -ServerUri 'http://custom:32400' -SectionId 1
+                $results = Get-PatLibraryPathCompletion -WordToComplete '' -ServerUri 'http://custom:32400' -SectionId 1
 
                 Should -Not -Invoke Get-PatStoredServer
                 $results | Should -Not -BeNullOrEmpty
@@ -244,7 +244,7 @@ Describe 'Get-PatLibraryPathCompletions' {
                     return @([PSCustomObject]@{ path = '/mnt/movies' })
                 }
 
-                $results = Get-PatLibraryPathCompletions -WordToComplete '' -SectionId 2
+                $results = Get-PatLibraryPathCompletion -WordToComplete '' -SectionId 2
 
                 Should -Invoke Get-PatLibraryPath -ParameterFilter {
                     $SectionId -eq 2
@@ -268,7 +268,7 @@ Describe 'Get-PatLibraryPathCompletions' {
                     return @([PSCustomObject]@{ path = '/mnt/movies' })
                 }
 
-                $results = Get-PatLibraryPathCompletions -WordToComplete '' -SectionName 'Movies'
+                $results = Get-PatLibraryPathCompletion -WordToComplete '' -SectionName 'Movies'
 
                 Should -Invoke Get-PatLibraryPath -ParameterFilter {
                     $SectionId -eq 5
@@ -284,7 +284,7 @@ Describe 'Get-PatLibraryPathCompletions' {
                 Mock Get-PatLibrary { throw 'Connection failed' }
                 Mock Write-Debug { }
 
-                $results = Get-PatLibraryPathCompletions -WordToComplete '' -SectionName 'Movies'
+                $results = Get-PatLibraryPathCompletion -WordToComplete '' -SectionName 'Movies'
 
                 $results | Should -BeNullOrEmpty
                 Should -Invoke Write-Debug -ParameterFilter {
@@ -299,7 +299,7 @@ Describe 'Get-PatLibraryPathCompletions' {
                     return @{ name = 'Default'; uri = 'http://plex:32400' }
                 }
 
-                $results = Get-PatLibraryPathCompletions -WordToComplete ''
+                $results = Get-PatLibraryPathCompletion -WordToComplete ''
                 $results | Should -BeNullOrEmpty
             }
         }
@@ -318,7 +318,7 @@ Describe 'Get-PatLibraryPathCompletions' {
                     )
                 }
 
-                $results = Get-PatLibraryPathCompletions -WordToComplete '' -SectionId 1
+                $results = Get-PatLibraryPathCompletion -WordToComplete '' -SectionId 1
 
                 $results.Count | Should -Be 2
                 $results.CompletionText | Should -Contain '/mnt/movies'
@@ -335,7 +335,7 @@ Describe 'Get-PatLibraryPathCompletions' {
                     return @()
                 }
 
-                $results = Get-PatLibraryPathCompletions -WordToComplete '' -SectionId 1
+                $results = Get-PatLibraryPathCompletion -WordToComplete '' -SectionId 1
                 $results | Should -BeNullOrEmpty
             }
         }
@@ -357,7 +357,7 @@ Describe 'Get-PatLibraryPathCompletions' {
                     )
                 }
 
-                $results = Get-PatLibraryPathCompletions -WordToComplete '/mnt/movies' -SectionId 1
+                $results = Get-PatLibraryPathCompletion -WordToComplete '/mnt/movies' -SectionId 1
 
                 Should -Invoke Get-PatLibraryChildItem -ParameterFilter {
                     $Path -eq '/mnt/movies'
@@ -382,7 +382,7 @@ Describe 'Get-PatLibraryPathCompletions' {
                     )
                 }
 
-                $results = Get-PatLibraryPathCompletions -WordToComplete '/mnt/movies/A' -SectionId 1
+                $results = Get-PatLibraryPathCompletion -WordToComplete '/mnt/movies/A' -SectionId 1
 
                 $results.Count | Should -Be 1
                 $results.CompletionText | Should -Contain '/mnt/movies/Action'
@@ -403,7 +403,7 @@ Describe 'Get-PatLibraryPathCompletions' {
                 Mock Get-PatLibraryChildItem { throw 'Browse failed' }
                 Mock Write-Debug { }
 
-                $results = Get-PatLibraryPathCompletions -WordToComplete '/mnt/m' -SectionId 1
+                $results = Get-PatLibraryPathCompletion -WordToComplete '/mnt/m' -SectionId 1
 
                 $results.Count | Should -Be 2
                 Should -Invoke Write-Debug -ParameterFilter {
@@ -418,7 +418,7 @@ Describe 'Get-PatLibraryPathCompletions' {
                     return @([PSCustomObject]@{ path = '/mnt/movies' })
                 }
 
-                Get-PatLibraryPathCompletions -WordToComplete '' -ServerUri 'http://custom:32400' -SectionId 1
+                Get-PatLibraryPathCompletion -WordToComplete '' -ServerUri 'http://custom:32400' -SectionId 1
 
                 Should -Invoke Get-PatLibraryPath -ParameterFilter {
                     $ServerUri -eq 'http://custom:32400'
@@ -435,7 +435,7 @@ Describe 'Get-PatLibraryPathCompletions' {
                     return @([PSCustomObject]@{ path = '/mnt/movies/Action' })
                 }
 
-                Get-PatLibraryPathCompletions -WordToComplete '/mnt/movies' -ServerUri 'http://custom:32400' -SectionId 1
+                Get-PatLibraryPathCompletion -WordToComplete '/mnt/movies' -ServerUri 'http://custom:32400' -SectionId 1
 
                 Should -Invoke Get-PatLibraryChildItem -ParameterFilter {
                     $ServerUri -eq 'http://custom:32400'
@@ -451,7 +451,7 @@ Describe 'Get-PatLibraryPathCompletions' {
                 Mock Get-PatLibraryPath { throw 'Library path failed' }
                 Mock Write-Debug { }
 
-                $results = Get-PatLibraryPathCompletions -WordToComplete '' -SectionId 1
+                $results = Get-PatLibraryPathCompletion -WordToComplete '' -SectionId 1
 
                 $results | Should -BeNullOrEmpty
                 Should -Invoke Write-Debug -ParameterFilter {
@@ -474,7 +474,7 @@ Describe 'Get-PatLibraryPathCompletions' {
                     return @([PSCustomObject]@{ path = 'C:\Movies\Action' })
                 }
 
-                $results = Get-PatLibraryPathCompletions -WordToComplete 'C:\Movies\A' -SectionId 1
+                $results = Get-PatLibraryPathCompletion -WordToComplete 'C:\Movies\A' -SectionId 1
 
                 Should -Invoke Get-PatLibraryChildItem -ParameterFilter {
                     $Path -eq 'C:\Movies'
@@ -494,7 +494,7 @@ Describe 'Get-PatLibraryPathCompletions' {
                     return @([PSCustomObject]@{ Path = '/mnt/movies/Action' })  # Uppercase Path
                 }
 
-                $results = Get-PatLibraryPathCompletions -WordToComplete '/mnt/movies' -SectionId 1
+                $results = Get-PatLibraryPathCompletion -WordToComplete '/mnt/movies' -SectionId 1
 
                 $results | Should -Not -BeNullOrEmpty
                 $results.CompletionText | Should -Contain '/mnt/movies/Action'
@@ -503,7 +503,7 @@ Describe 'Get-PatLibraryPathCompletions' {
     }
 }
 
-Describe 'Get-PatCollectionTitleCompletions' {
+Describe 'Get-PatCollectionTitleCompletion' {
     Context 'Basic functionality' {
         It 'Returns matching collection titles' {
             InModuleScope PlexAutomationToolkit {
@@ -515,7 +515,7 @@ Describe 'Get-PatCollectionTitleCompletions' {
                     )
                 }
 
-                $results = Get-PatCollectionTitleCompletions -WordToComplete 'Mar'
+                $results = Get-PatCollectionTitleCompletion -WordToComplete 'Mar'
                 $results | Should -Not -BeNullOrEmpty
                 $results.CompletionText | Should -Contain "'Marvel Movies'"
             }
@@ -530,7 +530,7 @@ Describe 'Get-PatCollectionTitleCompletions' {
                     )
                 }
 
-                $results = Get-PatCollectionTitleCompletions -WordToComplete ''
+                $results = Get-PatCollectionTitleCompletion -WordToComplete ''
                 $results.Count | Should -Be 2
             }
         }
@@ -541,7 +541,7 @@ Describe 'Get-PatCollectionTitleCompletions' {
                     return @([PSCustomObject]@{ title = 'Marvel Movies' })
                 }
 
-                Get-PatCollectionTitleCompletions -WordToComplete '' -ServerUri 'http://custom:32400' -Token 'my-token'
+                Get-PatCollectionTitleCompletion -WordToComplete '' -ServerUri 'http://custom:32400' -Token 'my-token'
 
                 Should -Invoke Get-PatCollection -ParameterFilter {
                     $ServerUri -eq 'http://custom:32400' -and $Token -eq 'my-token'
@@ -555,7 +555,7 @@ Describe 'Get-PatCollectionTitleCompletions' {
                     return @()
                 }
 
-                $results = Get-PatCollectionTitleCompletions -WordToComplete ''
+                $results = Get-PatCollectionTitleCompletion -WordToComplete ''
                 $results | Should -BeNullOrEmpty
             }
         }
@@ -565,7 +565,7 @@ Describe 'Get-PatCollectionTitleCompletions' {
                 Mock Get-PatCollection { throw 'Connection failed' }
                 Mock Write-Debug { }
 
-                $results = Get-PatCollectionTitleCompletions -WordToComplete ''
+                $results = Get-PatCollectionTitleCompletion -WordToComplete ''
 
                 $results | Should -BeNullOrEmpty
                 Should -Invoke Write-Debug -ParameterFilter {
@@ -576,7 +576,7 @@ Describe 'Get-PatCollectionTitleCompletions' {
     }
 }
 
-Describe 'Get-PatPlaylistTitleCompletions' {
+Describe 'Get-PatPlaylistTitleCompletion' {
     Context 'Basic functionality' {
         It 'Returns matching playlist titles' {
             InModuleScope PlexAutomationToolkit {
@@ -587,7 +587,7 @@ Describe 'Get-PatPlaylistTitleCompletions' {
                     )
                 }
 
-                $results = Get-PatPlaylistTitleCompletions -WordToComplete 'My'
+                $results = Get-PatPlaylistTitleCompletion -WordToComplete 'My'
                 $results | Should -Not -BeNullOrEmpty
                 $results.CompletionText | Should -Contain "'My Favorites'"
             }
@@ -602,7 +602,7 @@ Describe 'Get-PatPlaylistTitleCompletions' {
                     )
                 }
 
-                $results = Get-PatPlaylistTitleCompletions -WordToComplete ''
+                $results = Get-PatPlaylistTitleCompletion -WordToComplete ''
                 $results.Count | Should -Be 2
             }
         }
@@ -613,7 +613,7 @@ Describe 'Get-PatPlaylistTitleCompletions' {
                     return @([PSCustomObject]@{ title = 'My Favorites' })
                 }
 
-                Get-PatPlaylistTitleCompletions -WordToComplete '' -ServerUri 'http://custom:32400' -Token 'my-token'
+                Get-PatPlaylistTitleCompletion -WordToComplete '' -ServerUri 'http://custom:32400' -Token 'my-token'
 
                 Should -Invoke Get-PatPlaylist -ParameterFilter {
                     $ServerUri -eq 'http://custom:32400' -and $Token -eq 'my-token'
@@ -627,7 +627,7 @@ Describe 'Get-PatPlaylistTitleCompletions' {
                     return @()
                 }
 
-                $results = Get-PatPlaylistTitleCompletions -WordToComplete ''
+                $results = Get-PatPlaylistTitleCompletion -WordToComplete ''
                 $results | Should -BeNullOrEmpty
             }
         }
@@ -637,7 +637,7 @@ Describe 'Get-PatPlaylistTitleCompletions' {
                 Mock Get-PatPlaylist { throw 'Connection failed' }
                 Mock Write-Debug { }
 
-                $results = Get-PatPlaylistTitleCompletions -WordToComplete ''
+                $results = Get-PatPlaylistTitleCompletion -WordToComplete ''
 
                 $results | Should -BeNullOrEmpty
                 Should -Invoke Write-Debug -ParameterFilter {

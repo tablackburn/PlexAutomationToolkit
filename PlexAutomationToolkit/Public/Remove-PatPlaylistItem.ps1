@@ -118,9 +118,9 @@ function Remove-PatPlaylistItem {
             $itemTitle = "Item $PlaylistItemId"
             try {
                 # Only pass ServerUri if explicitly specified
-                $getParams = @{ PlaylistId = $PlaylistId; IncludeItems = $true; ErrorAction = 'SilentlyContinue' }
-                if ($script:cachedServerContext.WasExplicitUri) { $getParams['ServerUri'] = $effectiveUri }
-                $playlist = Get-PatPlaylist @getParams
+                $getParameters = @{ PlaylistId = $PlaylistId; IncludeItems = $true; ErrorAction = 'SilentlyContinue' }
+                if ($script:cachedServerContext.WasExplicitUri) { $getParameters['ServerUri'] = $effectiveUri }
+                $playlist = Get-PatPlaylist @getParameters
                 if ($playlist -and $playlist.Items) {
                     $item = $playlist.Items | Where-Object { $_.PlaylistItemId -eq $PlaylistItemId }
                     if ($item) {
@@ -144,9 +144,9 @@ function Remove-PatPlaylistItem {
 
                 if ($PassThru) {
                     # Only pass ServerUri if explicitly specified
-                    $getParams = @{ PlaylistId = $PlaylistId; ErrorAction = 'Stop' }
-                    if ($script:cachedServerContext.WasExplicitUri) { $getParams['ServerUri'] = $effectiveUri }
-                    Get-PatPlaylist @getParams
+                    $getParameters = @{ PlaylistId = $PlaylistId; ErrorAction = 'Stop' }
+                    if ($script:cachedServerContext.WasExplicitUri) { $getParameters['ServerUri'] = $effectiveUri }
+                    Get-PatPlaylist @getParameters
                 }
             }
         }

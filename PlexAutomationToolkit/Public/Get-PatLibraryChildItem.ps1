@@ -110,9 +110,9 @@ function Get-PatLibraryChildItem {
                 $sections = Get-PatLibrary -ErrorAction 'Stop'
             }
             else {
-                $libParams = @{ ServerUri = $effectiveUri; ErrorAction = 'Stop' }
-                if ($Token) { $libParams['Token'] = $Token }
-                $sections = Get-PatLibrary @libParams
+                $libraryParameters = @{ ServerUri = $effectiveUri; ErrorAction = 'Stop' }
+                if ($Token) { $libraryParameters['Token'] = $Token }
+                $sections = Get-PatLibrary @libraryParameters
             }
 
             $matchingSection = $null

@@ -92,9 +92,9 @@ function Get-PatLibraryPath {
             $allSections = Get-PatLibrary -ErrorAction 'Stop'
         }
         else {
-            $libParams = @{ ServerUri = $effectiveUri; ErrorAction = 'Stop' }
-            if ($Token) { $libParams['Token'] = $Token }
-            $allSections = Get-PatLibrary @libParams
+            $libraryParameters = @{ ServerUri = $effectiveUri; ErrorAction = 'Stop' }
+            if ($Token) { $libraryParameters['Token'] = $Token }
+            $allSections = Get-PatLibrary @libraryParameters
         }
 
         # If SectionName is provided, filter to that section
@@ -171,7 +171,7 @@ function Get-PatLibraryPath {
         }
     }
     catch {
-        $errorMsg = if ($SectionName) {
+        $errorMessage = if ($SectionName) {
             "Failed to retrieve library paths for section '$SectionName': $($_.Exception.Message)"
         }
         elseif ($SectionId) {
@@ -180,6 +180,6 @@ function Get-PatLibraryPath {
         else {
             "Failed to retrieve library paths: $($_.Exception.Message)"
         }
-        throw $errorMsg
+        throw $errorMessage
     }
 }

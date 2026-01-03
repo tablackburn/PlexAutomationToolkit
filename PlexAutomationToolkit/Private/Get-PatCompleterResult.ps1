@@ -1,4 +1,4 @@
-function Get-PatSectionNameCompletions {
+function Get-PatSectionNameCompletion {
     <#
     .SYNOPSIS
         Gets section name completions for tab completion.
@@ -43,7 +43,7 @@ function Get-PatSectionNameCompletions {
     }
 }
 
-function Get-PatSectionIdCompletions {
+function Get-PatSectionIdCompletion {
     <#
     .SYNOPSIS
         Gets section ID completions for tab completion.
@@ -89,7 +89,7 @@ function Get-PatSectionIdCompletions {
     }
 }
 
-function Get-PatLibraryPathCompletions {
+function Get-PatLibraryPathCompletion {
     <#
     .SYNOPSIS
         Gets library path completions for tab completion.
@@ -222,7 +222,7 @@ function Get-PatLibraryPathCompletions {
     }
 }
 
-function Get-PatCollectionTitleCompletions {
+function Get-PatCollectionTitleCompletion {
     <#
     .SYNOPSIS
         Gets collection title completions for tab completion.
@@ -279,7 +279,7 @@ function Get-PatCollectionTitleCompletions {
     }
 }
 
-function Get-PatPlaylistTitleCompletions {
+function Get-PatPlaylistTitleCompletion {
     <#
     .SYNOPSIS
         Gets playlist title completions for tab completion.

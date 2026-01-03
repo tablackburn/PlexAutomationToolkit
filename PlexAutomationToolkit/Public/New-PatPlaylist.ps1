@@ -110,9 +110,9 @@ function New-PatPlaylist {
 
         # Get machine identifier for URI construction (required for playlist creation)
         try {
-            $serverInfoUri = Join-PatUri -BaseUri $effectiveUri -Endpoint '/'
-            $serverInfo = Invoke-PatApi -Uri $serverInfoUri -Headers $headers -ErrorAction 'Stop'
-            $machineIdentifier = $serverInfo.machineIdentifier
+            $serverInformationUri = Join-PatUri -BaseUri $effectiveUri -Endpoint '/'
+            $serverInformation = Invoke-PatApi -Uri $serverInformationUri -Headers $headers -ErrorAction 'Stop'
+            $machineIdentifier = $serverInformation.machineIdentifier
             Write-Verbose "Server machine identifier: $machineIdentifier"
         }
         catch {

@@ -33,7 +33,7 @@ function Register-PatArgumentCompleter {
             $params['Token'] = $fakeBoundParameters['Token']
         }
 
-        Get-PatSectionNameCompletions @params
+        Get-PatSectionNameCompletion @params
     }
 
     # SectionId completer - used by multiple commands
@@ -48,7 +48,7 @@ function Register-PatArgumentCompleter {
             $params['Token'] = $fakeBoundParameters['Token']
         }
 
-        Get-PatSectionIdCompletions @params
+        Get-PatSectionIdCompletion @params
     }
 
     # Path completer for Update-PatLibrary - browses Plex server filesystem
@@ -66,7 +66,7 @@ function Register-PatArgumentCompleter {
             $params['SectionName'] = $fakeBoundParameters['SectionName']
         }
 
-        Get-PatLibraryPathCompletions @params
+        Get-PatLibraryPathCompletion @params
     }
 
     # Collection name completer
@@ -87,7 +87,7 @@ function Register-PatArgumentCompleter {
             $params['SectionName'] = $fakeBoundParameters['SectionName']
         }
 
-        Get-PatCollectionTitleCompletions @params
+        Get-PatCollectionTitleCompletion @params
     }
 
     # Playlist title completer
@@ -102,7 +102,7 @@ function Register-PatArgumentCompleter {
             $params['Token'] = $fakeBoundParameters['Token']
         }
 
-        Get-PatPlaylistTitleCompletions @params
+        Get-PatPlaylistTitleCompletion @params
     }
 
     # ============================================================

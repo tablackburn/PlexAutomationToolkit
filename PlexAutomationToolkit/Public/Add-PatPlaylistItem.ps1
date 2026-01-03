@@ -103,9 +103,9 @@ function Add-PatPlaylistItem {
         # Get machine identifier for URI construction
         $machineIdentifier = $null
         try {
-            $serverInfoUri = Join-PatUri -BaseUri $effectiveUri -Endpoint '/'
-            $serverInfo = Invoke-PatApi -Uri $serverInfoUri -Headers $headers -ErrorAction 'Stop'
-            $machineIdentifier = $serverInfo.machineIdentifier
+            $serverInformationUri = Join-PatUri -BaseUri $effectiveUri -Endpoint '/'
+            $serverInformation = Invoke-PatApi -Uri $serverInformationUri -Headers $headers -ErrorAction 'Stop'
+            $machineIdentifier = $serverInformation.machineIdentifier
             Write-Verbose "Server machine identifier: $machineIdentifier"
         }
         catch {
@@ -114,25 +114,25 @@ function Add-PatPlaylistItem {
 
         # Resolve playlist ID if using name
         $resolvedId = $PlaylistId
-        $playlistInfo = $null
+        $playlistInformation = $null
 
         if ($PSCmdlet.ParameterSetName -eq 'ByName') {
             # Only pass ServerUri if explicitly specified
-            $getParams = @{ PlaylistName = $PlaylistName; ErrorAction = 'Stop' }
-            if ($script:serverContext.WasExplicitUri) { $getParams['ServerUri'] = $effectiveUri }
-            $playlist = Get-PatPlaylist @getParams
+            $getParameters = @{ PlaylistName = $PlaylistName; ErrorAction = 'Stop' }
+            if ($script:serverContext.WasExplicitUri) { $getParameters['ServerUri'] = $effectiveUri }
+            $playlist = Get-PatPlaylist @getParameters
             if (-not $playlist) {
                 throw "No playlist found with name '$PlaylistName'"
             }
             $resolvedId = $playlist.PlaylistId
-            $playlistInfo = $playlist
+            $playlistInformation = $playlist
         }
         else {
             try {
                 # Only pass ServerUri if explicitly specified
-                $getParams = @{ PlaylistId = $PlaylistId; ErrorAction = 'Stop' }
-                if ($script:serverContext.WasExplicitUri) { $getParams['ServerUri'] = $effectiveUri }
-                $playlistInfo = Get-PatPlaylist @getParams
+                $getParameters = @{ PlaylistId = $PlaylistId; ErrorAction = 'Stop' }
+                if ($script:serverContext.WasExplicitUri) { $getParameters['ServerUri'] = $effectiveUri }
+                $playlistInformation = Get-PatPlaylist @getParameters
             }
             catch {
                 Write-Verbose "Could not retrieve playlist info for ID $PlaylistId"
@@ -157,8 +157,8 @@ function Add-PatPlaylistItem {
         }
 
         # Build descriptive target for confirmation
-        $playlistDesc = if ($playlistInfo) {
-            "'$($playlistInfo.Title)'"
+        $playlistDesc = if ($playlistInformation) {
+            "'$($playlistInformation.Title)'"
         }
         else {
             "Playlist $resolvedId"
@@ -187,9 +187,9 @@ function Add-PatPlaylistItem {
 
             if ($PassThru) {
                 # Only pass ServerUri if explicitly specified
-                $getParams = @{ PlaylistId = $resolvedId; ErrorAction = 'Stop' }
-                if ($script:serverContext.WasExplicitUri) { $getParams['ServerUri'] = $effectiveUri }
-                Get-PatPlaylist @getParams
+                $getParameters = @{ PlaylistId = $resolvedId; ErrorAction = 'Stop' }
+                if ($script:serverContext.WasExplicitUri) { $getParameters['ServerUri'] = $effectiveUri }
+                Get-PatPlaylist @getParameters
             }
         }
         catch {

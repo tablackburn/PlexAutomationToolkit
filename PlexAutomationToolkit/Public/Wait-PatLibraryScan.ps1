@@ -98,12 +98,12 @@ function Wait-PatLibraryScan {
     )
 
     # Build parameters for internal calls
-    $serverParams = @{}
+    $serverParameters = @{}
     if ($ServerUri) {
-        $serverParams['ServerUri'] = $ServerUri
+        $serverParameters['ServerUri'] = $ServerUri
     }
     if ($Token) {
-        $serverParams['Token'] = $Token
+        $serverParameters['Token'] = $Token
     }
 
     # Resolve section name to ID if needed
@@ -112,7 +112,7 @@ function Wait-PatLibraryScan {
 
     if ($PSCmdlet.ParameterSetName -eq 'ByName') {
         try {
-            $libraryPaths = Get-PatLibraryPath @serverParams -SectionName $SectionName -ErrorAction 'Stop'
+            $libraryPaths = Get-PatLibraryPath @serverParameters -SectionName $SectionName -ErrorAction 'Stop'
             if ($libraryPaths) {
                 $resolvedSectionId = [int]$libraryPaths[0].sectionId
                 $sectionDisplayName = $SectionName
@@ -140,11 +140,11 @@ function Wait-PatLibraryScan {
 
         # Check for scan activity
         try {
-            $activityParams = $serverParams.Clone()
-            $activityParams['Type'] = 'library.update.section'
-            $activityParams['SectionId'] = $resolvedSectionId
+            $activityParameters = $serverParameters.Clone()
+            $activityParameters['Type'] = 'library.update.section'
+            $activityParameters['SectionId'] = $resolvedSectionId
 
-            $activity = Get-PatActivity @activityParams -ErrorAction 'Stop'
+            $activity = Get-PatActivity @activityParameters -ErrorAction 'Stop'
         }
         catch {
             Write-Warning "Failed to check activity status: $($_.Exception.Message)"
@@ -155,12 +155,12 @@ function Wait-PatLibraryScan {
             $lastActivity = $activity
 
             # Show progress
-            $progressParams = @{
+            $progressParameters = @{
                 Activity        = "Library scan: $sectionDisplayName"
                 Status          = $activity.Subtitle
                 PercentComplete = $activity.Progress
             }
-            Write-Progress @progressParams
+            Write-Progress @progressParameters
 
             Write-Verbose "Scan in progress: $($activity.Progress)% - $($activity.Subtitle)"
         }

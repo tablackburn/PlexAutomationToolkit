@@ -151,14 +151,14 @@ function Search-PatMedia {
             }
 
             # Build query string
-            $queryParams = @(
+            $queryParameters = @(
                 "query=$([System.Uri]::EscapeDataString($Query))"
                 "limit=$Limit"
             )
             if ($resolvedSectionId) {
-                $queryParams += "sectionId=$resolvedSectionId"
+                $queryParameters += "sectionId=$resolvedSectionId"
             }
-            $queryString = $queryParams -join '&'
+            $queryString = $queryParameters -join '&'
 
             $endpoint = '/hubs/search'
             Write-Verbose "Searching for '$Query' (limit: $Limit)"
