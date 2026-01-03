@@ -65,21 +65,6 @@ function Get-PatPlaylist {
         - ServerUri: The Plex server URI
         - Items: (Only with -IncludeItems) Array of playlist items
     #>
-    [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
-        'PSReviewUnusedParameter',
-        'commandName',
-        Justification = 'Standard ArgumentCompleter parameter, not always used'
-    )]
-    [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
-        'PSReviewUnusedParameter',
-        'parameterName',
-        Justification = 'Standard ArgumentCompleter parameter, not always used'
-    )]
-    [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
-        'PSReviewUnusedParameter',
-        'commandAst',
-        Justification = 'Standard ArgumentCompleter parameter, not always used'
-    )]
     [CmdletBinding(DefaultParameterSetName = 'All')]
     param (
         [Parameter(Mandatory = $true, ParameterSetName = 'ById', ValueFromPipeline, ValueFromPipelineByPropertyName)]
@@ -89,27 +74,6 @@ function Get-PatPlaylist {
 
         [Parameter(Mandatory = $true, ParameterSetName = 'ByName')]
         [ValidateNotNullOrEmpty()]
-        [ArgumentCompleter({
-            param($commandName, $parameterName, $wordToComplete, $commandAst, $fakeBoundParameters)
-
-            $completerInput = ConvertFrom-PatCompleterInput -WordToComplete $wordToComplete
-
-            $getParameters = @{ ErrorAction = 'SilentlyContinue' }
-            if ($fakeBoundParameters.ContainsKey('ServerUri')) {
-                $getParameters['ServerUri'] = $fakeBoundParameters['ServerUri']
-            }
-            if ($fakeBoundParameters.ContainsKey('Token')) {
-                $getParameters['Token'] = $fakeBoundParameters['Token']
-            }
-
-            $playlists = Get-PatPlaylist @getParameters
-
-            foreach ($playlist in $playlists) {
-                if ($playlist.Title -ilike "$($completerInput.StrippedWord)*") {
-                    New-PatCompletionResult -Value $playlist.Title -QuoteChar $completerInput.QuoteChar
-                }
-            }
-        })]
         [string]
         $PlaylistName,
 

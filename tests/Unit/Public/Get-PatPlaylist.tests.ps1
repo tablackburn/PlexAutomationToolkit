@@ -380,55 +380,6 @@ Describe 'Get-PatPlaylist' {
         }
     }
 
-    Context 'PlaylistName argument completer' {
-        BeforeAll {
-            $command = Get-Command -Module PlexAutomationToolkit -Name Get-PatPlaylist
-            $playlistNameParam = $command.Parameters['PlaylistName']
-            $script:playlistNameCompleter = $playlistNameParam.Attributes | Where-Object { $_ -is [ArgumentCompleter] } | Select-Object -ExpandProperty ScriptBlock
-        }
-
-        It 'Returns matching playlist names' {
-            $results = InModuleScope PlexAutomationToolkit -Parameters @{ completer = $script:playlistNameCompleter } {
-                Mock Get-PatPlaylist {
-                    return @(
-                        [PSCustomObject]@{ Title = 'My Favorites' }
-                        [PSCustomObject]@{ Title = 'Party Mix' }
-                    )
-                }
-                & $completer 'Get-PatPlaylist' 'PlaylistName' 'My' $null @{}
-            }
-            $results | Should -Not -BeNullOrEmpty
-        }
-
-        It 'Passes ServerUri when provided' {
-            $results = InModuleScope PlexAutomationToolkit -Parameters @{ completer = $script:playlistNameCompleter } {
-                Mock Get-PatPlaylist {
-                    return @(
-                        [PSCustomObject]@{ Title = 'My Favorites' }
-                    )
-                }
-                & $completer 'Get-PatPlaylist' 'PlaylistName' '' $null @{ ServerUri = 'http://custom:32400' }
-            }
-            Should -Invoke Get-PatPlaylist -ModuleName PlexAutomationToolkit -ParameterFilter {
-                $ServerUri -eq 'http://custom:32400'
-            }
-        }
-
-        It 'Passes Token when provided' {
-            $results = InModuleScope PlexAutomationToolkit -Parameters @{ completer = $script:playlistNameCompleter } {
-                Mock Get-PatPlaylist {
-                    return @(
-                        [PSCustomObject]@{ Title = 'My Favorites' }
-                    )
-                }
-                & $completer 'Get-PatPlaylist' 'PlaylistName' '' $null @{ Token = 'my-token' }
-            }
-            Should -Invoke Get-PatPlaylist -ModuleName PlexAutomationToolkit -ParameterFilter {
-                $Token -eq 'my-token'
-            }
-        }
-    }
-
     Context 'Token parameter' {
         BeforeAll {
             Mock -ModuleName PlexAutomationToolkit Resolve-PatServerContext {

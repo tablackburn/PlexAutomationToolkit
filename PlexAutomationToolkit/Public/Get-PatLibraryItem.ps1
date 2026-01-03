@@ -40,75 +40,15 @@ function Get-PatLibraryItem {
         PSCustomObject[]
         Returns an array of media item metadata objects from the Plex API.
     #>
-    [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
-        'PSReviewUnusedParameter',
-        'commandName',
-        Justification = 'Standard ArgumentCompleter parameter, not always used'
-    )]
-    [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
-        'PSReviewUnusedParameter',
-        'parameterName',
-        Justification = 'Standard ArgumentCompleter parameter, not always used'
-    )]
-    [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
-        'PSReviewUnusedParameter',
-        'commandAst',
-        Justification = 'Standard ArgumentCompleter parameter, not always used'
-    )]
     [CmdletBinding(DefaultParameterSetName = 'ByName')]
     param (
         [Parameter(Mandatory = $true, ParameterSetName = 'ByName')]
         [ValidateNotNullOrEmpty()]
-        [ArgumentCompleter({
-            param($commandName, $parameterName, $wordToComplete, $commandAst, $fakeBoundParameters)
-
-            $completerInput = ConvertFrom-PatCompleterInput -WordToComplete $wordToComplete
-
-            $getParameters = @{ ErrorAction = 'SilentlyContinue' }
-            if ($fakeBoundParameters.ContainsKey('ServerUri')) {
-                $getParameters['ServerUri'] = $fakeBoundParameters['ServerUri']
-            }
-
-            try {
-                $sections = Get-PatLibrary @getParameters
-                foreach ($sectionTitle in $sections.Directory.title) {
-                    if ($sectionTitle -ilike "$($completerInput.StrippedWord)*") {
-                        New-PatCompletionResult -Value $sectionTitle -QuoteChar $completerInput.QuoteChar
-                    }
-                }
-            }
-            catch {
-                Write-Debug "Tab completion failed for SectionName: $($_.Exception.Message)"
-            }
-        })]
         [string]
         $SectionName,
 
         [Parameter(Mandatory = $true, ParameterSetName = 'ById', ValueFromPipeline, ValueFromPipelineByPropertyName)]
         [ValidateRange(1, [int]::MaxValue)]
-        [ArgumentCompleter({
-            param($commandName, $parameterName, $wordToComplete, $commandAst, $fakeBoundParameters)
-
-            $completerInput = ConvertFrom-PatCompleterInput -WordToComplete $wordToComplete
-
-            $getParameters = @{ ErrorAction = 'SilentlyContinue' }
-            if ($fakeBoundParameters.ContainsKey('ServerUri')) {
-                $getParameters['ServerUri'] = $fakeBoundParameters['ServerUri']
-            }
-
-            try {
-                $sections = Get-PatLibrary @getParameters
-                $sections.Directory | ForEach-Object {
-                    $sectionId = ($_.key -replace '.*/(\d+)$', '$1')
-                    if ($sectionId -ilike "$($completerInput.StrippedWord)*") {
-                        New-PatCompletionResult -Value $sectionId -ListItemText "$sectionId - $($_.title)" -ToolTip "$($_.title) (ID: $sectionId)"
-                    }
-                }
-            }
-            catch {
-                Write-Debug "Tab completion failed for SectionId: $($_.Exception.Message)"
-            }
-        })]
         [int]
         $SectionId,
 

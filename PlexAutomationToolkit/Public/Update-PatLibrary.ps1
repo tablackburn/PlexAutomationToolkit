@@ -117,47 +117,10 @@ function Update-PatLibrary {
         Refreshes library section 2 using an explicit server URI and token.
         Use this when you don't have the server stored in configuration.
     #>
-    [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
-        'PSReviewUnusedParameter',
-        'commandName',
-        Justification = 'Standard ArgumentCompleter parameter, not always used'
-    )]
-    [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
-        'PSReviewUnusedParameter',
-        'parameterName',
-        Justification = 'Standard ArgumentCompleter parameter, not always used'
-    )]
-    [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
-        'PSReviewUnusedParameter',
-        'commandAst',
-        Justification = 'Standard ArgumentCompleter parameter, not always used'
-    )]
     [CmdletBinding(DefaultParameterSetName = 'ByName', SupportsShouldProcess, ConfirmImpact = 'Medium')]
     param (
         [Parameter(Mandatory = $true, ParameterSetName = 'ByName')]
         [ValidateNotNullOrEmpty()]
-        [ArgumentCompleter({
-            param($commandName, $parameterName, $wordToComplete, $commandAst, $fakeBoundParameters)
-
-            $completerInput = ConvertFrom-PatCompleterInput -WordToComplete $wordToComplete
-
-            $getParameters = @{ ErrorAction = 'SilentlyContinue' }
-            if ($fakeBoundParameters.ContainsKey('ServerUri')) {
-                $getParameters['ServerUri'] = $fakeBoundParameters['ServerUri']
-            }
-
-            try {
-                $sections = Get-PatLibrary @getParameters
-                foreach ($sectionTitle in $sections.Directory.title) {
-                    if ($sectionTitle -ilike "$($completerInput.StrippedWord)*") {
-                        New-PatCompletionResult -Value $sectionTitle -QuoteChar $completerInput.QuoteChar
-                    }
-                }
-            }
-            catch {
-                Write-Debug "Tab completion failed for SectionName: $($_.Exception.Message)"
-            }
-        })]
         [string]
         $SectionName,
 
@@ -169,116 +132,6 @@ function Update-PatLibrary {
         [Parameter(Mandatory = $false, ParameterSetName = 'ById')]
         [Parameter(Mandatory = $false, ParameterSetName = 'ByName')]
         [ValidateNotNullOrEmpty()]
-        [ArgumentCompleter({
-            param($commandName, $parameterName, $wordToComplete, $commandAst, $fakeBoundParameters)
-
-            $completerInput = ConvertFrom-PatCompleterInput -WordToComplete $wordToComplete
-
-            # Check if ServerUri was explicitly provided
-            $usingDefaultServer = -not $fakeBoundParameters.ContainsKey('ServerUri')
-
-            # If using default server, verify it exists
-            if ($usingDefaultServer) {
-                try {
-                    $defaultServer = Get-PatStoredServer -Default -ErrorAction 'Stop'
-                    if (-not $defaultServer) { return }
-                }
-                catch {
-                    Write-Debug "Tab completion failed: Could not retrieve default server"
-                    return
-                }
-            }
-
-            # Get SectionId - could be direct or via SectionName
-            $sectionId = $null
-            if ($fakeBoundParameters.ContainsKey('SectionId')) {
-                $sectionId = $fakeBoundParameters['SectionId']
-            }
-            elseif ($fakeBoundParameters.ContainsKey('SectionName')) {
-                try {
-                    $getParameters = @{ ErrorAction = 'SilentlyContinue' }
-                    if (-not $usingDefaultServer) {
-                        $getParameters['ServerUri'] = $fakeBoundParameters['ServerUri']
-                    }
-                    $sections = Get-PatLibrary @getParameters
-                    $matchedSection = $sections.Directory | Where-Object { $_.title -eq $fakeBoundParameters['SectionName'] }
-                    if ($matchedSection) {
-                        $sectionId = [int]($matchedSection.key -replace '.*/(\d+)$', '$1')
-                    }
-                }
-                catch {
-                    Write-Debug "Tab completion failed: Could not resolve section name to ID: $($_.Exception.Message)"
-                }
-            }
-
-            if (-not $sectionId) { return }
-
-            # Get root paths for this section
-            try {
-                $pathParameters = @{ SectionId = $sectionId; ErrorAction = 'SilentlyContinue' }
-                if (-not $usingDefaultServer) {
-                    $pathParameters['ServerUri'] = $fakeBoundParameters['ServerUri']
-                }
-                $rootPaths = Get-PatLibraryPath @pathParameters
-
-                if (-not $completerInput.StrippedWord) {
-                    # No input yet - show root paths
-                    foreach ($rootPath in $rootPaths) {
-                        New-PatCompletionResult -Value $rootPath.path -QuoteChar $completerInput.QuoteChar
-                    }
-                }
-                else {
-                    # Determine the path to browse
-                    # If strippedWord exactly matches a root path, browse that path
-                    # Otherwise, get the parent directory manually (preserve Unix paths)
-                    $exactRoot = $rootPaths | Where-Object { $_.path -ieq $completerInput.StrippedWord }
-                    $pathToBrowse = if ($exactRoot) {
-                        $completerInput.StrippedWord
-                    } else {
-                        # Manual parent path extraction to preserve forward slashes
-                        # Split-Path on Windows converts /foo/bar to \foo\bar which breaks Linux paths
-                        $lastSlash = [Math]::Max($completerInput.StrippedWord.LastIndexOf('/'), $completerInput.StrippedWord.LastIndexOf('\'))
-                        if ($lastSlash -gt 0) { $completerInput.StrippedWord.Substring(0, $lastSlash) } else { $null }
-                    }
-
-                    $browsedItems = $false
-                    if ($pathToBrowse) {
-                        try {
-                            $browseParameters = @{ Path = $pathToBrowse; ErrorAction = 'SilentlyContinue' }
-                            if (-not $usingDefaultServer) {
-                                $browseParameters['ServerUri'] = $fakeBoundParameters['ServerUri']
-                            }
-                            $items = Get-PatLibraryChildItem @browseParameters
-
-                            if ($items) {
-                                $browsedItems = $true
-                                foreach ($item in $items) {
-                                    # Get the path property (handle both 'path' and 'Path' casing)
-                                    $itemPath = if ($item.PSObject.Properties['path']) { $item.path } elseif ($item.PSObject.Properties['Path']) { $item.Path } else { $null }
-                                    if ($itemPath -and $itemPath -ilike "$($completerInput.StrippedWord)*") {
-                                        New-PatCompletionResult -Value $itemPath -QuoteChar $completerInput.QuoteChar
-                                    }
-                                }
-                            }
-                        }
-                        catch {
-                            Write-Debug "Tab completion failed: Could not browse path: $($_.Exception.Message)"
-                        }
-                    }
-
-                    # Fall back to matching root paths if browsing didn't work
-                    if (-not $browsedItems) {
-                        $matchingRoots = $rootPaths | Where-Object { $_.path -ilike "$($completerInput.StrippedWord)*" }
-                        foreach ($rootPath in $matchingRoots) {
-                            New-PatCompletionResult -Value $rootPath.path -QuoteChar $completerInput.QuoteChar
-                        }
-                    }
-                }
-            }
-            catch {
-                Write-Debug "Tab completion failed: Could not retrieve library paths: $($_.Exception.Message)"
-            }
-        })]
         [string]
         $Path,
 

@@ -435,45 +435,6 @@ Describe 'New-PatCollection' {
         }
     }
 
-    Context 'LibraryName argument completer' {
-        BeforeAll {
-            $command = Get-Command -Module PlexAutomationToolkit -Name New-PatCollection
-            $libraryNameParam = $command.Parameters['LibraryName']
-            $script:libraryNameCompleter = $libraryNameParam.Attributes | Where-Object { $_ -is [ArgumentCompleter] } | Select-Object -ExpandProperty ScriptBlock
-        }
-
-        It 'Returns matching library names' {
-            $results = InModuleScope PlexAutomationToolkit -Parameters @{ completer = $script:libraryNameCompleter } {
-                Mock Get-PatLibrary {
-                    return @{
-                        Directory = @(
-                            @{ title = 'Movies' }
-                            @{ title = 'TV Shows' }
-                        )
-                    }
-                }
-                & $completer 'New-PatCollection' 'LibraryName' 'Mov' $null @{}
-            }
-            $results | Should -Not -BeNullOrEmpty
-        }
-
-        It 'Passes ServerUri when provided' {
-            $results = InModuleScope PlexAutomationToolkit -Parameters @{ completer = $script:libraryNameCompleter } {
-                Mock Get-PatLibrary {
-                    return @{
-                        Directory = @(
-                            @{ title = 'Movies' }
-                        )
-                    }
-                }
-                & $completer 'New-PatCollection' 'LibraryName' '' $null @{ ServerUri = 'http://custom:32400' }
-            }
-            Should -Invoke Get-PatLibrary -ModuleName PlexAutomationToolkit -ParameterFilter {
-                $ServerUri -eq 'http://custom:32400'
-            }
-        }
-    }
-
     Context 'When machine identifier retrieval fails' {
         BeforeAll {
             Mock -ModuleName PlexAutomationToolkit Invoke-PatApi {

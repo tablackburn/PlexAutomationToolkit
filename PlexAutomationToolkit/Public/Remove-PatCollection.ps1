@@ -64,21 +64,6 @@ function Remove-PatCollection {
 
         Returns the removed collection object for auditing purposes.
     #>
-    [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
-        'PSReviewUnusedParameter',
-        'commandName',
-        Justification = 'Standard ArgumentCompleter parameter, not always used'
-    )]
-    [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
-        'PSReviewUnusedParameter',
-        'parameterName',
-        Justification = 'Standard ArgumentCompleter parameter, not always used'
-    )]
-    [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
-        'PSReviewUnusedParameter',
-        'commandAst',
-        Justification = 'Standard ArgumentCompleter parameter, not always used'
-    )]
     [CmdletBinding(SupportsShouldProcess, ConfirmImpact = 'High', DefaultParameterSetName = 'ById')]
     param (
         [Parameter(Mandatory = $true, ParameterSetName = 'ById', ValueFromPipeline, ValueFromPipelineByPropertyName)]
@@ -89,56 +74,11 @@ function Remove-PatCollection {
         [Parameter(Mandatory = $true, ParameterSetName = 'ByNameWithLibraryName')]
         [Parameter(Mandatory = $true, ParameterSetName = 'ByNameWithLibraryId')]
         [ValidateNotNullOrEmpty()]
-        [ArgumentCompleter({
-            param($commandName, $parameterName, $wordToComplete, $commandAst, $fakeBoundParameters)
-
-            $completerInput = ConvertFrom-PatCompleterInput -WordToComplete $wordToComplete
-
-            $getParameters = @{ ErrorAction = 'SilentlyContinue' }
-            if ($fakeBoundParameters.ContainsKey('ServerUri')) {
-                $getParameters['ServerUri'] = $fakeBoundParameters['ServerUri']
-            }
-            if ($fakeBoundParameters.ContainsKey('LibraryName')) {
-                $getParameters['LibraryName'] = $fakeBoundParameters['LibraryName']
-            }
-            elseif ($fakeBoundParameters.ContainsKey('LibraryId')) {
-                $getParameters['LibraryId'] = $fakeBoundParameters['LibraryId']
-            }
-            else {
-                return
-            }
-
-            $collections = Get-PatCollection @getParameters
-
-            foreach ($collection in $collections) {
-                if ($collection.Title -ilike "$($completerInput.StrippedWord)*") {
-                    New-PatCompletionResult -Value $collection.Title -QuoteChar $completerInput.QuoteChar
-                }
-            }
-        })]
         [string]
         $CollectionName,
 
         [Parameter(Mandatory = $true, ParameterSetName = 'ByNameWithLibraryName')]
         [ValidateNotNullOrEmpty()]
-        [ArgumentCompleter({
-            param($commandName, $parameterName, $wordToComplete, $commandAst, $fakeBoundParameters)
-
-            $completerInput = ConvertFrom-PatCompleterInput -WordToComplete $wordToComplete
-
-            $getParameters = @{ ErrorAction = 'SilentlyContinue' }
-            if ($fakeBoundParameters.ContainsKey('ServerUri')) {
-                $getParameters['ServerUri'] = $fakeBoundParameters['ServerUri']
-            }
-
-            $libraries = Get-PatLibrary @getParameters
-
-            foreach ($lib in $libraries.Directory) {
-                if ($lib.title -ilike "$($completerInput.StrippedWord)*") {
-                    New-PatCompletionResult -Value $lib.title -QuoteChar $completerInput.QuoteChar
-                }
-            }
-        })]
         [string]
         $LibraryName,
 

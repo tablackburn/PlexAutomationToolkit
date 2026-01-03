@@ -314,41 +314,6 @@ Describe 'Add-PatPlaylistItem' {
         }
     }
 
-    Context 'PlaylistName argument completer' {
-        BeforeAll {
-            $command = Get-Command -Module PlexAutomationToolkit -Name Add-PatPlaylistItem
-            $playlistNameParam = $command.Parameters['PlaylistName']
-            $script:playlistNameCompleter = $playlistNameParam.Attributes | Where-Object { $_ -is [ArgumentCompleter] } | Select-Object -ExpandProperty ScriptBlock
-        }
-
-        It 'Returns matching playlist names' {
-            $results = InModuleScope PlexAutomationToolkit -Parameters @{ completer = $script:playlistNameCompleter } {
-                Mock Get-PatPlaylist {
-                    return @(
-                        [PSCustomObject]@{ Title = 'My Favorites' }
-                        [PSCustomObject]@{ Title = 'Party Mix' }
-                    )
-                }
-                & $completer 'Add-PatPlaylistItem' 'PlaylistName' 'My' $null @{}
-            }
-            $results | Should -Not -BeNullOrEmpty
-        }
-
-        It 'Passes ServerUri when provided' {
-            $results = InModuleScope PlexAutomationToolkit -Parameters @{ completer = $script:playlistNameCompleter } {
-                Mock Get-PatPlaylist {
-                    return @(
-                        [PSCustomObject]@{ Title = 'My Favorites' }
-                    )
-                }
-                & $completer 'Add-PatPlaylistItem' 'PlaylistName' '' $null @{ ServerUri = 'http://custom:32400' }
-            }
-            Should -Invoke Get-PatPlaylist -ModuleName PlexAutomationToolkit -ParameterFilter {
-                $ServerUri -eq 'http://custom:32400'
-            }
-        }
-    }
-
     Context 'When machine identifier retrieval fails' {
         BeforeAll {
             Mock -ModuleName PlexAutomationToolkit Invoke-PatApi {

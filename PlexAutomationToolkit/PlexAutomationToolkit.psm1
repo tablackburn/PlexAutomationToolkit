@@ -9,4 +9,7 @@ foreach ($import in @($public + $private)) {
     }
 }
 
+# Register argument completers (runs in module scope, so private functions are accessible)
+Register-PatArgumentCompleters
+
 Export-ModuleMember -Function $public.Basename

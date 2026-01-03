@@ -85,43 +85,10 @@ function Sync-PatMedia {
         PlexAutomationToolkit.SyncPlan (with -PassThru)
         Returns the sync plan with operation results.
     #>
-    [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
-        'PSReviewUnusedParameter',
-        'commandName',
-        Justification = 'Standard ArgumentCompleter parameter, not always used'
-    )]
-    [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
-        'PSReviewUnusedParameter',
-        'parameterName',
-        Justification = 'Standard ArgumentCompleter parameter, not always used'
-    )]
-    [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
-        'PSReviewUnusedParameter',
-        'commandAst',
-        Justification = 'Standard ArgumentCompleter parameter, not always used'
-    )]
     [CmdletBinding(SupportsShouldProcess, ConfirmImpact = 'High', DefaultParameterSetName = 'ByName')]
     param (
         [Parameter(Mandatory = $false, ParameterSetName = 'ByName')]
         [ValidateNotNullOrEmpty()]
-        [ArgumentCompleter({
-            param($commandName, $parameterName, $wordToComplete, $commandAst, $fakeBoundParameters)
-
-            $completerInput = ConvertFrom-PatCompleterInput -WordToComplete $wordToComplete
-
-            $getParameters = @{ ErrorAction = 'SilentlyContinue' }
-            if ($fakeBoundParameters.ContainsKey('ServerUri')) {
-                $getParameters['ServerUri'] = $fakeBoundParameters['ServerUri']
-            }
-
-            $playlists = Get-PatPlaylist @getParameters
-
-            foreach ($playlist in $playlists) {
-                if ($playlist.Title -ilike "$($completerInput.StrippedWord)*") {
-                    New-PatCompletionResult -Value $playlist.Title -QuoteChar $completerInput.QuoteChar
-                }
-            }
-        })]
         [string]
         $PlaylistName = 'Travel',
 

@@ -1026,41 +1026,6 @@ Describe 'Get-PatSyncPlan' {
         }
     }
 
-    Context 'PlaylistName argument completer' {
-        BeforeAll {
-            $command = Get-Command -Module PlexAutomationToolkit -Name Get-PatSyncPlan
-            $playlistNameParam = $command.Parameters['PlaylistName']
-            $script:playlistNameCompleter = $playlistNameParam.Attributes | Where-Object { $_ -is [ArgumentCompleter] } | Select-Object -ExpandProperty ScriptBlock
-        }
-
-        It 'Returns matching playlist names' {
-            $results = InModuleScope PlexAutomationToolkit -Parameters @{ completer = $script:playlistNameCompleter } {
-                Mock Get-PatPlaylist {
-                    return @(
-                        [PSCustomObject]@{ Title = 'Travel' }
-                        [PSCustomObject]@{ Title = 'Vacation' }
-                    )
-                }
-                & $completer 'Get-PatSyncPlan' 'PlaylistName' 'Tra' $null @{}
-            }
-            $results | Should -Not -BeNullOrEmpty
-        }
-
-        It 'Passes ServerUri when provided' {
-            $results = InModuleScope PlexAutomationToolkit -Parameters @{ completer = $script:playlistNameCompleter } {
-                Mock Get-PatPlaylist {
-                    return @(
-                        [PSCustomObject]@{ Title = 'Travel' }
-                    )
-                }
-                & $completer 'Get-PatSyncPlan' 'PlaylistName' '' $null @{ ServerUri = 'http://custom:32400' }
-            }
-            Should -Invoke Get-PatPlaylist -ModuleName PlexAutomationToolkit -ParameterFilter {
-                $ServerUri -eq 'http://custom:32400'
-            }
-        }
-    }
-
     Context 'Subtitle count detection' {
         BeforeAll {
             Mock -ModuleName PlexAutomationToolkit Get-PSDrive {

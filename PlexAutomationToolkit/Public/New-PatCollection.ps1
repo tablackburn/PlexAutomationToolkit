@@ -63,21 +63,6 @@ function New-PatCollection {
         - ItemCount: Number of items in the collection
         - ServerUri: The Plex server URI
     #>
-    [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
-        'PSReviewUnusedParameter',
-        'commandName',
-        Justification = 'Standard ArgumentCompleter parameter, not always used'
-    )]
-    [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
-        'PSReviewUnusedParameter',
-        'parameterName',
-        Justification = 'Standard ArgumentCompleter parameter, not always used'
-    )]
-    [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
-        'PSReviewUnusedParameter',
-        'commandAst',
-        Justification = 'Standard ArgumentCompleter parameter, not always used'
-    )]
     [CmdletBinding(SupportsShouldProcess, ConfirmImpact = 'Low', DefaultParameterSetName = 'ByLibraryName')]
     param (
         [Parameter(Mandatory = $true)]
@@ -87,24 +72,6 @@ function New-PatCollection {
 
         [Parameter(Mandatory = $true, ParameterSetName = 'ByLibraryName')]
         [ValidateNotNullOrEmpty()]
-        [ArgumentCompleter({
-            param($commandName, $parameterName, $wordToComplete, $commandAst, $fakeBoundParameters)
-
-            $completerInput = ConvertFrom-PatCompleterInput -WordToComplete $wordToComplete
-
-            $getParameters = @{ ErrorAction = 'SilentlyContinue' }
-            if ($fakeBoundParameters.ContainsKey('ServerUri')) {
-                $getParameters['ServerUri'] = $fakeBoundParameters['ServerUri']
-            }
-
-            $libraries = Get-PatLibrary @getParameters
-
-            foreach ($lib in $libraries.Directory) {
-                if ($lib.title -ilike "$($completerInput.StrippedWord)*") {
-                    New-PatCompletionResult -Value $lib.title -QuoteChar $completerInput.QuoteChar
-                }
-            }
-        })]
         [string]
         $LibraryName,
 
