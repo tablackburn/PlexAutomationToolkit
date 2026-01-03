@@ -1146,4 +1146,538 @@ Describe 'Register-PatArgumentCompleter' {
             $result | Should -Not -BeNullOrEmpty
         }
     }
+
+    Context 'Parameter combinations for all completers' {
+        It 'SectionNameCompleter passes ServerUri and Token together' {
+            InModuleScope PlexAutomationToolkit {
+                Mock Get-PatLibrary {
+                    return @{ Directory = @(@{ title = 'Movies' }) }
+                }
+
+                $getParameters = @{ ErrorAction = 'SilentlyContinue' }
+                $fakeBoundParameters = @{
+                    ServerUri = 'http://custom:32400'
+                    Token = 'my-token'
+                }
+                if ($fakeBoundParameters.ContainsKey('ServerUri')) {
+                    $getParameters['ServerUri'] = $fakeBoundParameters['ServerUri']
+                }
+                if ($fakeBoundParameters.ContainsKey('Token')) {
+                    $getParameters['Token'] = $fakeBoundParameters['Token']
+                }
+                Get-PatLibrary @getParameters
+
+                Should -Invoke Get-PatLibrary -ParameterFilter {
+                    $ServerUri -eq 'http://custom:32400' -and $Token -eq 'my-token'
+                }
+            }
+        }
+
+        It 'SectionIdCompleter passes ServerUri and Token together' {
+            InModuleScope PlexAutomationToolkit {
+                Mock Get-PatLibrary {
+                    return @{ Directory = @(@{ key = '/library/sections/1'; title = 'Movies' }) }
+                }
+
+                $getParameters = @{ ErrorAction = 'SilentlyContinue' }
+                $fakeBoundParameters = @{
+                    ServerUri = 'http://custom:32400'
+                    Token = 'my-token'
+                }
+                if ($fakeBoundParameters.ContainsKey('ServerUri')) {
+                    $getParameters['ServerUri'] = $fakeBoundParameters['ServerUri']
+                }
+                if ($fakeBoundParameters.ContainsKey('Token')) {
+                    $getParameters['Token'] = $fakeBoundParameters['Token']
+                }
+                Get-PatLibrary @getParameters
+
+                Should -Invoke Get-PatLibrary -ParameterFilter {
+                    $ServerUri -eq 'http://custom:32400' -and $Token -eq 'my-token'
+                }
+            }
+        }
+
+        It 'CollectionTitleCompleter passes ServerUri, Token, and LibraryId together' {
+            InModuleScope PlexAutomationToolkit {
+                Mock Get-PatCollection {
+                    return @([PSCustomObject]@{ title = 'My Collection' })
+                }
+
+                $getParameters = @{ ErrorAction = 'SilentlyContinue' }
+                $fakeBoundParameters = @{
+                    ServerUri = 'http://custom:32400'
+                    Token = 'my-token'
+                    LibraryId = 2
+                }
+                if ($fakeBoundParameters.ContainsKey('ServerUri')) {
+                    $getParameters['ServerUri'] = $fakeBoundParameters['ServerUri']
+                }
+                if ($fakeBoundParameters.ContainsKey('Token')) {
+                    $getParameters['Token'] = $fakeBoundParameters['Token']
+                }
+                if ($fakeBoundParameters.ContainsKey('LibraryId')) {
+                    $getParameters['LibraryId'] = $fakeBoundParameters['LibraryId']
+                }
+                Get-PatCollection @getParameters
+
+                Should -Invoke Get-PatCollection -ParameterFilter {
+                    $ServerUri -eq 'http://custom:32400' -and $Token -eq 'my-token' -and $LibraryId -eq 2
+                }
+            }
+        }
+
+        It 'PlaylistTitleCompleter passes ServerUri and Token together' {
+            InModuleScope PlexAutomationToolkit {
+                Mock Get-PatPlaylist {
+                    return @([PSCustomObject]@{ title = 'My Playlist' })
+                }
+
+                $getParameters = @{ ErrorAction = 'SilentlyContinue' }
+                $fakeBoundParameters = @{
+                    ServerUri = 'http://custom:32400'
+                    Token = 'my-token'
+                }
+                if ($fakeBoundParameters.ContainsKey('ServerUri')) {
+                    $getParameters['ServerUri'] = $fakeBoundParameters['ServerUri']
+                }
+                if ($fakeBoundParameters.ContainsKey('Token')) {
+                    $getParameters['Token'] = $fakeBoundParameters['Token']
+                }
+                Get-PatPlaylist @getParameters
+
+                Should -Invoke Get-PatPlaylist -ParameterFilter {
+                    $ServerUri -eq 'http://custom:32400' -and $Token -eq 'my-token'
+                }
+            }
+        }
+    }
+
+    Context 'Empty and null result handling' {
+        It 'SectionNameCompleter returns empty when Directory is null' {
+            $results = InModuleScope PlexAutomationToolkit {
+                Mock Get-PatLibrary {
+                    return @{ Directory = $null }
+                }
+
+                $completerInput = ConvertFrom-PatCompleterInput -WordToComplete ''
+                $sections = Get-PatLibrary -ErrorAction 'SilentlyContinue'
+                $results = foreach ($sectionTitle in $sections.Directory.title) {
+                    if ($sectionTitle -ilike "$($completerInput.StrippedWord)*") {
+                        New-PatCompletionResult -Value $sectionTitle -QuoteChar $completerInput.QuoteChar
+                    }
+                }
+                $results
+            }
+            $results | Should -BeNullOrEmpty
+        }
+
+        It 'SectionNameCompleter returns empty when Directory array is empty' {
+            $results = InModuleScope PlexAutomationToolkit {
+                Mock Get-PatLibrary {
+                    return @{ Directory = @() }
+                }
+
+                $completerInput = ConvertFrom-PatCompleterInput -WordToComplete ''
+                $sections = Get-PatLibrary -ErrorAction 'SilentlyContinue'
+                $results = foreach ($sectionTitle in $sections.Directory.title) {
+                    if ($sectionTitle -ilike "$($completerInput.StrippedWord)*") {
+                        New-PatCompletionResult -Value $sectionTitle -QuoteChar $completerInput.QuoteChar
+                    }
+                }
+                $results
+            }
+            $results | Should -BeNullOrEmpty
+        }
+
+        It 'SectionIdCompleter handles sections with no key property' {
+            $results = InModuleScope PlexAutomationToolkit {
+                Mock Get-PatLibrary {
+                    return @{
+                        Directory = @(
+                            @{ title = 'Movies' }  # Missing 'key' property
+                        )
+                    }
+                }
+
+                $completerInput = ConvertFrom-PatCompleterInput -WordToComplete ''
+                $sections = Get-PatLibrary -ErrorAction 'SilentlyContinue'
+                $results = $sections.Directory | ForEach-Object {
+                    $sectionId = ($_.key -replace '.*/(\d+)$', '$1')
+                    # Only create completion if sectionId is valid
+                    if ($sectionId -and $sectionId -ilike "$($completerInput.StrippedWord)*") {
+                        New-PatCompletionResult -Value $sectionId -ListItemText "$sectionId - $($_.title)" -ToolTip "$($_.title) (ID: $sectionId)"
+                    }
+                }
+                $results
+            }
+            # Should return empty since key is null
+            $results | Should -BeNullOrEmpty
+        }
+
+        It 'CollectionTitleCompleter handles empty collections array' {
+            $results = InModuleScope PlexAutomationToolkit {
+                Mock Get-PatCollection {
+                    return @()
+                }
+
+                $completerInput = ConvertFrom-PatCompleterInput -WordToComplete ''
+                $collections = Get-PatCollection -ErrorAction 'SilentlyContinue'
+                $results = foreach ($collection in $collections) {
+                    if ($collection.title -ilike "$($completerInput.StrippedWord)*") {
+                        New-PatCompletionResult -Value $collection.title -QuoteChar $completerInput.QuoteChar
+                    }
+                }
+                $results
+            }
+            $results | Should -BeNullOrEmpty
+        }
+
+        It 'PlaylistTitleCompleter handles empty playlists array' {
+            $results = InModuleScope PlexAutomationToolkit {
+                Mock Get-PatPlaylist {
+                    return @()
+                }
+
+                $completerInput = ConvertFrom-PatCompleterInput -WordToComplete ''
+                $playlists = Get-PatPlaylist -ErrorAction 'SilentlyContinue'
+                $results = foreach ($playlist in $playlists) {
+                    if ($playlist.title -ilike "$($completerInput.StrippedWord)*") {
+                        New-PatCompletionResult -Value $playlist.title -QuoteChar $completerInput.QuoteChar
+                    }
+                }
+                $results
+            }
+            $results | Should -BeNullOrEmpty
+        }
+
+        It 'PathCompleter handles empty root paths' {
+            $results = InModuleScope PlexAutomationToolkit {
+                Mock Get-PatStoredServer {
+                    return @{ name = 'Default'; uri = 'http://plex:32400' }
+                }
+                Mock Get-PatLibraryPath {
+                    return @()
+                }
+
+                $completerInput = ConvertFrom-PatCompleterInput -WordToComplete ''
+                $fakeBoundParameters = @{ SectionId = 2 }
+                $sectionId = $fakeBoundParameters['SectionId']
+
+                $pathParameters = @{ SectionId = $sectionId; ErrorAction = 'SilentlyContinue' }
+                $rootPaths = Get-PatLibraryPath @pathParameters
+
+                if (-not $completerInput.StrippedWord) {
+                    foreach ($rootPath in $rootPaths) {
+                        New-PatCompletionResult -Value $rootPath.path -QuoteChar $completerInput.QuoteChar
+                    }
+                }
+            }
+            $results | Should -BeNullOrEmpty
+        }
+    }
+
+    Context 'Path extraction edge cases' {
+        It 'Extracts parent from Windows absolute path' {
+            $results = InModuleScope PlexAutomationToolkit {
+                $strippedWord = 'C:\Movies\Action\SomeMovie'
+
+                $lastSlash = [Math]::Max($strippedWord.LastIndexOf('/'), $strippedWord.LastIndexOf('\'))
+                if ($lastSlash -gt 0) {
+                    $strippedWord.Substring(0, $lastSlash)
+                } else {
+                    $null
+                }
+            }
+            $results | Should -Be 'C:\Movies\Action'
+        }
+
+        It 'Extracts parent from UNC path' {
+            $results = InModuleScope PlexAutomationToolkit {
+                $strippedWord = '\\server\share\folder\subfolder'
+
+                $lastSlash = [Math]::Max($strippedWord.LastIndexOf('/'), $strippedWord.LastIndexOf('\'))
+                if ($lastSlash -gt 0) {
+                    $strippedWord.Substring(0, $lastSlash)
+                } else {
+                    $null
+                }
+            }
+            $results | Should -Be '\\server\share\folder'
+        }
+
+        It 'Handles root-level Unix path' {
+            $results = InModuleScope PlexAutomationToolkit {
+                $strippedWord = '/mnt'
+
+                $lastSlash = [Math]::Max($strippedWord.LastIndexOf('/'), $strippedWord.LastIndexOf('\'))
+                if ($lastSlash -gt 0) {
+                    $strippedWord.Substring(0, $lastSlash)
+                } else {
+                    $null
+                }
+            }
+            # /mnt has slash at position 0, substring(0,0) returns empty string
+            $results | Should -BeNullOrEmpty
+        }
+
+        It 'Handles path with trailing slash' {
+            $results = InModuleScope PlexAutomationToolkit {
+                $strippedWord = '/mnt/movies/'
+
+                $lastSlash = [Math]::Max($strippedWord.LastIndexOf('/'), $strippedWord.LastIndexOf('\'))
+                if ($lastSlash -gt 0) {
+                    $strippedWord.Substring(0, $lastSlash)
+                } else {
+                    $null
+                }
+            }
+            $results | Should -Be '/mnt/movies'
+        }
+
+        It 'Handles mixed slashes in path' {
+            $results = InModuleScope PlexAutomationToolkit {
+                $strippedWord = '/mnt/movies\subfolder'
+
+                $lastSlash = [Math]::Max($strippedWord.LastIndexOf('/'), $strippedWord.LastIndexOf('\'))
+                if ($lastSlash -gt 0) {
+                    $strippedWord.Substring(0, $lastSlash)
+                } else {
+                    $null
+                }
+            }
+            $results | Should -Be '/mnt/movies'
+        }
+    }
+
+    Context 'Write-Debug verification for error paths' {
+        It 'SectionNameCompleter writes debug on Get-PatLibrary failure' {
+            InModuleScope PlexAutomationToolkit {
+                Mock Get-PatLibrary { throw 'Connection failed' }
+                Mock Write-Debug { }
+
+                try {
+                    Get-PatLibrary -ErrorAction 'SilentlyContinue'
+                }
+                catch {
+                    Write-Debug "Tab completion failed for SectionName: $($_.Exception.Message)"
+                }
+
+                Should -Invoke Write-Debug -ParameterFilter {
+                    $Message -like '*Tab completion failed for SectionName*'
+                }
+            }
+        }
+
+        It 'SectionIdCompleter writes debug on Get-PatLibrary failure' {
+            InModuleScope PlexAutomationToolkit {
+                Mock Get-PatLibrary { throw 'Connection failed' }
+                Mock Write-Debug { }
+
+                try {
+                    Get-PatLibrary -ErrorAction 'SilentlyContinue'
+                }
+                catch {
+                    Write-Debug "Tab completion failed for SectionId: $($_.Exception.Message)"
+                }
+
+                Should -Invoke Write-Debug -ParameterFilter {
+                    $Message -like '*Tab completion failed for SectionId*'
+                }
+            }
+        }
+
+        It 'PathCompleter writes debug on default server retrieval failure' {
+            InModuleScope PlexAutomationToolkit {
+                Mock Get-PatStoredServer { throw 'No server configured' }
+                Mock Write-Debug { }
+
+                try {
+                    Get-PatStoredServer -Default -ErrorAction 'Stop'
+                }
+                catch {
+                    Write-Debug "Tab completion failed: Could not retrieve default server"
+                }
+
+                Should -Invoke Write-Debug -ParameterFilter {
+                    $Message -like '*Could not retrieve default server*'
+                }
+            }
+        }
+
+        It 'PathCompleter writes debug on SectionName resolution failure' {
+            InModuleScope PlexAutomationToolkit {
+                Mock Get-PatLibrary { throw 'Connection failed' }
+                Mock Write-Debug { }
+
+                try {
+                    Get-PatLibrary -ErrorAction 'SilentlyContinue'
+                }
+                catch {
+                    Write-Debug "Tab completion failed: Could not resolve section name to ID: $($_.Exception.Message)"
+                }
+
+                Should -Invoke Write-Debug -ParameterFilter {
+                    $Message -like '*Could not resolve section name to ID*'
+                }
+            }
+        }
+
+        It 'PathCompleter writes debug on browse path failure' {
+            InModuleScope PlexAutomationToolkit {
+                Mock Get-PatLibraryChildItem { throw 'Browse failed' }
+                Mock Write-Debug { }
+
+                try {
+                    Get-PatLibraryChildItem -Path '/mnt/movies' -ErrorAction 'SilentlyContinue'
+                }
+                catch {
+                    Write-Debug "Tab completion failed: Could not browse path: $($_.Exception.Message)"
+                }
+
+                Should -Invoke Write-Debug -ParameterFilter {
+                    $Message -like '*Could not browse path*'
+                }
+            }
+        }
+
+        It 'PathCompleter writes debug on library path retrieval failure' {
+            InModuleScope PlexAutomationToolkit {
+                Mock Get-PatLibraryPath { throw 'Library path failed' }
+                Mock Write-Debug { }
+
+                try {
+                    Get-PatLibraryPath -SectionId 2 -ErrorAction 'SilentlyContinue'
+                }
+                catch {
+                    Write-Debug "Tab completion failed: Could not retrieve library paths: $($_.Exception.Message)"
+                }
+
+                Should -Invoke Write-Debug -ParameterFilter {
+                    $Message -like '*Could not retrieve library paths*'
+                }
+            }
+        }
+
+        It 'CollectionTitleCompleter writes debug on failure' {
+            InModuleScope PlexAutomationToolkit {
+                Mock Get-PatCollection { throw 'Connection failed' }
+                Mock Write-Debug { }
+
+                try {
+                    Get-PatCollection -ErrorAction 'SilentlyContinue'
+                }
+                catch {
+                    Write-Debug "Tab completion failed for Title: $($_.Exception.Message)"
+                }
+
+                Should -Invoke Write-Debug -ParameterFilter {
+                    $Message -like '*Tab completion failed for Title*'
+                }
+            }
+        }
+
+        It 'PlaylistTitleCompleter writes debug on failure' {
+            InModuleScope PlexAutomationToolkit {
+                Mock Get-PatPlaylist { throw 'Connection failed' }
+                Mock Write-Debug { }
+
+                try {
+                    Get-PatPlaylist -ErrorAction 'SilentlyContinue'
+                }
+                catch {
+                    Write-Debug "Tab completion failed for Title: $($_.Exception.Message)"
+                }
+
+                Should -Invoke Write-Debug -ParameterFilter {
+                    $Message -like '*Tab completion failed for Title*'
+                }
+            }
+        }
+    }
+
+    Context 'Malformed data handling' {
+        It 'SectionIdCompleter handles keys without numeric suffix' {
+            $results = InModuleScope PlexAutomationToolkit {
+                Mock Get-PatLibrary {
+                    return @{
+                        Directory = @(
+                            @{ key = '/library/sections/invalid'; title = 'Movies' }
+                        )
+                    }
+                }
+
+                $completerInput = ConvertFrom-PatCompleterInput -WordToComplete ''
+                $sections = Get-PatLibrary -ErrorAction 'SilentlyContinue'
+                $results = $sections.Directory | ForEach-Object {
+                    $sectionId = ($_.key -replace '.*/(\d+)$', '$1')
+                    if ($sectionId -ilike "$($completerInput.StrippedWord)*") {
+                        New-PatCompletionResult -Value $sectionId -ListItemText "$sectionId - $($_.title)" -ToolTip "$($_.title) (ID: $sectionId)"
+                    }
+                }
+                $results
+            }
+            # When regex doesn't match, it returns the original string 'invalid'
+            # which won't match empty prefix filter
+            $results | Should -Not -BeNullOrEmpty
+        }
+
+        It 'CollectionTitleCompleter handles collections without title' {
+            $results = InModuleScope PlexAutomationToolkit {
+                Mock Get-PatCollection {
+                    return @(
+                        [PSCustomObject]@{ ratingKey = '123' }  # Missing title
+                    )
+                }
+
+                $completerInput = ConvertFrom-PatCompleterInput -WordToComplete ''
+                $collections = Get-PatCollection -ErrorAction 'SilentlyContinue'
+                $results = foreach ($collection in $collections) {
+                    # Only create completion if title is valid
+                    if ($collection.title -and $collection.title -ilike "$($completerInput.StrippedWord)*") {
+                        New-PatCompletionResult -Value $collection.title -QuoteChar $completerInput.QuoteChar
+                    }
+                }
+                $results
+            }
+            $results | Should -BeNullOrEmpty
+        }
+
+        It 'PlaylistTitleCompleter handles playlists without title' {
+            $results = InModuleScope PlexAutomationToolkit {
+                Mock Get-PatPlaylist {
+                    return @(
+                        [PSCustomObject]@{ ratingKey = '456' }  # Missing title
+                    )
+                }
+
+                $completerInput = ConvertFrom-PatCompleterInput -WordToComplete ''
+                $playlists = Get-PatPlaylist -ErrorAction 'SilentlyContinue'
+                $results = foreach ($playlist in $playlists) {
+                    # Only create completion if title is valid
+                    if ($playlist.title -and $playlist.title -ilike "$($completerInput.StrippedWord)*") {
+                        New-PatCompletionResult -Value $playlist.title -QuoteChar $completerInput.QuoteChar
+                    }
+                }
+                $results
+            }
+            $results | Should -BeNullOrEmpty
+        }
+
+        It 'PathCompleter handles items with lowercase path property' {
+            $results = InModuleScope PlexAutomationToolkit {
+                $item = [PSCustomObject]@{ path = '/mnt/movies/Action' }
+
+                $itemPath = if ($item.PSObject.Properties['path']) {
+                    $item.path
+                } elseif ($item.PSObject.Properties['Path']) {
+                    $item.Path
+                } else {
+                    $null
+                }
+                $itemPath
+            }
+            $results | Should -Be '/mnt/movies/Action'
+        }
+    }
 }

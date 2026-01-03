@@ -18,233 +18,91 @@ function Register-PatArgumentCompleter {
 
     # ============================================================
     # Shared Completer Scriptblocks
+    # These are thin wrappers that call the testable helper functions
     # ============================================================
 
     # SectionName completer - used by multiple commands
     $SectionNameCompleter = {
         param($commandName, $parameterName, $wordToComplete, $commandAst, $fakeBoundParameters)
 
-        $completerInput = ConvertFrom-PatCompleterInput -WordToComplete $wordToComplete
-
-        $getParameters = @{ ErrorAction = 'SilentlyContinue' }
+        $params = @{ WordToComplete = $wordToComplete }
         if ($fakeBoundParameters.ContainsKey('ServerUri')) {
-            $getParameters['ServerUri'] = $fakeBoundParameters['ServerUri']
+            $params['ServerUri'] = $fakeBoundParameters['ServerUri']
         }
         if ($fakeBoundParameters.ContainsKey('Token')) {
-            $getParameters['Token'] = $fakeBoundParameters['Token']
+            $params['Token'] = $fakeBoundParameters['Token']
         }
 
-        try {
-            $sections = Get-PatLibrary @getParameters
-            foreach ($sectionTitle in $sections.Directory.title) {
-                if ($sectionTitle -ilike "$($completerInput.StrippedWord)*") {
-                    New-PatCompletionResult -Value $sectionTitle -QuoteChar $completerInput.QuoteChar
-                }
-            }
-        }
-        catch {
-            Write-Debug "Tab completion failed for SectionName: $($_.Exception.Message)"
-        }
+        Get-PatSectionNameCompletions @params
     }
 
     # SectionId completer - used by multiple commands
     $SectionIdCompleter = {
         param($commandName, $parameterName, $wordToComplete, $commandAst, $fakeBoundParameters)
 
-        $completerInput = ConvertFrom-PatCompleterInput -WordToComplete $wordToComplete
-
-        $getParameters = @{ ErrorAction = 'SilentlyContinue' }
+        $params = @{ WordToComplete = $wordToComplete }
         if ($fakeBoundParameters.ContainsKey('ServerUri')) {
-            $getParameters['ServerUri'] = $fakeBoundParameters['ServerUri']
+            $params['ServerUri'] = $fakeBoundParameters['ServerUri']
         }
         if ($fakeBoundParameters.ContainsKey('Token')) {
-            $getParameters['Token'] = $fakeBoundParameters['Token']
+            $params['Token'] = $fakeBoundParameters['Token']
         }
 
-        try {
-            $sections = Get-PatLibrary @getParameters
-            $sections.Directory | ForEach-Object {
-                $sectionId = ($_.key -replace '.*/(\d+)$', '$1')
-                if ($sectionId -ilike "$($completerInput.StrippedWord)*") {
-                    New-PatCompletionResult -Value $sectionId -ListItemText "$sectionId - $($_.title)" -ToolTip "$($_.title) (ID: $sectionId)"
-                }
-            }
-        }
-        catch {
-            Write-Debug "Tab completion failed for SectionId: $($_.Exception.Message)"
-        }
+        Get-PatSectionIdCompletions @params
     }
 
     # Path completer for Update-PatLibrary - browses Plex server filesystem
     $LibraryPathCompleter = {
         param($commandName, $parameterName, $wordToComplete, $commandAst, $fakeBoundParameters)
 
-        $completerInput = ConvertFrom-PatCompleterInput -WordToComplete $wordToComplete
-
-        # Check if ServerUri was explicitly provided
-        $usingDefaultServer = -not $fakeBoundParameters.ContainsKey('ServerUri')
-
-        # If using default server, verify it exists
-        if ($usingDefaultServer) {
-            try {
-                $defaultServer = Get-PatStoredServer -Default -ErrorAction 'Stop'
-                if (-not $defaultServer) { return }
-            }
-            catch {
-                Write-Debug "Tab completion failed: Could not retrieve default server"
-                return
-            }
+        $params = @{ WordToComplete = $wordToComplete }
+        if ($fakeBoundParameters.ContainsKey('ServerUri')) {
+            $params['ServerUri'] = $fakeBoundParameters['ServerUri']
         }
-
-        # Get SectionId - could be direct or via SectionName
-        $sectionId = $null
         if ($fakeBoundParameters.ContainsKey('SectionId')) {
-            $sectionId = $fakeBoundParameters['SectionId']
+            $params['SectionId'] = $fakeBoundParameters['SectionId']
         }
-        elseif ($fakeBoundParameters.ContainsKey('SectionName')) {
-            try {
-                $getParameters = @{ ErrorAction = 'SilentlyContinue' }
-                if (-not $usingDefaultServer) {
-                    $getParameters['ServerUri'] = $fakeBoundParameters['ServerUri']
-                }
-                $sections = Get-PatLibrary @getParameters
-                $matchedSection = $sections.Directory | Where-Object { $_.title -eq $fakeBoundParameters['SectionName'] }
-                if ($matchedSection) {
-                    $sectionId = [int]($matchedSection.key -replace '.*/(\d+)$', '$1')
-                }
-            }
-            catch {
-                Write-Debug "Tab completion failed: Could not resolve section name to ID: $($_.Exception.Message)"
-            }
+        if ($fakeBoundParameters.ContainsKey('SectionName')) {
+            $params['SectionName'] = $fakeBoundParameters['SectionName']
         }
 
-        if (-not $sectionId) { return }
-
-        # Get root paths for this section
-        try {
-            $pathParameters = @{ SectionId = $sectionId; ErrorAction = 'SilentlyContinue' }
-            if (-not $usingDefaultServer) {
-                $pathParameters['ServerUri'] = $fakeBoundParameters['ServerUri']
-            }
-            $rootPaths = Get-PatLibraryPath @pathParameters
-
-            if (-not $completerInput.StrippedWord) {
-                # No input yet - show root paths
-                foreach ($rootPath in $rootPaths) {
-                    New-PatCompletionResult -Value $rootPath.path -QuoteChar $completerInput.QuoteChar
-                }
-            }
-            else {
-                # Determine the path to browse
-                # If strippedWord exactly matches a root path, browse that path
-                # Otherwise, get the parent directory manually (preserve Unix paths)
-                $exactRoot = $rootPaths | Where-Object { $_.path -ieq $completerInput.StrippedWord }
-                $pathToBrowse = if ($exactRoot) {
-                    $completerInput.StrippedWord
-                } else {
-                    # Manual parent path extraction to preserve forward slashes
-                    # Split-Path on Windows converts /foo/bar to \foo\bar which breaks Linux paths
-                    $lastSlash = [Math]::Max($completerInput.StrippedWord.LastIndexOf('/'), $completerInput.StrippedWord.LastIndexOf('\'))
-                    if ($lastSlash -gt 0) { $completerInput.StrippedWord.Substring(0, $lastSlash) } else { $null }
-                }
-
-                $browsedItems = $false
-                if ($pathToBrowse) {
-                    try {
-                        $browseParameters = @{ Path = $pathToBrowse; ErrorAction = 'SilentlyContinue' }
-                        if (-not $usingDefaultServer) {
-                            $browseParameters['ServerUri'] = $fakeBoundParameters['ServerUri']
-                        }
-                        $items = Get-PatLibraryChildItem @browseParameters
-
-                        if ($items) {
-                            $browsedItems = $true
-                            foreach ($item in $items) {
-                                # Get the path property (handle both 'path' and 'Path' casing)
-                                $itemPath = if ($item.PSObject.Properties['path']) { $item.path } elseif ($item.PSObject.Properties['Path']) { $item.Path } else { $null }
-                                if ($itemPath -and $itemPath -ilike "$($completerInput.StrippedWord)*") {
-                                    New-PatCompletionResult -Value $itemPath -QuoteChar $completerInput.QuoteChar
-                                }
-                            }
-                        }
-                    }
-                    catch {
-                        Write-Debug "Tab completion failed: Could not browse path: $($_.Exception.Message)"
-                    }
-                }
-
-                # Fall back to matching root paths if browsing didn't work
-                if (-not $browsedItems) {
-                    $matchingRoots = $rootPaths | Where-Object { $_.path -ilike "$($completerInput.StrippedWord)*" }
-                    foreach ($rootPath in $matchingRoots) {
-                        New-PatCompletionResult -Value $rootPath.path -QuoteChar $completerInput.QuoteChar
-                    }
-                }
-            }
-        }
-        catch {
-            Write-Debug "Tab completion failed: Could not retrieve library paths: $($_.Exception.Message)"
-        }
+        Get-PatLibraryPathCompletions @params
     }
 
     # Collection name completer
     $CollectionTitleCompleter = {
         param($commandName, $parameterName, $wordToComplete, $commandAst, $fakeBoundParameters)
 
-        $completerInput = ConvertFrom-PatCompleterInput -WordToComplete $wordToComplete
-
-        $getParameters = @{ ErrorAction = 'SilentlyContinue' }
+        $params = @{ WordToComplete = $wordToComplete }
         if ($fakeBoundParameters.ContainsKey('ServerUri')) {
-            $getParameters['ServerUri'] = $fakeBoundParameters['ServerUri']
+            $params['ServerUri'] = $fakeBoundParameters['ServerUri']
         }
         if ($fakeBoundParameters.ContainsKey('Token')) {
-            $getParameters['Token'] = $fakeBoundParameters['Token']
+            $params['Token'] = $fakeBoundParameters['Token']
         }
         if ($fakeBoundParameters.ContainsKey('SectionId')) {
-            $getParameters['SectionId'] = $fakeBoundParameters['SectionId']
+            $params['SectionId'] = $fakeBoundParameters['SectionId']
         }
         if ($fakeBoundParameters.ContainsKey('SectionName')) {
-            $getParameters['SectionName'] = $fakeBoundParameters['SectionName']
+            $params['SectionName'] = $fakeBoundParameters['SectionName']
         }
 
-        try {
-            $collections = Get-PatCollection @getParameters
-            foreach ($collection in $collections) {
-                if ($collection.title -ilike "$($completerInput.StrippedWord)*") {
-                    New-PatCompletionResult -Value $collection.title -QuoteChar $completerInput.QuoteChar
-                }
-            }
-        }
-        catch {
-            Write-Debug "Tab completion failed for Title: $($_.Exception.Message)"
-        }
+        Get-PatCollectionTitleCompletions @params
     }
 
     # Playlist title completer
     $PlaylistTitleCompleter = {
         param($commandName, $parameterName, $wordToComplete, $commandAst, $fakeBoundParameters)
 
-        $completerInput = ConvertFrom-PatCompleterInput -WordToComplete $wordToComplete
-
-        $getParameters = @{ ErrorAction = 'SilentlyContinue' }
+        $params = @{ WordToComplete = $wordToComplete }
         if ($fakeBoundParameters.ContainsKey('ServerUri')) {
-            $getParameters['ServerUri'] = $fakeBoundParameters['ServerUri']
+            $params['ServerUri'] = $fakeBoundParameters['ServerUri']
         }
         if ($fakeBoundParameters.ContainsKey('Token')) {
-            $getParameters['Token'] = $fakeBoundParameters['Token']
+            $params['Token'] = $fakeBoundParameters['Token']
         }
 
-        try {
-            $playlists = Get-PatPlaylist @getParameters
-            foreach ($playlist in $playlists) {
-                if ($playlist.title -ilike "$($completerInput.StrippedWord)*") {
-                    New-PatCompletionResult -Value $playlist.title -QuoteChar $completerInput.QuoteChar
-                }
-            }
-        }
-        catch {
-            Write-Debug "Tab completion failed for Title: $($_.Exception.Message)"
-        }
+        Get-PatPlaylistTitleCompletions @params
     }
 
     # ============================================================
