@@ -7,24 +7,24 @@ BeforeAll {
     Import-Module -Name $moduleManifestPath -Verbose:$false -ErrorAction 'Stop'
 }
 
-Describe 'Register-PatArgumentCompleters' {
+Describe 'Register-PatArgumentCompleter' {
 
     Context 'Function basics' {
         It 'Function exists' {
             InModuleScope PlexAutomationToolkit {
-                Get-Command -Name 'Register-PatArgumentCompleters' -ErrorAction 'SilentlyContinue' | Should -Not -BeNullOrEmpty
+                Get-Command -Name 'Register-PatArgumentCompleter' -ErrorAction 'SilentlyContinue' | Should -Not -BeNullOrEmpty
             }
         }
 
         It 'Can be called without error' {
             InModuleScope PlexAutomationToolkit {
-                { Register-PatArgumentCompleters } | Should -Not -Throw
+                { Register-PatArgumentCompleter } | Should -Not -Throw
             }
         }
 
         It 'Has CmdletBinding attribute' {
             InModuleScope PlexAutomationToolkit {
-                $cmd = Get-Command -Name 'Register-PatArgumentCompleters'
+                $cmd = Get-Command -Name 'Register-PatArgumentCompleter'
                 $cmd.CmdletBinding | Should -Be $true
             }
         }

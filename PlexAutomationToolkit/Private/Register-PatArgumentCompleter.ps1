@@ -1,4 +1,4 @@
-function Register-PatArgumentCompleters {
+function Register-PatArgumentCompleter {
     <#
     .SYNOPSIS
         Registers argument completers for PlexAutomationToolkit commands.
@@ -9,8 +9,6 @@ function Register-PatArgumentCompleters {
         Using Register-ArgumentCompleter ensures the scriptblocks run in the
         module's scope, giving them access to private helper functions.
     #>
-    # Suppress plural noun warning - function intentionally registers multiple completers
-    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseSingularNouns', '')]
     # Suppress unused parameter warnings - completer scriptblocks require these parameters by signature
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSReviewUnusedParameter', 'commandName')]
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSReviewUnusedParameter', 'parameterName')]
