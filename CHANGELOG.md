@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [0.8.3] - 2026-01-05
+
+### Fixed
+
+- Add retry logic with exponential backoff to `Invoke-PatApi` for transient network errors
+  - Retries DNS failures, connection timeouts, 503/429 status codes
+  - Does not retry permanent errors (401, 403, 404)
+  - Default 3 retries with exponential delays (1s, 2s, 4s)
+- Fix path validation in `Test-PatLibraryPath` to use correct property
+  - Plex browse API returns `key` (API endpoint) and `path` (filesystem path)
+  - Was incorrectly matching against `key`, now correctly uses `path`
+
+### Added
+
+- Integration tests for path validation using `PLEX_TEST_LIBRARY_PATH` environment variable
+- CI workflow support for `PLEX_TEST_LIBRARY_PATH` secret
+- Regression tests to verify `path` vs `key` property handling
+
 ## [0.8.2] - 2025-12-30
 
 ### Changed
