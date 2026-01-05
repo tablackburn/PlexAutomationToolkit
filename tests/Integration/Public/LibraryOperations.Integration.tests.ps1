@@ -177,4 +177,54 @@ Describe 'Update-PatLibrary Integration Tests' -Skip:(-not $script:integrationEn
             # Verify no errors occurred
         }
     }
+
+    Context 'Path validation with real paths' -Skip:(-not $env:PLEX_TEST_LIBRARY_PATH) {
+
+        It 'Test-PatLibraryPath returns true for existing path' {
+            $result = Test-PatLibraryPath -Path $env:PLEX_TEST_LIBRARY_PATH
+            $result | Should -Be $true
+        }
+
+        It 'Test-PatLibraryPath returns false for non-existent path' {
+            $result = Test-PatLibraryPath -Path '/definitely/not/a/real/path/xyz123abc'
+            $result | Should -Be $false
+        }
+
+        It 'Test-PatLibraryPath validates path is under library root' {
+            # Get library paths to find which section contains our test path
+            $libraryPaths = Get-PatLibraryPath
+            $matchingSection = $libraryPaths | Where-Object {
+                $env:PLEX_TEST_LIBRARY_PATH.StartsWith($_.path, [StringComparison]::OrdinalIgnoreCase)
+            } | Select-Object -First 1
+
+            if ($matchingSection) {
+                $result = Test-PatLibraryPath -Path $env:PLEX_TEST_LIBRARY_PATH -SectionId ([int]$matchingSection.sectionId)
+                $result | Should -Be $true
+            }
+            else {
+                Set-ItResult -Skipped -Because "Test path is not under any configured library root"
+            }
+        }
+
+        It 'Update-PatLibrary validates path without -SkipPathValidation' -Skip:(-not $script:mutationsEnabled) {
+            # Get library paths to find which section contains our test path
+            $libraryPaths = Get-PatLibraryPath
+            $matchingSection = $libraryPaths | Where-Object {
+                $env:PLEX_TEST_LIBRARY_PATH.StartsWith($_.path, [StringComparison]::OrdinalIgnoreCase)
+            } | Select-Object -First 1
+
+            if ($matchingSection) {
+                # This should NOT throw because the path exists and is under the library root
+                { Update-PatLibrary -SectionId ([int]$matchingSection.sectionId) -Path $env:PLEX_TEST_LIBRARY_PATH -Confirm:$false } | Should -Not -Throw
+            }
+            else {
+                Set-ItResult -Skipped -Because "Test path is not under any configured library root"
+            }
+        }
+
+        It 'Update-PatLibrary rejects invalid path without -SkipPathValidation' {
+            # This should throw because the path doesn't exist
+            { Update-PatLibrary -SectionId $script:testSectionId -Path '/definitely/not/a/real/path/xyz123abc' -Confirm:$false } | Should -Throw '*Path validation failed*'
+        }
+    }
 }

@@ -2,6 +2,8 @@ BeforeAll {
     $ProjectRoot = Split-Path -Parent (Split-Path -Parent (Split-Path -Parent $PSScriptRoot))
     $ModuleRoot = Join-Path $ProjectRoot 'PlexAutomationToolkit'
 
+    # Import required helper functions
+    . (Join-Path $ModuleRoot 'Private\ConvertTo-PsCustomObjectFromHashtable.ps1')
     # Import the function directly for testing
     . (Join-Path $ModuleRoot 'Private\Invoke-PatApi.ps1')
 }
@@ -343,6 +345,223 @@ Describe 'Invoke-PatApi' {
             $null = Invoke-PatApi -Uri 'http://localhost:32400/test' -Headers $headers -WarningVariable warnings 3>$null
 
             $warnings | Should -BeNullOrEmpty
+        }
+    }
+
+    Context 'Retry behavior on transient errors' {
+        It 'Should retry on DNS failure and succeed' {
+            $script:callCount = 0
+            Mock Invoke-RestMethod {
+                $script:callCount++
+                if ($script:callCount -lt 2) {
+                    throw 'No such host is known'
+                }
+                return [PSCustomObject]@{
+                    MediaContainer = [PSCustomObject]@{ status = 'ok' }
+                }
+            }
+
+            $result = Invoke-PatApi -Uri 'http://localhost:32400/test' -MaxRetries 3 -BaseDelaySeconds 0
+            $result.status | Should -Be 'ok'
+            $script:callCount | Should -Be 2
+        }
+
+        It 'Should retry on timeout and succeed' {
+            $script:callCount = 0
+            Mock Invoke-RestMethod {
+                $script:callCount++
+                if ($script:callCount -lt 2) {
+                    throw 'The operation has timed out'
+                }
+                return [PSCustomObject]@{
+                    MediaContainer = [PSCustomObject]@{ status = 'ok' }
+                }
+            }
+
+            $result = Invoke-PatApi -Uri 'http://localhost:32400/test' -MaxRetries 3 -BaseDelaySeconds 0
+            $result.status | Should -Be 'ok'
+            $script:callCount | Should -Be 2
+        }
+
+        It 'Should retry on 503 Service Unavailable and succeed' {
+            $script:callCount = 0
+            Mock Invoke-RestMethod {
+                $script:callCount++
+                if ($script:callCount -lt 2) {
+                    throw '503 Service Unavailable'
+                }
+                return [PSCustomObject]@{
+                    MediaContainer = [PSCustomObject]@{ status = 'ok' }
+                }
+            }
+
+            $result = Invoke-PatApi -Uri 'http://localhost:32400/test' -MaxRetries 3 -BaseDelaySeconds 0
+            $result.status | Should -Be 'ok'
+            $script:callCount | Should -Be 2
+        }
+
+        It 'Should retry on 429 Too Many Requests and succeed' {
+            $script:callCount = 0
+            Mock Invoke-RestMethod {
+                $script:callCount++
+                if ($script:callCount -lt 2) {
+                    throw '429 Too Many Requests'
+                }
+                return [PSCustomObject]@{
+                    MediaContainer = [PSCustomObject]@{ status = 'ok' }
+                }
+            }
+
+            $result = Invoke-PatApi -Uri 'http://localhost:32400/test' -MaxRetries 3 -BaseDelaySeconds 0
+            $result.status | Should -Be 'ok'
+            $script:callCount | Should -Be 2
+        }
+
+        It 'Should retry on connection refused and succeed' {
+            $script:callCount = 0
+            Mock Invoke-RestMethod {
+                $script:callCount++
+                if ($script:callCount -lt 2) {
+                    throw 'Unable to connect to the remote server'
+                }
+                return [PSCustomObject]@{
+                    MediaContainer = [PSCustomObject]@{ status = 'ok' }
+                }
+            }
+
+            $result = Invoke-PatApi -Uri 'http://localhost:32400/test' -MaxRetries 3 -BaseDelaySeconds 0
+            $result.status | Should -Be 'ok'
+            $script:callCount | Should -Be 2
+        }
+
+        It 'Should exhaust all retries on persistent transient error' {
+            $script:callCount = 0
+            Mock Invoke-RestMethod {
+                $script:callCount++
+                throw 'No such host is known'
+            }
+
+            { Invoke-PatApi -Uri 'http://localhost:32400/test' -MaxRetries 3 -BaseDelaySeconds 0 } | Should -Throw '*No such host*'
+            $script:callCount | Should -Be 3
+        }
+
+        It 'Should succeed after multiple retries' {
+            $script:callCount = 0
+            Mock Invoke-RestMethod {
+                $script:callCount++
+                if ($script:callCount -lt 3) {
+                    throw 'Connection reset by peer'
+                }
+                return [PSCustomObject]@{
+                    MediaContainer = [PSCustomObject]@{ status = 'ok' }
+                }
+            }
+
+            $result = Invoke-PatApi -Uri 'http://localhost:32400/test' -MaxRetries 3 -BaseDelaySeconds 0
+            $result.status | Should -Be 'ok'
+            $script:callCount | Should -Be 3
+        }
+
+        It 'Should use default MaxRetries of 3' {
+            $script:callCount = 0
+            Mock Invoke-RestMethod {
+                $script:callCount++
+                throw 'No such host is known'
+            }
+
+            { Invoke-PatApi -Uri 'http://localhost:32400/test' -BaseDelaySeconds 0 } | Should -Throw
+            $script:callCount | Should -Be 3
+        }
+    }
+
+    Context 'No retry on permanent errors' {
+        It 'Should not retry on 401 Unauthorized' {
+            $script:callCount = 0
+            Mock Invoke-RestMethod {
+                $script:callCount++
+                throw '401 Unauthorized'
+            }
+
+            { Invoke-PatApi -Uri 'http://localhost:32400/test' -MaxRetries 3 -BaseDelaySeconds 0 } | Should -Throw '*401*'
+            $script:callCount | Should -Be 1
+        }
+
+        It 'Should not retry on 403 Forbidden' {
+            $script:callCount = 0
+            Mock Invoke-RestMethod {
+                $script:callCount++
+                throw '403 Forbidden'
+            }
+
+            { Invoke-PatApi -Uri 'http://localhost:32400/test' -MaxRetries 3 -BaseDelaySeconds 0 } | Should -Throw '*403*'
+            $script:callCount | Should -Be 1
+        }
+
+        It 'Should not retry on 404 Not Found' {
+            $script:callCount = 0
+            Mock Invoke-RestMethod {
+                $script:callCount++
+                throw '404 Not Found'
+            }
+
+            { Invoke-PatApi -Uri 'http://localhost:32400/test' -MaxRetries 3 -BaseDelaySeconds 0 } | Should -Throw '*404*'
+            $script:callCount | Should -Be 1
+        }
+
+        It 'Should not retry on 400 Bad Request' {
+            $script:callCount = 0
+            Mock Invoke-RestMethod {
+                $script:callCount++
+                throw '400 Bad Request'
+            }
+
+            { Invoke-PatApi -Uri 'http://localhost:32400/test' -MaxRetries 3 -BaseDelaySeconds 0 } | Should -Throw '*400*'
+            $script:callCount | Should -Be 1
+        }
+
+        It 'Should not retry on generic application error' {
+            $script:callCount = 0
+            Mock Invoke-RestMethod {
+                $script:callCount++
+                throw 'Invalid JSON response'
+            }
+
+            { Invoke-PatApi -Uri 'http://localhost:32400/test' -MaxRetries 3 -BaseDelaySeconds 0 } | Should -Throw '*Invalid JSON*'
+            $script:callCount | Should -Be 1
+        }
+    }
+
+    Context 'Retry parameters validation' {
+        BeforeAll {
+            Mock Invoke-RestMethod {
+                return [PSCustomObject]@{
+                    MediaContainer = [PSCustomObject]@{ status = 'ok' }
+                }
+            }
+        }
+
+        It 'Should accept MaxRetries parameter' {
+            { Invoke-PatApi -Uri 'http://localhost:32400/test' -MaxRetries 5 } | Should -Not -Throw
+        }
+
+        It 'Should accept BaseDelaySeconds parameter' {
+            { Invoke-PatApi -Uri 'http://localhost:32400/test' -BaseDelaySeconds 2 } | Should -Not -Throw
+        }
+
+        It 'Should reject MaxRetries less than 1' {
+            { Invoke-PatApi -Uri 'http://localhost:32400/test' -MaxRetries 0 } | Should -Throw
+        }
+
+        It 'Should reject MaxRetries greater than 10' {
+            { Invoke-PatApi -Uri 'http://localhost:32400/test' -MaxRetries 11 } | Should -Throw
+        }
+
+        It 'Should accept BaseDelaySeconds of 0 for testing' {
+            { Invoke-PatApi -Uri 'http://localhost:32400/test' -BaseDelaySeconds 0 } | Should -Not -Throw
+        }
+
+        It 'Should reject negative BaseDelaySeconds' {
+            { Invoke-PatApi -Uri 'http://localhost:32400/test' -BaseDelaySeconds -1 } | Should -Throw
         }
     }
 }

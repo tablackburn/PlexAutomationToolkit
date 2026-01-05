@@ -29,7 +29,7 @@ Describe 'Test-PatLibraryPath' {
             }
         )
 
-        # Mock browse items response
+        # Mock browse items response (Plex browse API returns 'path' for filesystem path)
         $script:mockBrowseItems = @(
             [PSCustomObject]@{
                 path  = '/mnt/media/Movies/Action'
@@ -174,7 +174,7 @@ Describe 'Test-PatLibraryPath' {
         BeforeAll {
             Mock -ModuleName PlexAutomationToolkit Get-PatLibraryChildItem {
                 return @(
-                    [PSCustomObject]@{ path = '/Movies'; title = 'Movies' }
+                    [PSCustomObject]@{ key = '/Movies'; title = 'Movies' }
                 )
             }
         }
@@ -267,6 +267,38 @@ Describe 'Test-PatLibraryPath' {
             # Library root is /mnt/rar2fs/NAS5/Movies/TV but user provides lowercase
             $result = Test-PatLibraryPath -Path '/mnt/rar2fs/nas5/movies/TV/The.Simpsons/S37' -SectionId 2 -ServerUri 'http://plex.local:32400'
             $result | Should -Be $true
+        }
+    }
+
+    Context 'When API returns both key and path properties' {
+        # Regression test: Plex browse API returns 'key' (API endpoint) and 'path' (filesystem path)
+        # We must use 'path' for matching, not 'key'
+        BeforeAll {
+            Mock -ModuleName PlexAutomationToolkit Get-PatLibraryChildItem {
+                return @(
+                    [PSCustomObject]@{
+                        key   = '/services/browse/L21udC9tZWRpYS9Nb3ZpZXMvQWN0aW9u'  # API endpoint (wrong to match against)
+                        path  = '/mnt/media/Movies/Action'  # Filesystem path (correct to match against)
+                        title = 'Action'
+                    }
+                    [PSCustomObject]@{
+                        key   = '/services/browse/L21udC9tZWRpYS9Nb3ZpZXMvQ29tZWR5'
+                        path  = '/mnt/media/Movies/Comedy'
+                        title = 'Comedy'
+                    }
+                )
+            }
+        }
+
+        It 'Uses path property not key property for matching' {
+            $result = Test-PatLibraryPath -Path '/mnt/media/Movies/Action' -ServerUri 'http://plex.local:32400'
+            $result | Should -Be $true
+        }
+
+        It 'Does not match against key property (API endpoint)' {
+            # This path matches the 'key' value but not 'path' - should return false
+            $result = Test-PatLibraryPath -Path '/services/browse/L21udC9tZWRpYS9Nb3ZpZXMvQWN0aW9u' -ServerUri 'http://plex.local:32400'
+            $result | Should -Be $false
         }
     }
 }

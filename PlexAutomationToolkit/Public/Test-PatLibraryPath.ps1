@@ -170,6 +170,7 @@ function Test-PatLibraryPath {
         if ($targetName) {
             # Check if the target exists in the parent directory
             $found = $items | Where-Object {
+                # Plex browse API returns 'path' for filesystem path and 'key' for API endpoint
                 $itemPath = if ($_.PSObject.Properties['path']) { $_.path } elseif ($_.PSObject.Properties['Path']) { $_.Path } else { $null }
                 $itemTitle = if ($_.PSObject.Properties['title']) { $_.title } elseif ($_.PSObject.Properties['Title']) { $_.Title } else { $null }
 

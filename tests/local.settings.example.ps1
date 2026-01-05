@@ -9,6 +9,7 @@ $env:PLEX_TOKEN = 'your-plex-token-here'                # Get token via: Get-Pat
 # OPTIONAL: Test-specific configuration
 # $env:PLEX_TEST_SECTION_ID = '1'                       # A known library section ID for testing
 # $env:PLEX_TEST_SECTION_NAME = 'Movies'                # A known library section name for testing
+# $env:PLEX_TEST_LIBRARY_PATH = '/mnt/media/Movies/SomeFolder'  # A real path on your Plex server for path validation tests
 # $env:PLEX_ALLOW_MUTATIONS = 'true'                    # Enable tests that modify server state (library refresh)
 
 # USAGE:
