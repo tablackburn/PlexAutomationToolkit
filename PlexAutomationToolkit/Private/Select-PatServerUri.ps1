@@ -29,6 +29,11 @@ function Select-PatServerUri {
     .PARAMETER Token
         Optional authentication token for reachability testing.
 
+    .PARAMETER SkipCertificateCheck
+        If specified, skips TLS certificate validation when testing HTTPS connections.
+        Only use this for trusted local servers with self-signed certificates.
+        WARNING: Skipping certificate validation exposes you to man-in-the-middle attacks.
+
     .OUTPUTS
         PSCustomObject with properties:
         - Uri: The selected URI to use
@@ -66,7 +71,11 @@ function Select-PatServerUri {
 
         [Parameter(Mandatory = $false)]
         [string]
-        $Token
+        $Token,
+
+        [Parameter(Mandatory = $false)]
+        [switch]
+        $SkipCertificateCheck
     )
 
     # Validate server has at least a primary URI
@@ -123,7 +132,20 @@ function Select-PatServerUri {
     # PreferLocal is enabled and we have a local URI - test reachability
     Write-Verbose "Testing local URI reachability: $localUri"
 
-    $reachability = Test-PatServerReachable -ServerUri $localUri -Token $Token -TimeoutSeconds 2
+    $reachabilityParams = @{
+        ServerUri      = $localUri
+        TimeoutSeconds = 2
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace($Token)) {
+        $reachabilityParams['Token'] = $Token
+    }
+
+    if ($SkipCertificateCheck) {
+        $reachabilityParams['SkipCertificateCheck'] = $true
+    }
+
+    $reachability = Test-PatServerReachable @reachabilityParams
 
     if ($reachability.Reachable) {
         Write-Verbose "Local URI is reachable ($($reachability.ResponseTimeMs)ms) - using local connection"

@@ -245,5 +245,26 @@ Describe 'Select-PatServerUri' {
             { & $script:SelectPatServerUri -Server $script:serverPreferLocal -Token 'test-auth-token' } |
                 Should -Not -Throw
         }
+
+        It 'Passes SkipCertificateCheck to reachability test' {
+            & (Get-Module PlexAutomationToolkit) {
+                Mock Test-PatServerReachable {
+                    param($ServerUri, $Token, $TimeoutSeconds, $SkipCertificateCheck)
+                    # Verify SkipCertificateCheck was passed
+                    if (-not $SkipCertificateCheck) {
+                        throw "Expected SkipCertificateCheck to be true"
+                    }
+                    return [PSCustomObject]@{
+                        Reachable      = $true
+                        ResponseTimeMs = 10
+                        Error          = $null
+                    }
+                }
+            }
+
+            # Should not throw if SkipCertificateCheck is passed correctly
+            { & $script:SelectPatServerUri -Server $script:serverPreferLocal -SkipCertificateCheck } |
+                Should -Not -Throw
+        }
     }
 }
