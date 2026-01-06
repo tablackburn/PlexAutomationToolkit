@@ -7,8 +7,21 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-01-06
+
 ### Added
 
+- **Intelligent local network detection** for Plex servers
+  - Automatically detect and prefer local connections for better performance
+  - New parameters on `Add-PatServer`: `-LocalUri`, `-PreferLocal`, `-DetectLocalUri`
+  - Auto-detect local URI from Plex.tv API using server's machineIdentifier
+  - Automatic fallback to remote URI when local is unreachable
+- New private functions for network detection:
+  - `Get-PatServerConnection`: Query Plex.tv API for all server connection URIs
+  - `Get-PatServerIdentity`: Get server's unique machineIdentifier
+  - `Test-PatLocalNetwork`: Check if IP is in private range (RFC 1918/4193)
+  - `Test-PatServerReachable`: Quick connectivity test with configurable timeout
+  - `Select-PatServerUri`: Intelligent URI selection based on reachability
 - Enhanced progress reporting in `Sync-PatMedia` with per-file download progress
   - Shows download speed (e.g., "1.5 GB / 4.2 GB @ 25.3 MB/s")
   - Displays estimated time remaining for each file
@@ -16,6 +29,18 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Progress reporting for watch status sync operations
 - Progress reporting for playlist item removal when using `-RemoveWatched`
 - New parameters on `Invoke-PatFileDownload`: `-ProgressId`, `-ProgressParentId`, `-ProgressActivity`
+
+### Fixed
+
+- PowerShell 5.1 compatibility for HTTPS certificate validation
+  - Uses `ServerCertificateValidationCallback` on PS 5.1, `SkipCertificateCheck` on PS 6+
+  - Properly restores original callback even when original was null
+
+### Security
+
+- TLS certificate validation skip is now opt-in via `-SkipCertificateCheck` parameter
+  - Prevents man-in-the-middle attacks by default
+  - Only skip for trusted local servers with self-signed certificates
 
 ## [0.8.3] - 2026-01-05
 
