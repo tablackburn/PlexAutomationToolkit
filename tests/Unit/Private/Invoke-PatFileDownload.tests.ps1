@@ -223,4 +223,72 @@ Describe 'Invoke-PatFileDownload' {
             $result.Length | Should -Be 5
         }
     }
+
+    Context 'Progress reporting parameters' {
+        It 'Accepts ProgressId parameter' {
+            Mock -ModuleName PlexAutomationToolkit Invoke-WebRequest {
+                param($Uri, $OutFile, $Headers, $UseBasicParsing, $ErrorAction)
+                if ($OutFile) {
+                    [System.IO.File]::WriteAllBytes($OutFile, [byte[]](1, 2, 3))
+                }
+            }
+
+            $outFile = Join-Path -Path $script:TestDir -ChildPath 'progress-id.txt'
+
+            { & $script:InvokePatFileDownload -Uri 'http://test/file' -OutFile $outFile -ProgressId 5 } |
+                Should -Not -Throw
+        }
+
+        It 'Accepts ProgressParentId parameter' {
+            Mock -ModuleName PlexAutomationToolkit Invoke-WebRequest {
+                param($Uri, $OutFile, $Headers, $UseBasicParsing, $ErrorAction)
+                if ($OutFile) {
+                    [System.IO.File]::WriteAllBytes($OutFile, [byte[]](1, 2, 3))
+                }
+            }
+
+            $outFile = Join-Path -Path $script:TestDir -ChildPath 'progress-parent.txt'
+
+            { & $script:InvokePatFileDownload -Uri 'http://test/file' -OutFile $outFile -ProgressParentId 3 } |
+                Should -Not -Throw
+        }
+
+        It 'Accepts ProgressActivity parameter' {
+            Mock -ModuleName PlexAutomationToolkit Invoke-WebRequest {
+                param($Uri, $OutFile, $Headers, $UseBasicParsing, $ErrorAction)
+                if ($OutFile) {
+                    [System.IO.File]::WriteAllBytes($OutFile, [byte[]](1, 2, 3))
+                }
+            }
+
+            $outFile = Join-Path -Path $script:TestDir -ChildPath 'progress-activity.txt'
+
+            { & $script:InvokePatFileDownload -Uri 'http://test/file' -OutFile $outFile -ProgressActivity 'Custom Activity' } |
+                Should -Not -Throw
+        }
+
+        It 'Has default ProgressId of 2' {
+            $command = & (Get-Module PlexAutomationToolkit) { Get-Command Invoke-PatFileDownload }
+            $parameter = $command.Parameters['ProgressId']
+
+            $parameter | Should -Not -BeNullOrEmpty
+            $parameter.ParameterType.Name | Should -Be 'Int32'
+        }
+
+        It 'Has default ProgressParentId of 1' {
+            $command = & (Get-Module PlexAutomationToolkit) { Get-Command Invoke-PatFileDownload }
+            $parameter = $command.Parameters['ProgressParentId']
+
+            $parameter | Should -Not -BeNullOrEmpty
+            $parameter.ParameterType.Name | Should -Be 'Int32'
+        }
+
+        It 'Has default ProgressActivity of Downloading file' {
+            $command = & (Get-Module PlexAutomationToolkit) { Get-Command Invoke-PatFileDownload }
+            $parameter = $command.Parameters['ProgressActivity']
+
+            $parameter | Should -Not -BeNullOrEmpty
+            $parameter.ParameterType.Name | Should -Be 'String'
+        }
+    }
 }
