@@ -6,6 +6,19 @@ BeforeAll {
     # Get the private function using module scope
     $script:InvokePatFileDownload = & (Get-Module PlexAutomationToolkit) { Get-Command Invoke-PatFileDownload }
 
+    # Store module root path for test access
+    $script:ModulePath = Join-Path -Path $PSScriptRoot -ChildPath '..\..\..\PlexAutomationToolkit'
+
+    # Helper function to get parameter default value using AST
+    $script:GetParameterDefaultValue = {
+        param([string]$ParameterName)
+        $functionContent = Get-Content -Path (Join-Path $script:ModulePath 'Private/Invoke-PatFileDownload.ps1') -Raw
+        $ast = [System.Management.Automation.Language.Parser]::ParseInput($functionContent, [ref]$null, [ref]$null)
+        $paramBlock = $ast.FindAll({param($node) $node -is [System.Management.Automation.Language.ParameterAst]}, $true)
+        $param = $paramBlock | Where-Object { $_.Name.VariablePath.UserPath -eq $ParameterName }
+        return $param.DefaultValue.Extent.Text
+    }
+
     # Create temp directory for test files (cross-platform)
     $script:TestDir = Join-Path -Path ([System.IO.Path]::GetTempPath()) -ChildPath "PatFileDownloadTests_$([Guid]::NewGuid().ToString('N'))"
     New-Item -Path $script:TestDir -ItemType Directory -Force | Out-Null
@@ -309,9 +322,11 @@ Describe 'Invoke-PatFileDownload' {
             $parameter | Should -Not -BeNullOrEmpty
             $parameter.ParameterType.Name | Should -Be 'Int32'
 
-            # Verify the actual default value
-            $defaultValue = Get-ParameterDefaultValue -Command $command -ParameterName 'ProgressId'
-            $defaultValue | Should -Be 2
+            # Verify the default value
+            $ast = $command.ScriptBlock.Ast
+            $paramBlock = $ast.Body.ParamBlock
+            $progressIdParam = $paramBlock.Parameters | Where-Object { $_.Name.VariablePath.UserPath -eq 'ProgressId' }
+            $progressIdParam.DefaultValue.Value | Should -Be 2
         }
 
         It 'Has default ProgressParentId of 1' {
@@ -321,9 +336,11 @@ Describe 'Invoke-PatFileDownload' {
             $parameter | Should -Not -BeNullOrEmpty
             $parameter.ParameterType.Name | Should -Be 'Int32'
 
-            # Verify the actual default value
-            $defaultValue = Get-ParameterDefaultValue -Command $command -ParameterName 'ProgressParentId'
-            $defaultValue | Should -Be 1
+            # Verify the default value
+            $ast = $command.ScriptBlock.Ast
+            $paramBlock = $ast.Body.ParamBlock
+            $progressParentIdParam = $paramBlock.Parameters | Where-Object { $_.Name.VariablePath.UserPath -eq 'ProgressParentId' }
+            $progressParentIdParam.DefaultValue.Value | Should -Be 1
         }
 
         It 'Has default ProgressActivity of Downloading file' {
@@ -333,9 +350,11 @@ Describe 'Invoke-PatFileDownload' {
             $parameter | Should -Not -BeNullOrEmpty
             $parameter.ParameterType.Name | Should -Be 'String'
 
-            # Verify the actual default value
-            $defaultValue = Get-ParameterDefaultValue -Command $command -ParameterName 'ProgressActivity'
-            $defaultValue | Should -Be 'Downloading file'
+            # Verify the default value
+            $ast = $command.ScriptBlock.Ast
+            $paramBlock = $ast.Body.ParamBlock
+            $progressActivityParam = $paramBlock.Parameters | Where-Object { $_.Name.VariablePath.UserPath -eq 'ProgressActivity' }
+            $progressActivityParam.DefaultValue.Value | Should -Be 'Downloading file'
         }
     }
 }
