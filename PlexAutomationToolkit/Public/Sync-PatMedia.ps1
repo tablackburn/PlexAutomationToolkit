@@ -451,9 +451,10 @@ function Sync-PatMedia {
                                 if ($PSCmdlet.ShouldProcess($removeDescription, 'Remove')) {
                                     $removedCount = 0
                                     $totalToRemove = $itemsToRemove.Count
+                                    $currentItem = 0
 
                                     foreach ($itemToRemove in $itemsToRemove) {
-                                        $removedCount++
+                                        $currentItem++
                                         $playlistItem = $itemToRemove.PlaylistItem
                                         $itemDisplay = if ($playlistItem.Type -eq 'episode') {
                                             "$($playlistItem.GrandparentTitle) - S$($playlistItem.ParentIndex.ToString('D2'))E$($playlistItem.Index.ToString('D2'))"
@@ -462,9 +463,9 @@ function Sync-PatMedia {
                                             "$($playlistItem.Title) ($($playlistItem.Year))"
                                         }
 
-                                        $percentComplete = [int](($removedCount / $totalToRemove) * 100)
+                                        $percentComplete = [int](($currentItem / $totalToRemove) * 100)
                                         Write-Progress -Activity "Removing watched items from playlist" `
-                                            -Status "Removing $removedCount of $totalToRemove`: $itemDisplay" `
+                                            -Status "Removing $currentItem of $totalToRemove`: $itemDisplay" `
                                             -PercentComplete $percentComplete `
                                             -Id 1
 
@@ -474,6 +475,7 @@ function Sync-PatMedia {
                                                 -Confirm:$false `
                                                 -ErrorAction Stop
 
+                                            $removedCount++
                                             Write-Verbose "Removed '$itemDisplay' from playlist"
                                         }
                                         catch {
