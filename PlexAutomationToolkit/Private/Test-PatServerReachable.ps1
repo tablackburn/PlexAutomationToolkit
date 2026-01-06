@@ -16,6 +16,11 @@ function Test-PatServerReachable {
     .PARAMETER TimeoutSeconds
         Connection timeout in seconds. Default is 3 seconds for quick local network testing.
 
+    .PARAMETER SkipCertificateCheck
+        If specified, skips TLS certificate validation for HTTPS connections.
+        WARNING: Only use this for trusted local servers or development scenarios.
+        Skipping certificate validation exposes you to man-in-the-middle attacks.
+
     .OUTPUTS
         PSCustomObject with properties:
         - Reachable: Boolean indicating if server responded
@@ -48,7 +53,11 @@ function Test-PatServerReachable {
         [Parameter(Mandatory = $false)]
         [ValidateRange(1, 30)]
         [int]
-        $TimeoutSeconds = 3
+        $TimeoutSeconds = 3,
+
+        [Parameter(Mandatory = $false)]
+        [switch]
+        $SkipCertificateCheck
     )
 
     $uri = Join-PatUri -BaseUri $ServerUri -Endpoint '/'
@@ -66,8 +75,9 @@ function Test-PatServerReachable {
         $requestParams.Headers['X-Plex-Token'] = $Token
     }
 
-    # Skip certificate validation for self-signed certs (common with Plex)
-    if ($ServerUri -match '^https://') {
+    # Only skip certificate validation if explicitly requested
+    # This must be opt-in to prevent man-in-the-middle attacks
+    if ($SkipCertificateCheck -and ($ServerUri -match '^https://')) {
         $requestParams['SkipCertificateCheck'] = $true
     }
 
