@@ -9,6 +9,16 @@ BeforeAll {
     # Store module root path for test access
     $script:ModulePath = Join-Path -Path $PSScriptRoot -ChildPath '..\..\..\PlexAutomationToolkit'
 
+    # Helper function to get parameter default value using AST
+    $script:GetParameterDefaultValue = {
+        param([string]$ParameterName)
+        $functionContent = Get-Content -Path (Join-Path $script:ModulePath 'Private/Invoke-PatFileDownload.ps1') -Raw
+        $ast = [System.Management.Automation.Language.Parser]::ParseInput($functionContent, [ref]$null, [ref]$null)
+        $paramBlock = $ast.FindAll({param($node) $node -is [System.Management.Automation.Language.ParameterAst]}, $true)
+        $param = $paramBlock | Where-Object { $_.Name.VariablePath.UserPath -eq $ParameterName }
+        return $param.DefaultValue.Extent.Text
+    }
+
     # Create temp directory for test files (cross-platform)
     $script:TestDir = Join-Path -Path ([System.IO.Path]::GetTempPath()) -ChildPath "PatFileDownloadTests_$([Guid]::NewGuid().ToString('N'))"
     New-Item -Path $script:TestDir -ItemType Directory -Force | Out-Null
@@ -278,11 +288,7 @@ Describe 'Invoke-PatFileDownload' {
             $parameter.ParameterType.Name | Should -Be 'Int32'
 
             # Verify the actual default value
-            $functionContent = Get-Content -Path (Join-Path $script:ModulePath 'Private/Invoke-PatFileDownload.ps1') -Raw
-            $ast = [System.Management.Automation.Language.Parser]::ParseInput($functionContent, [ref]$null, [ref]$null)
-            $paramBlock = $ast.FindAll({param($node) $node -is [System.Management.Automation.Language.ParameterAst]}, $true)
-            $progressIdParam = $paramBlock | Where-Object { $_.Name.VariablePath.UserPath -eq 'ProgressId' }
-            $progressIdParam.DefaultValue.Extent.Text | Should -Be '2'
+            & $script:GetParameterDefaultValue -ParameterName 'ProgressId' | Should -Be '2'
         }
 
         It 'Has default ProgressParentId of 1' {
@@ -293,11 +299,7 @@ Describe 'Invoke-PatFileDownload' {
             $parameter.ParameterType.Name | Should -Be 'Int32'
 
             # Verify the actual default value
-            $functionContent = Get-Content -Path (Join-Path $script:ModulePath 'Private/Invoke-PatFileDownload.ps1') -Raw
-            $ast = [System.Management.Automation.Language.Parser]::ParseInput($functionContent, [ref]$null, [ref]$null)
-            $paramBlock = $ast.FindAll({param($node) $node -is [System.Management.Automation.Language.ParameterAst]}, $true)
-            $progressParentIdParam = $paramBlock | Where-Object { $_.Name.VariablePath.UserPath -eq 'ProgressParentId' }
-            $progressParentIdParam.DefaultValue.Extent.Text | Should -Be '1'
+            & $script:GetParameterDefaultValue -ParameterName 'ProgressParentId' | Should -Be '1'
         }
 
         It 'Has default ProgressActivity of Downloading file' {
