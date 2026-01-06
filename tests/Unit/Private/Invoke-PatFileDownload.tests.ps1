@@ -273,6 +273,14 @@ Describe 'Invoke-PatFileDownload' {
 
             $parameter | Should -Not -BeNullOrEmpty
             $parameter.ParameterType.Name | Should -Be 'Int32'
+
+            # Verify the actual default value
+            $defaultValue = $command.ScriptBlock.Ast.Body.ParamBlock.Parameters |
+                Where-Object { $_.Name.VariablePath.UserPath -eq 'ProgressId' } |
+                Select-Object -ExpandProperty DefaultValue |
+                Select-Object -ExpandProperty Value
+
+            $defaultValue | Should -Be 2
         }
 
         It 'Has default ProgressParentId of 1' {
@@ -281,6 +289,14 @@ Describe 'Invoke-PatFileDownload' {
 
             $parameter | Should -Not -BeNullOrEmpty
             $parameter.ParameterType.Name | Should -Be 'Int32'
+
+            # Verify the actual default value
+            $defaultValue = $command.ScriptBlock.Ast.Body.ParamBlock.Parameters |
+                Where-Object { $_.Name.VariablePath.UserPath -eq 'ProgressParentId' } |
+                Select-Object -ExpandProperty DefaultValue |
+                Select-Object -ExpandProperty Value
+
+            $defaultValue | Should -Be 1
         }
 
         It 'Has default ProgressActivity of Downloading file' {
@@ -289,6 +305,14 @@ Describe 'Invoke-PatFileDownload' {
 
             $parameter | Should -Not -BeNullOrEmpty
             $parameter.ParameterType.Name | Should -Be 'String'
+
+            # Verify the actual default value
+            $defaultValue = $command.ScriptBlock.Ast.Body.ParamBlock.Parameters |
+                Where-Object { $_.Name.VariablePath.UserPath -eq 'ProgressActivity' } |
+                Select-Object -ExpandProperty DefaultValue |
+                Select-Object -ExpandProperty Value
+
+            $defaultValue | Should -Be 'Downloading file'
         }
     }
 }
