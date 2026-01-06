@@ -1,4 +1,4 @@
-function Get-PatServerConnections {
+function Get-PatServerConnection {
     <#
     .SYNOPSIS
         Gets all connection URIs for a Plex server from the Plex.tv API.
@@ -30,7 +30,7 @@ function Get-PatServerConnections {
         - Port: The port number
 
     .EXAMPLE
-        $connections = Get-PatServerConnections -MachineIdentifier "abc123" -Token $token
+        $connections = Get-PatServerConnection -MachineIdentifier "abc123" -Token $token
         $localUri = ($connections | Where-Object { $_.Local -and -not $_.Relay }).Uri | Select-Object -First 1
 
         Gets all connections for a server and selects a local, non-relay URI.

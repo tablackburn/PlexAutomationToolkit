@@ -241,7 +241,7 @@ function Add-PatServer {
                     Write-Verbose "Server machineIdentifier: $($serverIdentity.MachineIdentifier)"
 
                     # Query Plex.tv for all connections to this server
-                    $connections = Get-PatServerConnections -MachineIdentifier $serverIdentity.MachineIdentifier -Token $detectionToken -ErrorAction Stop
+                    $connections = Get-PatServerConnection -MachineIdentifier $serverIdentity.MachineIdentifier -Token $detectionToken -ErrorAction Stop
 
                     if ($connections -and $connections.Count -gt 0) {
                         # Find a local, non-relay connection (prefer HTTPS if available)
