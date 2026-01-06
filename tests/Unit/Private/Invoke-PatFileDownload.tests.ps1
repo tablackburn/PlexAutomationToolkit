@@ -11,18 +11,26 @@ BeforeAll {
     New-Item -Path $script:TestDir -ItemType Directory -Force | Out-Null
 
     # Helper function to get parameter default value from AST
+    # This extracts the default value assigned to a parameter in the function definition
+    # by traversing the PowerShell Abstract Syntax Tree (AST)
     function Get-ParameterDefaultValue {
         param(
             [System.Management.Automation.CommandInfo]$Command,
             [string]$ParameterName
         )
 
-        $defaultValue = $Command.ScriptBlock.Ast.Body.ParamBlock.Parameters |
-            Where-Object { $_.Name.VariablePath.UserPath -eq $ParameterName } |
-            Select-Object -ExpandProperty DefaultValue |
-            Select-Object -ExpandProperty Value
+        $parameter = $Command.ScriptBlock.Ast.Body.ParamBlock.Parameters |
+            Where-Object { $_.Name.VariablePath.UserPath -eq $ParameterName }
 
-        return $defaultValue
+        if (-not $parameter) {
+            return $null
+        }
+
+        if (-not $parameter.DefaultValue) {
+            return $null
+        }
+
+        return $parameter.DefaultValue.Value
     }
 }
 
