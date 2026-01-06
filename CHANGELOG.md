@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- Enhanced progress reporting in `Sync-PatMedia` with per-file download progress
+  - Shows download speed (e.g., "1.5 GB / 4.2 GB @ 25.3 MB/s")
+  - Displays estimated time remaining for each file
+  - Nested progress bars: overall sync progress (parent) and current file progress (child)
+- Progress reporting for watch status sync operations
+- Progress reporting for playlist item removal when using `-RemoveWatched`
+- New parameters on `Invoke-PatFileDownload`: `-ProgressId`, `-ProgressParentId`, `-ProgressActivity`
+
 ## [0.8.3] - 2026-01-05
 
 ### Fixed

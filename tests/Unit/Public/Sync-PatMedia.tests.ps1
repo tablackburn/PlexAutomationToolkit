@@ -598,6 +598,95 @@ Describe 'Sync-PatMedia' {
         }
     }
 
+    Context 'Progress reporting' {
+        BeforeAll {
+            Mock -ModuleName PlexAutomationToolkit Get-PatSyncPlan {
+                return [PSCustomObject]@{
+                    PSTypeName       = 'PlexAutomationToolkit.SyncPlan'
+                    PlaylistName     = 'Travel'
+                    PlaylistId       = 100
+                    Destination      = $script:TestDir
+                    TotalItems       = 1
+                    ItemsToAdd       = 1
+                    ItemsToRemove    = 0
+                    ItemsUnchanged   = 0
+                    BytesToDownload  = 1000
+                    BytesToRemove    = 0
+                    DestinationFree  = 1000000000
+                    DestinationAfter = 999999000
+                    SpaceSufficient  = $true
+                    AddOperations    = @(
+                        [PSCustomObject]@{
+                            RatingKey        = 1001
+                            Title            = 'Test Movie'
+                            Type             = 'movie'
+                            Year             = 2023
+                            GrandparentTitle = $null
+                            ParentIndex      = $null
+                            Index            = $null
+                            DestinationPath  = [System.IO.Path]::Combine($script:TestDir, 'Movies', 'Test Movie (2023)', 'Test Movie (2023).mkv')
+                            MediaSize        = 1000
+                            SubtitleCount    = 0
+                            PartKey          = '/library/parts/3001/file.mkv'
+                            Container        = 'mkv'
+                        }
+                    )
+                    RemoveOperations = @()
+                    ServerUri        = 'http://plex.test:32400'
+                }
+            }
+
+            $script:capturedProgressActivity = $null
+            Mock -ModuleName PlexAutomationToolkit Invoke-PatFileDownload {
+                param($Uri, $OutFile, $ExpectedSize, $Resume, $ProgressActivity, $ProgressId, $ProgressParentId)
+
+                $script:capturedProgressActivity = $ProgressActivity
+
+                # Create the file
+                $dir = Split-Path -Path $OutFile -Parent
+                if (-not (Test-Path -Path $dir)) {
+                    New-Item -Path $dir -ItemType Directory -Force | Out-Null
+                }
+                [System.IO.File]::WriteAllBytes($OutFile, [byte[]](1, 2, 3))
+
+                return Get-Item -Path $OutFile
+            }
+        }
+
+        It 'Passes ProgressActivity with item display name' {
+            $script:capturedProgressActivity = $null
+
+            Sync-PatMedia -PlaylistName 'Travel' -Destination $script:TestDir -Confirm:$false
+
+            $script:capturedProgressActivity | Should -Match 'Test Movie'
+            $script:capturedProgressActivity | Should -Match '2023'
+        }
+
+        It 'Passes nested progress IDs to file download' {
+            $script:capturedProgressId = $null
+            $script:capturedParentId = $null
+
+            Mock -ModuleName PlexAutomationToolkit Invoke-PatFileDownload {
+                param($Uri, $OutFile, $ExpectedSize, $Resume, $ProgressActivity, $ProgressId, $ProgressParentId)
+
+                $script:capturedProgressId = $ProgressId
+                $script:capturedParentId = $ProgressParentId
+
+                $dir = Split-Path -Path $OutFile -Parent
+                if (-not (Test-Path -Path $dir)) {
+                    New-Item -Path $dir -ItemType Directory -Force | Out-Null
+                }
+                [System.IO.File]::WriteAllBytes($OutFile, [byte[]](1, 2, 3))
+                return Get-Item -Path $OutFile
+            }
+
+            Sync-PatMedia -PlaylistName 'Travel' -Destination $script:TestDir -Confirm:$false
+
+            $script:capturedProgressId | Should -Be 2
+            $script:capturedParentId | Should -Be 1
+        }
+    }
+
     Context 'Combined SyncWatchStatus and RemoveWatched' {
         BeforeAll {
             Mock -ModuleName PlexAutomationToolkit Get-PatSyncPlan {

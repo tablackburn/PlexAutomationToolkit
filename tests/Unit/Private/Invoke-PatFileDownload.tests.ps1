@@ -6,9 +6,57 @@ BeforeAll {
     # Get the private function using module scope
     $script:InvokePatFileDownload = & (Get-Module PlexAutomationToolkit) { Get-Command Invoke-PatFileDownload }
 
+    # Store module root path for test access
+    $script:ModulePath = Join-Path -Path $PSScriptRoot -ChildPath '..\..\..\PlexAutomationToolkit'
+
+    # Helper function to get parameter default value using AST
+    $script:GetParameterDefaultValue = {
+        param([string]$ParameterName)
+        $functionContent = Get-Content -Path (Join-Path $script:ModulePath 'Private/Invoke-PatFileDownload.ps1') -Raw
+        $ast = [System.Management.Automation.Language.Parser]::ParseInput($functionContent, [ref]$null, [ref]$null)
+        $paramBlock = $ast.FindAll({param($node) $node -is [System.Management.Automation.Language.ParameterAst]}, $true)
+        $param = $paramBlock | Where-Object { $_.Name.VariablePath.UserPath -eq $ParameterName }
+        return $param.DefaultValue.Extent.Text
+    }
+
     # Create temp directory for test files (cross-platform)
     $script:TestDir = Join-Path -Path ([System.IO.Path]::GetTempPath()) -ChildPath "PatFileDownloadTests_$([Guid]::NewGuid().ToString('N'))"
     New-Item -Path $script:TestDir -ItemType Directory -Force | Out-Null
+
+    # Helper function to get parameter default value from AST
+    # This extracts the default value assigned to a parameter in the function definition
+    # by traversing the PowerShell Abstract Syntax Tree (AST)
+    #
+    # Parameters:
+    #   Command - The CommandInfo object for the function
+    #   ParameterName - The name of the parameter to retrieve the default value for
+    #
+    # Returns:
+    #   The default value of the parameter, or $null if the parameter doesn't exist
+    #   or has no default value
+    function Get-ParameterDefaultValue {
+        param(
+            [System.Management.Automation.CommandInfo]$Command,
+            [string]$ParameterName
+        )
+
+        if (-not $Command.ScriptBlock -or -not $Command.ScriptBlock.Ast.Body.ParamBlock) {
+            return $null
+        }
+
+        $parameter = $Command.ScriptBlock.Ast.Body.ParamBlock.Parameters |
+            Where-Object { $_.Name.VariablePath.UserPath -eq $ParameterName }
+
+        if (-not $parameter) {
+            return $null
+        }
+
+        if (-not $parameter.DefaultValue) {
+            return $null
+        }
+
+        return $parameter.DefaultValue.Value
+    }
 }
 
 AfterAll {
@@ -221,6 +269,92 @@ Describe 'Invoke-PatFileDownload' {
             $result = & $script:InvokePatFileDownload -Uri 'http://test/file' -OutFile $outFile -ExpectedSize 5 -Resume
 
             $result.Length | Should -Be 5
+        }
+    }
+
+    Context 'Progress reporting parameters' {
+        It 'Accepts ProgressId parameter' {
+            Mock -ModuleName PlexAutomationToolkit Invoke-WebRequest {
+                param($Uri, $OutFile, $Headers, $UseBasicParsing, $ErrorAction)
+                if ($OutFile) {
+                    [System.IO.File]::WriteAllBytes($OutFile, [byte[]](1, 2, 3))
+                }
+            }
+
+            $outFile = Join-Path -Path $script:TestDir -ChildPath 'progress-id.txt'
+
+            { & $script:InvokePatFileDownload -Uri 'http://test/file' -OutFile $outFile -ProgressId 5 } |
+                Should -Not -Throw
+        }
+
+        It 'Accepts ProgressParentId parameter' {
+            Mock -ModuleName PlexAutomationToolkit Invoke-WebRequest {
+                param($Uri, $OutFile, $Headers, $UseBasicParsing, $ErrorAction)
+                if ($OutFile) {
+                    [System.IO.File]::WriteAllBytes($OutFile, [byte[]](1, 2, 3))
+                }
+            }
+
+            $outFile = Join-Path -Path $script:TestDir -ChildPath 'progress-parent.txt'
+
+            { & $script:InvokePatFileDownload -Uri 'http://test/file' -OutFile $outFile -ProgressParentId 3 } |
+                Should -Not -Throw
+        }
+
+        It 'Accepts ProgressActivity parameter' {
+            Mock -ModuleName PlexAutomationToolkit Invoke-WebRequest {
+                param($Uri, $OutFile, $Headers, $UseBasicParsing, $ErrorAction)
+                if ($OutFile) {
+                    [System.IO.File]::WriteAllBytes($OutFile, [byte[]](1, 2, 3))
+                }
+            }
+
+            $outFile = Join-Path -Path $script:TestDir -ChildPath 'progress-activity.txt'
+
+            { & $script:InvokePatFileDownload -Uri 'http://test/file' -OutFile $outFile -ProgressActivity 'Custom Activity' } |
+                Should -Not -Throw
+        }
+
+        It 'Has default ProgressId of 2' {
+            $command = & (Get-Module PlexAutomationToolkit) { Get-Command Invoke-PatFileDownload }
+            $parameter = $command.Parameters['ProgressId']
+
+            $parameter | Should -Not -BeNullOrEmpty
+            $parameter.ParameterType.Name | Should -Be 'Int32'
+
+            # Verify the default value
+            $ast = $command.ScriptBlock.Ast
+            $paramBlock = $ast.Body.ParamBlock
+            $progressIdParam = $paramBlock.Parameters | Where-Object { $_.Name.VariablePath.UserPath -eq 'ProgressId' }
+            $progressIdParam.DefaultValue.Value | Should -Be 2
+        }
+
+        It 'Has default ProgressParentId of 1' {
+            $command = & (Get-Module PlexAutomationToolkit) { Get-Command Invoke-PatFileDownload }
+            $parameter = $command.Parameters['ProgressParentId']
+
+            $parameter | Should -Not -BeNullOrEmpty
+            $parameter.ParameterType.Name | Should -Be 'Int32'
+
+            # Verify the default value
+            $ast = $command.ScriptBlock.Ast
+            $paramBlock = $ast.Body.ParamBlock
+            $progressParentIdParam = $paramBlock.Parameters | Where-Object { $_.Name.VariablePath.UserPath -eq 'ProgressParentId' }
+            $progressParentIdParam.DefaultValue.Value | Should -Be 1
+        }
+
+        It 'Has default ProgressActivity of Downloading file' {
+            $command = & (Get-Module PlexAutomationToolkit) { Get-Command Invoke-PatFileDownload }
+            $parameter = $command.Parameters['ProgressActivity']
+
+            $parameter | Should -Not -BeNullOrEmpty
+            $parameter.ParameterType.Name | Should -Be 'String'
+
+            # Verify the default value
+            $ast = $command.ScriptBlock.Ast
+            $paramBlock = $ast.Body.ParamBlock
+            $progressActivityParam = $paramBlock.Parameters | Where-Object { $_.Name.VariablePath.UserPath -eq 'ProgressActivity' }
+            $progressActivityParam.DefaultValue.Value | Should -Be 'Downloading file'
         }
     }
 }

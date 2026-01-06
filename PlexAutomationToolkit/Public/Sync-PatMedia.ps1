@@ -291,11 +291,14 @@ function Sync-PatMedia {
 
                     try {
                         $downloadParameters = @{
-                            Uri          = $downloadUrl
-                            OutFile      = $addOp.DestinationPath
-                            ExpectedSize = $addOp.MediaSize
-                            Resume       = $true
-                            ErrorAction  = 'Stop'
+                            Uri              = $downloadUrl
+                            OutFile          = $addOp.DestinationPath
+                            ExpectedSize     = $addOp.MediaSize
+                            Resume           = $true
+                            ProgressActivity = "Downloading: $itemDisplay"
+                            ProgressId       = 2
+                            ProgressParentId = 1
+                            ErrorAction      = 'Stop'
                         }
                         if ($effectiveToken) {
                             $downloadParameters['Token'] = $effectiveToken
@@ -371,7 +374,9 @@ function Sync-PatMedia {
                     Write-Warning "SyncWatchStatus and RemoveWatched require -SourceServerName and -TargetServerName parameters. Skipping watch status operations."
                 }
                 else {
-                    Write-Verbose "Checking for watch status differences..."
+                    Write-Progress -Activity "Processing watch status" `
+                        -Status "Comparing watch status between servers..." `
+                        -Id 1
 
                     # Get items watched on target (travel server) but not source (home server)
                     $watchDiffs = @(Compare-PatWatchStatus -SourceServerName $TargetServerName `
@@ -385,6 +390,10 @@ function Sync-PatMedia {
                         # Sync watch status first if requested
                         if ($SyncWatchStatus) {
                             if ($PSCmdlet.ShouldProcess("$($watchDiffs.Count) items", "Sync watch status from '$TargetServerName' to '$SourceServerName'")) {
+                                Write-Progress -Activity "Syncing watch status" `
+                                    -Status "Marking $($watchDiffs.Count) items as watched on '$SourceServerName'..." `
+                                    -Id 1
+
                                 $syncResults = Sync-PatWatchStatus -SourceServerName $TargetServerName `
                                     -TargetServerName $SourceServerName `
                                     -PassThru `
@@ -441,7 +450,11 @@ function Sync-PatMedia {
 
                                 if ($PSCmdlet.ShouldProcess($removeDescription, 'Remove')) {
                                     $removedCount = 0
+                                    $totalToRemove = $itemsToRemove.Count
+                                    $currentItem = 0
+
                                     foreach ($itemToRemove in $itemsToRemove) {
+                                        $currentItem++
                                         $playlistItem = $itemToRemove.PlaylistItem
                                         $itemDisplay = if ($playlistItem.Type -eq 'episode') {
                                             "$($playlistItem.GrandparentTitle) - S$($playlistItem.ParentIndex.ToString('D2'))E$($playlistItem.Index.ToString('D2'))"
@@ -449,6 +462,12 @@ function Sync-PatMedia {
                                         else {
                                             "$($playlistItem.Title) ($($playlistItem.Year))"
                                         }
+
+                                        $percentComplete = [int](($currentItem / $totalToRemove) * 100)
+                                        Write-Progress -Activity "Removing watched items from playlist" `
+                                            -Status "Removing $currentItem of $totalToRemove`: $itemDisplay" `
+                                            -PercentComplete $percentComplete `
+                                            -Id 1
 
                                         try {
                                             Remove-PatPlaylistItem -PlaylistId $playlist.PlaylistId `
@@ -463,6 +482,8 @@ function Sync-PatMedia {
                                             Write-Warning "Failed to remove '$itemDisplay': $($_.Exception.Message)"
                                         }
                                     }
+
+                                    Write-Progress -Activity "Removing watched items from playlist" -Completed -Id 1
                                     Write-Verbose "Removed $removedCount watched items from playlist"
                                 }
                             }
@@ -472,6 +493,7 @@ function Sync-PatMedia {
                         }
                     }
                     else {
+                        Write-Progress -Activity "Processing watch status" -Completed -Id 1
                         Write-Verbose "No watched items found on '$TargetServerName' to process"
                     }
                 }
