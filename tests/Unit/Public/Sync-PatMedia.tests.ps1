@@ -663,8 +663,8 @@ Describe 'Sync-PatMedia' {
         }
 
         It 'Passes nested progress IDs to file download' {
-            $capturedProgressId = $null
-            $capturedParentId = $null
+            $script:capturedProgressId = $null
+            $script:capturedParentId = $null
 
             Mock -ModuleName PlexAutomationToolkit Invoke-PatFileDownload {
                 param($Uri, $OutFile, $ExpectedSize, $Resume, $ProgressActivity, $ProgressId, $ProgressParentId)
