@@ -203,6 +203,16 @@ Describe 'Test-PatServerReachable' {
                 $SkipCertificateCheck -ne $true
             }
         }
+
+        It 'Restores ServerCertificateValidationCallback after HTTPS call on PowerShell 5.1' -Skip:($PSVersionTable.PSVersion.Major -ge 6) {
+            # Save the original callback
+            $originalCallback = [System.Net.ServicePointManager]::ServerCertificateValidationCallback
+
+            Test-PatServerReachable -ServerUri 'https://192.168.1.100:32400' -SkipCertificateCheck
+
+            # Verify the callback is restored to its original value (even if it was null)
+            [System.Net.ServicePointManager]::ServerCertificateValidationCallback | Should -Be $originalCallback
+        }
     }
 
     Context 'Parameter validation' {

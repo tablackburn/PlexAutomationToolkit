@@ -80,6 +80,7 @@ function Test-PatServerReachable {
     # Handle HTTPS certificate validation if opt-in skip is requested
     # This must be explicitly requested to prevent man-in-the-middle attacks
     $certValidationCallback = $null
+    $certCallbackChanged = $false
     if ($SkipCertificateCheck -and ($ServerUri -match '^https://')) {
         if ($PSVersionTable.PSVersion.Major -ge 6) {
             # PowerShell 6.0+ supports SkipCertificateCheck parameter
@@ -90,6 +91,7 @@ function Test-PatServerReachable {
             # Save the current callback to restore it later
             $certValidationCallback = [System.Net.ServicePointManager]::ServerCertificateValidationCallback
             [System.Net.ServicePointManager]::ServerCertificateValidationCallback = { $true }
+            $certCallbackChanged = $true
         }
     }
 
@@ -132,7 +134,7 @@ function Test-PatServerReachable {
     }
     finally {
         # Restore original certificate validation callback if we changed it
-        if ($null -ne $certValidationCallback) {
+        if ($certCallbackChanged) {
             [System.Net.ServicePointManager]::ServerCertificateValidationCallback = $certValidationCallback
         }
     }

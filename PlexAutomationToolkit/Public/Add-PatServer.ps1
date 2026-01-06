@@ -158,6 +158,7 @@ function Add-PatServer {
 
             $httpsAvailable = $false
             $certValidationCallback = $null
+            $certCallbackChanged = $false
             try {
                 $testUri = Join-PatUri -BaseUri $httpsUri -Endpoint '/'
                 # Build request params - handle certificate skip for PS version compatibility
@@ -176,6 +177,7 @@ function Add-PatServer {
                     # PowerShell 5.1 requires ServerCertificateValidationCallback
                     $certValidationCallback = [System.Net.ServicePointManager]::ServerCertificateValidationCallback
                     [System.Net.ServicePointManager]::ServerCertificateValidationCallback = { $true }
+                    $certCallbackChanged = $true
                 }
 
                 $null = Invoke-RestMethod @requestParams
@@ -192,7 +194,7 @@ function Add-PatServer {
             }
             finally {
                 # Restore original certificate validation callback if we changed it
-                if ($null -ne $certValidationCallback) {
+                if ($certCallbackChanged) {
                     [System.Net.ServicePointManager]::ServerCertificateValidationCallback = $certValidationCallback
                 }
             }
