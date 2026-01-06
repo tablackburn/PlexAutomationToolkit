@@ -151,8 +151,11 @@ function Invoke-PatFileDownload {
         Write-Verbose "Downloading file from: $Uri"
         Write-Verbose "Destination: $OutFile"
 
-        # Determine if we should show progress (only when we know the expected size)
-        $showProgress = $ExpectedSize -gt 0
+        # Determine if we should show progress with streaming
+        # Only use streaming for files > 1MB where progress reporting is meaningful
+        # Smaller files download quickly and don't benefit from streaming progress
+        $streamingThreshold = 1MB
+        $useStreaming = $ExpectedSize -gt $streamingThreshold
 
         # For resume with range header, use Invoke-WebRequest (simpler for partial content)
         if ($existingSize -gt 0 -and $headers.ContainsKey('Range')) {
@@ -186,8 +189,8 @@ function Invoke-PatFileDownload {
                 [System.IO.File]::WriteAllBytes($OutFile, $response.Content)
             }
         }
-        elseif ($showProgress) {
-            # Use streaming download with progress reporting
+        elseif ($useStreaming) {
+            # Use streaming download with progress reporting for large files
             $httpClient = $null
             $response = $null
             $contentStream = $null
