@@ -157,10 +157,28 @@ function Add-PatServer {
             Write-Verbose "Checking if HTTPS is available at $httpsUri"
 
             $httpsAvailable = $false
+            $certValidationCallback = $null
             try {
                 $testUri = Join-PatUri -BaseUri $httpsUri -Endpoint '/'
-                # Use SkipCertificateCheck for self-signed certs (common with Plex)
-                $null = Invoke-RestMethod -Uri $testUri -TimeoutSec 5 -SkipCertificateCheck -ErrorAction Stop
+                # Build request params - handle certificate skip for PS version compatibility
+                $requestParams = @{
+                    Uri         = $testUri
+                    TimeoutSec  = 5
+                    ErrorAction = 'Stop'
+                }
+
+                # Skip certificate validation for self-signed certs (common with Plex)
+                if ($PSVersionTable.PSVersion.Major -ge 6) {
+                    # PowerShell 6.0+ supports SkipCertificateCheck parameter
+                    $requestParams['SkipCertificateCheck'] = $true
+                }
+                else {
+                    # PowerShell 5.1 requires ServerCertificateValidationCallback
+                    $certValidationCallback = [System.Net.ServicePointManager]::ServerCertificateValidationCallback
+                    [System.Net.ServicePointManager]::ServerCertificateValidationCallback = { $true }
+                }
+
+                $null = Invoke-RestMethod @requestParams
                 $httpsAvailable = $true
             }
             catch {
@@ -170,6 +188,12 @@ function Add-PatServer {
                 }
                 else {
                     Write-Verbose "HTTPS not available: $($_.Exception.Message)"
+                }
+            }
+            finally {
+                # Restore original certificate validation callback if we changed it
+                if ($null -ne $certValidationCallback) {
+                    [System.Net.ServicePointManager]::ServerCertificateValidationCallback = $certValidationCallback
                 }
             }
 
