@@ -14,7 +14,8 @@ Adds a Plex server to the configuration.
 
 ```
 Add-PatServer [-Name] <String> [-ServerUri] <String> [-Default] [[-Token] <String>] [-PassThru]
- [-SkipValidation] [-Force] [-ProgressAction <ActionPreference>] [-WhatIf] [-Confirm] [<CommonParameters>]
+ [-SkipValidation] [-Force] [[-LocalUri] <String>] [-PreferLocal] [-DetectLocalUri]
+ [-ProgressAction <ActionPreference>] [-WhatIf] [-Confirm] [<CommonParameters>]
 ```
 
 ## DESCRIPTION
@@ -147,6 +148,57 @@ Suppresses all interactive prompts. When specified:
 - Automatically accepts HTTPS upgrade if available
 - Automatically attempts authentication if server requires it
 Use this parameter for non-interactive scripts and automation.
+
+```yaml
+Type: SwitchParameter
+Parameter Sets: (All)
+Aliases:
+
+Required: False
+Position: Named
+Default value: False
+Accept pipeline input: False
+Accept wildcard characters: False
+```
+
+### -LocalUri
+Optional local network URI for the server (e.g., http://192.168.1.100:32400).
+When configured along with PreferLocal, the module will automatically use this
+URI when on the local network, falling back to the primary ServerUri when remote.
+
+```yaml
+Type: String
+Parameter Sets: (All)
+Aliases:
+
+Required: False
+Position: 4
+Default value: None
+Accept pipeline input: False
+Accept wildcard characters: False
+```
+
+### -PreferLocal
+If specified along with LocalUri, enables automatic selection of local vs remote
+URI based on network reachability. The module will test if LocalUri is reachable
+and use it when available, providing faster local connections.
+
+```yaml
+Type: SwitchParameter
+Parameter Sets: (All)
+Aliases:
+
+Required: False
+Position: Named
+Default value: False
+Accept pipeline input: False
+Accept wildcard characters: False
+```
+
+### -DetectLocalUri
+If specified, automatically detects the local network URI from the Plex.tv API.
+Requires a valid authentication token. The detected local URI will be stored
+along with the primary URI, enabling intelligent local/remote connection selection.
 
 ```yaml
 Type: SwitchParameter

@@ -40,6 +40,21 @@ function Add-PatServer {
         - Automatically attempts authentication if server requires it
         Use this parameter for non-interactive scripts and automation.
 
+    .PARAMETER LocalUri
+        Optional local network URI for the server (e.g., http://192.168.1.100:32400).
+        When configured along with PreferLocal, the module will automatically use this
+        URI when on the local network, falling back to the primary ServerUri when remote.
+
+    .PARAMETER PreferLocal
+        If specified along with LocalUri, enables automatic selection of local vs remote
+        URI based on network reachability. The module will test if LocalUri is reachable
+        and use it when available, providing faster local connections.
+
+    .PARAMETER DetectLocalUri
+        If specified, automatically detects the local network URI from the Plex.tv API.
+        Requires a valid authentication token. The detected local URI will be stored
+        along with the primary URI, enabling intelligent local/remote connection selection.
+
     .EXAMPLE
         Add-PatServer -Name "Main Server" -ServerUri "http://plex.local:32400" -Default
 
@@ -64,6 +79,18 @@ function Add-PatServer {
         Add-PatServer -Name "Offline Server" -ServerUri "http://plex.offline.com:32400" -SkipValidation
 
         Adds a server without validating connectivity. Useful for servers that are temporarily down.
+
+    .EXAMPLE
+        Add-PatServer -Name "Smart Server" -ServerUri "https://plex.example.com:32400" -Token $token -DetectLocalUri -Default
+
+        Adds a server and automatically detects the local network URI from Plex.tv API.
+        When on the local network, connections will use the local IP for better performance.
+
+    .EXAMPLE
+        Add-PatServer -Name "Dual URI Server" -ServerUri "https://plex.example.com:32400" -LocalUri "http://192.168.1.100:32400" -PreferLocal -Token $token
+
+        Adds a server with explicit local and remote URIs. The module will automatically
+        use the local URI when reachable, falling back to the remote URI when not.
 
     .NOTES
         Security: If Microsoft.PowerShell.SecretManagement is installed with a registered vault,
@@ -103,7 +130,21 @@ function Add-PatServer {
 
         [Parameter(Mandatory = $false)]
         [switch]
-        $Force
+        $Force,
+
+        [Parameter(Mandatory = $false)]
+        [ValidateNotNullOrEmpty()]
+        [ValidateScript({ Test-PatServerUri -Uri $_ })]
+        [string]
+        $LocalUri,
+
+        [Parameter(Mandatory = $false)]
+        [switch]
+        $PreferLocal,
+
+        [Parameter(Mandatory = $false)]
+        [switch]
+        $DetectLocalUri
     )
 
     try {
@@ -116,10 +157,30 @@ function Add-PatServer {
             Write-Verbose "Checking if HTTPS is available at $httpsUri"
 
             $httpsAvailable = $false
+            $certValidationCallback = $null
+            $certCallbackChanged = $false
             try {
                 $testUri = Join-PatUri -BaseUri $httpsUri -Endpoint '/'
-                # Use SkipCertificateCheck for self-signed certs (common with Plex)
-                $null = Invoke-RestMethod -Uri $testUri -TimeoutSec 5 -SkipCertificateCheck -ErrorAction Stop
+                # Build request params - handle certificate skip for PS version compatibility
+                $requestParams = @{
+                    Uri         = $testUri
+                    TimeoutSec  = 5
+                    ErrorAction = 'Stop'
+                }
+
+                # Skip certificate validation for self-signed certs (common with Plex)
+                if ($PSVersionTable.PSVersion.Major -ge 6) {
+                    # PowerShell 6.0+ supports SkipCertificateCheck parameter
+                    $requestParams['SkipCertificateCheck'] = $true
+                }
+                else {
+                    # PowerShell 5.1 requires ServerCertificateValidationCallback
+                    $certValidationCallback = [System.Net.ServicePointManager]::ServerCertificateValidationCallback
+                    [System.Net.ServicePointManager]::ServerCertificateValidationCallback = { $true }
+                    $certCallbackChanged = $true
+                }
+
+                $null = Invoke-RestMethod @requestParams
                 $httpsAvailable = $true
             }
             catch {
@@ -129,6 +190,12 @@ function Add-PatServer {
                 }
                 else {
                     Write-Verbose "HTTPS not available: $($_.Exception.Message)"
+                }
+            }
+            finally {
+                # Restore original certificate validation callback if we changed it
+                if ($certCallbackChanged) {
+                    [System.Net.ServicePointManager]::ServerCertificateValidationCallback = $certValidationCallback
                 }
             }
 
@@ -180,6 +247,70 @@ function Add-PatServer {
             else {
                 $newServer | Add-Member -NotePropertyName 'token' -NotePropertyValue $storageResult.Token
             }
+        }
+
+        # Handle local URI configuration
+        $effectiveLocalUri = $LocalUri
+        $effectivePreferLocal = $PreferLocal.IsPresent
+
+        # Auto-detect local URI from Plex.tv API if requested
+        if ($DetectLocalUri -and -not $SkipValidation) {
+            $detectionToken = $Token
+            if (-not $detectionToken) {
+                Write-Warning "DetectLocalUri requires a valid authentication token. Skipping local URI detection."
+            }
+            else {
+                Write-Verbose "Attempting to detect local URI from Plex.tv API"
+                try {
+                    # First, get the server's machine identifier
+                    $serverIdentity = Get-PatServerIdentity -ServerUri $effectiveUri -Token $detectionToken -ErrorAction Stop
+                    Write-Verbose "Server machineIdentifier: $($serverIdentity.MachineIdentifier)"
+
+                    # Query Plex.tv for all connections to this server
+                    $connections = Get-PatServerConnection -MachineIdentifier $serverIdentity.MachineIdentifier -Token $detectionToken -ErrorAction Stop
+
+                    if ($connections -and $connections.Count -gt 0) {
+                        # Find a local, non-relay connection (prefer HTTPS if available)
+                        $localConnections = $connections | Where-Object { $_.Local -eq $true -and $_.Relay -ne $true }
+
+                        if ($localConnections) {
+                            # Prefer HTTPS local connection, fall back to HTTP
+                            $preferredLocal = $localConnections | Where-Object { $_.Protocol -eq 'https' } | Select-Object -First 1
+                            if (-not $preferredLocal) {
+                                $preferredLocal = $localConnections | Select-Object -First 1
+                            }
+
+                            if ($preferredLocal -and $preferredLocal.Uri -ne $effectiveUri) {
+                                $effectiveLocalUri = $preferredLocal.Uri
+                                $effectivePreferLocal = $true
+                                Write-Information "Detected local URI: $effectiveLocalUri" -InformationAction Continue
+                            }
+                            else {
+                                Write-Verbose "No distinct local URI found (may already be using local connection)"
+                            }
+                        }
+                        else {
+                            Write-Verbose "No local (non-relay) connections found for this server"
+                        }
+                    }
+                    else {
+                        Write-Verbose "No connections found in Plex.tv API response"
+                    }
+                }
+                catch {
+                    Write-Warning "Failed to detect local URI: $($_.Exception.Message). Continuing without local URI."
+                }
+            }
+        }
+
+        # Add local URI properties if configured
+        if (-not [string]::IsNullOrWhiteSpace($effectiveLocalUri)) {
+            $newServer | Add-Member -NotePropertyName 'localUri' -NotePropertyValue $effectiveLocalUri
+            $newServer | Add-Member -NotePropertyName 'preferLocal' -NotePropertyValue $effectivePreferLocal
+            Write-Verbose "Configured local URI: $effectiveLocalUri (preferLocal: $effectivePreferLocal)"
+        }
+        elseif ($PreferLocal.IsPresent) {
+            Write-Warning "PreferLocal specified but no LocalUri provided or detected. PreferLocal will have no effect."
         }
 
         # Validate server connectivity and token unless skipped
