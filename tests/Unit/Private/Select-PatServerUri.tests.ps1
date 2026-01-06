@@ -87,9 +87,83 @@ Describe 'Select-PatServerUri' {
             $result.IsLocal | Should -Be $true
             $result.SelectionReason | Should -Be 'ForceLocal parameter specified'
         }
+    }
 
-        # Note: Testing actual reachability requires mocking Test-PatServerReachable
-        # which is covered in integration tests
+    Context 'Reachability-based selection with PreferLocal enabled' {
+        BeforeAll {
+            $script:serverPreferLocal = [PSCustomObject]@{
+                name        = 'Test Server'
+                uri         = 'https://plex.example.com:32400'
+                localUri    = 'http://192.168.1.100:32400'
+                preferLocal = $true
+                default     = $true
+            }
+        }
+
+        It 'Returns local URI when local server is reachable' {
+            # Mock Test-PatServerReachable within module scope
+            & (Get-Module PlexAutomationToolkit) {
+                Mock Test-PatServerReachable {
+                    return [PSCustomObject]@{
+                        Reachable      = $true
+                        ResponseTimeMs = 15
+                        Error          = $null
+                    }
+                }
+            }
+
+            $result = & $script:SelectPatServerUri -Server $script:serverPreferLocal
+            $result.Uri | Should -Be 'http://192.168.1.100:32400'
+            $result.IsLocal | Should -Be $true
+            $result.SelectionReason | Should -Match 'Local URI reachable'
+        }
+
+        It 'Returns primary URI when local server is not reachable' {
+            & (Get-Module PlexAutomationToolkit) {
+                Mock Test-PatServerReachable {
+                    return [PSCustomObject]@{
+                        Reachable      = $false
+                        ResponseTimeMs = $null
+                        Error          = 'Connection refused'
+                    }
+                }
+            }
+
+            $result = & $script:SelectPatServerUri -Server $script:serverPreferLocal
+            $result.Uri | Should -Be 'https://plex.example.com:32400'
+            $result.IsLocal | Should -Be $false
+            $result.SelectionReason | Should -Match 'Local URI not reachable'
+        }
+
+        It 'Includes response time in selection reason when reachable' {
+            & (Get-Module PlexAutomationToolkit) {
+                Mock Test-PatServerReachable {
+                    return [PSCustomObject]@{
+                        Reachable      = $true
+                        ResponseTimeMs = 42
+                        Error          = $null
+                    }
+                }
+            }
+
+            $result = & $script:SelectPatServerUri -Server $script:serverPreferLocal
+            $result.SelectionReason | Should -Match '42ms'
+        }
+
+        It 'Includes error message in selection reason when not reachable' {
+            & (Get-Module PlexAutomationToolkit) {
+                Mock Test-PatServerReachable {
+                    return [PSCustomObject]@{
+                        Reachable      = $false
+                        ResponseTimeMs = $null
+                        Error          = 'Connection timed out'
+                    }
+                }
+            }
+
+            $result = & $script:SelectPatServerUri -Server $script:serverPreferLocal
+            $result.SelectionReason | Should -Match 'Connection timed out'
+        }
     }
 
     Context 'Error Handling' {
@@ -137,6 +211,39 @@ Describe 'Select-PatServerUri' {
             $result.PSObject.Properties.Name | Should -Contain 'Uri'
             $result.PSObject.Properties.Name | Should -Contain 'IsLocal'
             $result.PSObject.Properties.Name | Should -Contain 'SelectionReason'
+        }
+    }
+
+    Context 'Token passthrough for reachability testing' {
+        BeforeAll {
+            $script:serverPreferLocal = [PSCustomObject]@{
+                name        = 'Test Server'
+                uri         = 'https://plex.example.com:32400'
+                localUri    = 'http://192.168.1.100:32400'
+                preferLocal = $true
+                default     = $true
+            }
+        }
+
+        It 'Passes token to reachability test' {
+            & (Get-Module PlexAutomationToolkit) {
+                Mock Test-PatServerReachable {
+                    param($ServerUri, $Token, $TimeoutSeconds)
+                    # Verify token was passed
+                    if ($Token -ne 'test-auth-token') {
+                        throw "Expected token 'test-auth-token' but got '$Token'"
+                    }
+                    return [PSCustomObject]@{
+                        Reachable      = $true
+                        ResponseTimeMs = 10
+                        Error          = $null
+                    }
+                }
+            }
+
+            # Should not throw if token is passed correctly
+            { & $script:SelectPatServerUri -Server $script:serverPreferLocal -Token 'test-auth-token' } |
+                Should -Not -Throw
         }
     }
 }
