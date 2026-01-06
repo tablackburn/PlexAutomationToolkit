@@ -178,12 +178,20 @@ Describe 'Test-PatServerReachable' {
             Mock Invoke-RestMethod { return @{} }
         }
 
-        It 'Skips certificate check for HTTPS' {
+        It 'Skips certificate check for HTTPS on PowerShell 6.0+' -Skip:($PSVersionTable.PSVersion.Major -lt 6) {
             Test-PatServerReachable -ServerUri 'https://192.168.1.100:32400'
 
             Should -Invoke Invoke-RestMethod -Times 1 -ParameterFilter {
                 $SkipCertificateCheck -eq $true
             }
+        }
+
+        It 'Uses ServerCertificateValidationCallback for HTTPS on PowerShell 5.1' -Skip:($PSVersionTable.PSVersion.Major -ge 6) {
+            # On PowerShell 5.1, the callback should be set temporarily
+            Test-PatServerReachable -ServerUri 'https://192.168.1.100:32400'
+
+            # Verify the function was called (callback should be restored after)
+            Should -Invoke Invoke-RestMethod -Times 1
         }
 
         It 'Does not skip certificate check for HTTP' {

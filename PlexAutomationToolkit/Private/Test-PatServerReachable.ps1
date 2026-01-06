@@ -66,12 +66,22 @@ function Test-PatServerReachable {
         $requestParams.Headers['X-Plex-Token'] = $Token
     }
 
-    # Skip certificate validation for self-signed certs (common with Plex)
-    if ($ServerUri -match '^https://') {
-        $requestParams['SkipCertificateCheck'] = $true
-    }
-
     Write-Verbose "Testing reachability of $ServerUri (timeout: ${TimeoutSeconds}s)"
+
+    # Handle HTTPS certificate validation based on PowerShell version
+    $certValidationCallback = $null
+    if ($ServerUri -match '^https://') {
+        if ($PSVersionTable.PSVersion.Major -ge 6) {
+            # PowerShell 6.0+ supports SkipCertificateCheck parameter
+            $requestParams['SkipCertificateCheck'] = $true
+        }
+        else {
+            # PowerShell 5.1 requires ServerCertificateValidationCallback
+            # Save the current callback to restore it later
+            $certValidationCallback = [System.Net.ServicePointManager]::ServerCertificateValidationCallback
+            [System.Net.ServicePointManager]::ServerCertificateValidationCallback = { $true }
+        }
+    }
 
     $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
 
@@ -108,6 +118,12 @@ function Test-PatServerReachable {
             Reachable      = $false
             ResponseTimeMs = $null
             Error          = $errorMessage
+        }
+    }
+    finally {
+        # Restore original certificate validation callback if we changed it
+        if ($null -ne $certValidationCallback) {
+            [System.Net.ServicePointManager]::ServerCertificateValidationCallback = $certValidationCallback
         }
     }
 }
