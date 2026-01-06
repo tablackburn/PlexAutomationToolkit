@@ -261,10 +261,11 @@ function Invoke-PatFileDownload {
                     }
                 }
 
-                # Final progress update
-                Write-Progress @progressParams -Completed
             }
             finally {
+                if ($progressParams) {
+                    Write-Progress @progressParams -Completed
+                }
                 if ($fileStream) { $fileStream.Dispose() }
                 if ($contentStream) { $contentStream.Dispose() }
                 if ($response) { $response.Dispose() }
