@@ -22,6 +22,41 @@ BeforeAll {
     # Create temp directory for test files (cross-platform)
     $script:TestDir = Join-Path -Path ([System.IO.Path]::GetTempPath()) -ChildPath "PatFileDownloadTests_$([Guid]::NewGuid().ToString('N'))"
     New-Item -Path $script:TestDir -ItemType Directory -Force | Out-Null
+
+    # Helper function to get parameter default value from AST
+    # This extracts the default value assigned to a parameter in the function definition
+    # by traversing the PowerShell Abstract Syntax Tree (AST)
+    #
+    # Parameters:
+    #   Command - The CommandInfo object for the function
+    #   ParameterName - The name of the parameter to retrieve the default value for
+    #
+    # Returns:
+    #   The default value of the parameter, or $null if the parameter doesn't exist
+    #   or has no default value
+    function Get-ParameterDefaultValue {
+        param(
+            [System.Management.Automation.CommandInfo]$Command,
+            [string]$ParameterName
+        )
+
+        if (-not $Command.ScriptBlock -or -not $Command.ScriptBlock.Ast.Body.ParamBlock) {
+            return $null
+        }
+
+        $parameter = $Command.ScriptBlock.Ast.Body.ParamBlock.Parameters |
+            Where-Object { $_.Name.VariablePath.UserPath -eq $ParameterName }
+
+        if (-not $parameter) {
+            return $null
+        }
+
+        if (-not $parameter.DefaultValue) {
+            return $null
+        }
+
+        return $parameter.DefaultValue.Value
+    }
 }
 
 AfterAll {
