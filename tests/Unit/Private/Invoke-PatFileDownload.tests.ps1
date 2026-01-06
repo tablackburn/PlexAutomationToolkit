@@ -9,6 +9,21 @@ BeforeAll {
     # Create temp directory for test files (cross-platform)
     $script:TestDir = Join-Path -Path ([System.IO.Path]::GetTempPath()) -ChildPath "PatFileDownloadTests_$([Guid]::NewGuid().ToString('N'))"
     New-Item -Path $script:TestDir -ItemType Directory -Force | Out-Null
+
+    # Helper function to get parameter default value from AST
+    function Get-ParameterDefaultValue {
+        param(
+            [System.Management.Automation.CommandInfo]$Command,
+            [string]$ParameterName
+        )
+
+        $defaultValue = $Command.ScriptBlock.Ast.Body.ParamBlock.Parameters |
+            Where-Object { $_.Name.VariablePath.UserPath -eq $ParameterName } |
+            Select-Object -ExpandProperty DefaultValue |
+            Select-Object -ExpandProperty Value
+
+        return $defaultValue
+    }
 }
 
 AfterAll {
@@ -275,11 +290,7 @@ Describe 'Invoke-PatFileDownload' {
             $parameter.ParameterType.Name | Should -Be 'Int32'
 
             # Verify the actual default value
-            $defaultValue = $command.ScriptBlock.Ast.Body.ParamBlock.Parameters |
-                Where-Object { $_.Name.VariablePath.UserPath -eq 'ProgressId' } |
-                Select-Object -ExpandProperty DefaultValue |
-                Select-Object -ExpandProperty Value
-
+            $defaultValue = Get-ParameterDefaultValue -Command $command -ParameterName 'ProgressId'
             $defaultValue | Should -Be 2
         }
 
@@ -291,11 +302,7 @@ Describe 'Invoke-PatFileDownload' {
             $parameter.ParameterType.Name | Should -Be 'Int32'
 
             # Verify the actual default value
-            $defaultValue = $command.ScriptBlock.Ast.Body.ParamBlock.Parameters |
-                Where-Object { $_.Name.VariablePath.UserPath -eq 'ProgressParentId' } |
-                Select-Object -ExpandProperty DefaultValue |
-                Select-Object -ExpandProperty Value
-
+            $defaultValue = Get-ParameterDefaultValue -Command $command -ParameterName 'ProgressParentId'
             $defaultValue | Should -Be 1
         }
 
@@ -307,11 +314,7 @@ Describe 'Invoke-PatFileDownload' {
             $parameter.ParameterType.Name | Should -Be 'String'
 
             # Verify the actual default value
-            $defaultValue = $command.ScriptBlock.Ast.Body.ParamBlock.Parameters |
-                Where-Object { $_.Name.VariablePath.UserPath -eq 'ProgressActivity' } |
-                Select-Object -ExpandProperty DefaultValue |
-                Select-Object -ExpandProperty Value
-
+            $defaultValue = Get-ParameterDefaultValue -Command $command -ParameterName 'ProgressActivity'
             $defaultValue | Should -Be 'Downloading file'
         }
     }
