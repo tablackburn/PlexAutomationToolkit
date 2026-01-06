@@ -173,21 +173,30 @@ Describe 'Test-PatServerReachable' {
         }
     }
 
-    Context 'HTTPS handling' {
+    Context 'HTTPS certificate handling' {
         BeforeEach {
             Mock Invoke-RestMethod { return @{} }
         }
 
-        It 'Skips certificate check for HTTPS' {
+        It 'Does not skip certificate check by default for HTTPS' {
             Test-PatServerReachable -ServerUri 'https://192.168.1.100:32400'
+
+            Should -Invoke Invoke-RestMethod -Times 1 -ParameterFilter {
+                -not $PSBoundParameters.ContainsKey('SkipCertificateCheck') -or
+                $SkipCertificateCheck -ne $true
+            }
+        }
+
+        It 'Skips certificate check for HTTPS when SkipCertificateCheck specified' {
+            Test-PatServerReachable -ServerUri 'https://192.168.1.100:32400' -SkipCertificateCheck
 
             Should -Invoke Invoke-RestMethod -Times 1 -ParameterFilter {
                 $SkipCertificateCheck -eq $true
             }
         }
 
-        It 'Does not skip certificate check for HTTP' {
-            Test-PatServerReachable -ServerUri 'http://192.168.1.100:32400'
+        It 'Does not skip certificate check for HTTP even with SkipCertificateCheck' {
+            Test-PatServerReachable -ServerUri 'http://192.168.1.100:32400' -SkipCertificateCheck
 
             Should -Invoke Invoke-RestMethod -Times 1 -ParameterFilter {
                 -not $PSBoundParameters.ContainsKey('SkipCertificateCheck') -or

@@ -66,7 +66,11 @@ function Select-PatServerUri {
 
         [Parameter(Mandatory = $false)]
         [string]
-        $Token
+        $Token,
+
+        [Parameter(Mandatory = $false)]
+        [switch]
+        $SkipCertificateCheck
     )
 
     # Validate server has at least a primary URI
@@ -123,7 +127,15 @@ function Select-PatServerUri {
     # PreferLocal is enabled and we have a local URI - test reachability
     Write-Verbose "Testing local URI reachability: $localUri"
 
-    $reachability = Test-PatServerReachable -ServerUri $localUri -Token $Token -TimeoutSeconds 2
+    $reachabilityParams = @{
+        ServerUri      = $localUri
+        Token          = $Token
+        TimeoutSeconds = 2
+    }
+    if ($SkipCertificateCheck) {
+        $reachabilityParams['SkipCertificateCheck'] = $true
+    }
+    $reachability = Test-PatServerReachable @reachabilityParams
 
     if ($reachability.Reachable) {
         Write-Verbose "Local URI is reachable ($($reachability.ResponseTimeMs)ms) - using local connection"

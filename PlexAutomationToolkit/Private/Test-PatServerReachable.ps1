@@ -16,6 +16,11 @@ function Test-PatServerReachable {
     .PARAMETER TimeoutSeconds
         Connection timeout in seconds. Default is 3 seconds for quick local network testing.
 
+    .PARAMETER SkipCertificateCheck
+        If specified, skips TLS certificate validation for HTTPS connections.
+        Only use this for trusted local servers with self-signed certificates.
+        WARNING: Skipping certificate validation exposes you to man-in-the-middle attacks.
+
     .OUTPUTS
         PSCustomObject with properties:
         - Reachable: Boolean indicating if server responded
@@ -48,7 +53,11 @@ function Test-PatServerReachable {
         [Parameter(Mandatory = $false)]
         [ValidateRange(1, 30)]
         [int]
-        $TimeoutSeconds = 3
+        $TimeoutSeconds = 3,
+
+        [Parameter(Mandatory = $false)]
+        [switch]
+        $SkipCertificateCheck
     )
 
     $uri = Join-PatUri -BaseUri $ServerUri -Endpoint '/'
@@ -66,12 +75,23 @@ function Test-PatServerReachable {
         $requestParams.Headers['X-Plex-Token'] = $Token
     }
 
-    # Skip certificate validation for self-signed certs (common with Plex)
-    if ($ServerUri -match '^https://') {
-        $requestParams['SkipCertificateCheck'] = $true
-    }
-
     Write-Verbose "Testing reachability of $ServerUri (timeout: ${TimeoutSeconds}s)"
+
+    # Handle HTTPS certificate validation if opt-in skip is requested
+    # This must be explicitly requested to prevent man-in-the-middle attacks
+    $certValidationCallback = $null
+    if ($SkipCertificateCheck -and ($ServerUri -match '^https://')) {
+        if ($PSVersionTable.PSVersion.Major -ge 6) {
+            # PowerShell 6.0+ supports SkipCertificateCheck parameter
+            $requestParams['SkipCertificateCheck'] = $true
+        }
+        else {
+            # PowerShell 5.1 requires ServerCertificateValidationCallback
+            # Save the current callback to restore it later
+            $certValidationCallback = [System.Net.ServicePointManager]::ServerCertificateValidationCallback
+            [System.Net.ServicePointManager]::ServerCertificateValidationCallback = { $true }
+        }
+    }
 
     $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
 
@@ -108,6 +128,12 @@ function Test-PatServerReachable {
             Reachable      = $false
             ResponseTimeMs = $null
             Error          = $errorMessage
+        }
+    }
+    finally {
+        # Restore original certificate validation callback if we changed it
+        if ($null -ne $certValidationCallback) {
+            [System.Net.ServicePointManager]::ServerCertificateValidationCallback = $certValidationCallback
         }
     }
 }

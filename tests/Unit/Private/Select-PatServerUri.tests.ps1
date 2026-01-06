@@ -246,4 +246,58 @@ Describe 'Select-PatServerUri' {
                 Should -Not -Throw
         }
     }
+
+    Context 'SkipCertificateCheck passthrough' {
+        BeforeAll {
+            $script:serverPreferLocal = [PSCustomObject]@{
+                name        = 'Test Server'
+                uri         = 'https://plex.example.com:32400'
+                localUri    = 'https://192.168.1.100:32400'
+                preferLocal = $true
+                default     = $true
+            }
+        }
+
+        It 'Passes SkipCertificateCheck to reachability test when specified' {
+            & (Get-Module PlexAutomationToolkit) {
+                Mock Test-PatServerReachable {
+                    param($ServerUri, $Token, $TimeoutSeconds, $SkipCertificateCheck)
+                    # Verify SkipCertificateCheck was passed
+                    if (-not $SkipCertificateCheck) {
+                        throw "Expected SkipCertificateCheck to be true"
+                    }
+                    return [PSCustomObject]@{
+                        Reachable      = $true
+                        ResponseTimeMs = 10
+                        Error          = $null
+                    }
+                }
+            }
+
+            # Should not throw if SkipCertificateCheck is passed correctly
+            { & $script:SelectPatServerUri -Server $script:serverPreferLocal -SkipCertificateCheck } |
+                Should -Not -Throw
+        }
+
+        It 'Does not pass SkipCertificateCheck when not specified' {
+            & (Get-Module PlexAutomationToolkit) {
+                Mock Test-PatServerReachable {
+                    param($ServerUri, $Token, $TimeoutSeconds, $SkipCertificateCheck)
+                    # Verify SkipCertificateCheck was NOT passed
+                    if ($SkipCertificateCheck) {
+                        throw "Expected SkipCertificateCheck to be false or not present"
+                    }
+                    return [PSCustomObject]@{
+                        Reachable      = $true
+                        ResponseTimeMs = 10
+                        Error          = $null
+                    }
+                }
+            }
+
+            # Should not throw if SkipCertificateCheck is not passed
+            { & $script:SelectPatServerUri -Server $script:serverPreferLocal } |
+                Should -Not -Throw
+        }
+    }
 }
