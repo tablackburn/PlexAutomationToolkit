@@ -156,6 +156,29 @@ if ($PSCmdlet.ShouldProcess($targetName, $action)) {
 
 Tests run against built module in `Output/<ModuleName>/<Version>/` directory. The build sets `BH*` environment variables via `Set-BuildEnvironment` that tests rely on.
 
+### Test Coverage
+
+**Always use the build system for test coverage - never create separate scripts.**
+
+The build system automatically generates code coverage reports when running tests:
+
+```bash
+# Run tests with coverage (correct way)
+pwsh -File ./build.ps1 -Task Test
+```
+
+Coverage output:
+- **Report file**: `out/codeCoverage.xml` (JaCoCo format)
+- **Threshold**: 75% minimum (enforced by Codecov)
+- **Current target**: 90%+ coverage
+
+**Do not:**
+- Create temporary PowerShell scripts to analyze coverage
+- Run Pester with manual `-CodeCoverage` parameters
+- Parse coverage XML with ad-hoc scripts
+
+The build system handles all coverage configuration in `build.psake.ps1`.
+
 ### Test Categories
 
 1. **Manifest.tests.ps1** - Validates manifest fields and version matching with CHANGELOG.md

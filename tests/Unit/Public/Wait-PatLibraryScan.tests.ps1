@@ -144,4 +144,55 @@ Describe 'Wait-PatLibraryScan' {
             { Wait-PatLibraryScan -SectionId 2 -ServerUri 'http://plex.local:32400' -PollingInterval 0 } | Should -Throw
         }
     }
+
+    Context 'Token parameter handling' {
+        BeforeAll {
+            Mock -ModuleName PlexAutomationToolkit Get-PatActivity {
+                return $null
+            }
+        }
+
+        It 'Passes Token to Get-PatActivity' {
+            Wait-PatLibraryScan -SectionId 2 -ServerUri 'http://plex.local:32400' -Token 'my-secret-token'
+
+            Should -Invoke -ModuleName PlexAutomationToolkit Get-PatActivity -ParameterFilter {
+                $Token -eq 'my-secret-token'
+            }
+        }
+    }
+
+    Context 'Section name resolution errors' {
+        It 'Throws when section name not found' {
+            Mock -ModuleName PlexAutomationToolkit Get-PatLibraryPath {
+                return $null
+            }
+
+            { Wait-PatLibraryScan -SectionName 'NonExistent' -ServerUri 'http://plex.local:32400' } |
+                Should -Throw "*Library section 'NonExistent' not found*"
+        }
+
+        It 'Throws when section name resolution fails' {
+            Mock -ModuleName PlexAutomationToolkit Get-PatLibraryPath {
+                throw 'Connection failed'
+            }
+
+            { Wait-PatLibraryScan -SectionName 'Movies' -ServerUri 'http://plex.local:32400' } |
+                Should -Throw "*Failed to resolve section name 'Movies'*"
+        }
+    }
+
+    Context 'Activity check failure handling' {
+        It 'Writes warning when activity check fails and returns' {
+            Mock -ModuleName PlexAutomationToolkit Get-PatActivity {
+                throw 'Connection timeout'
+            }
+
+            $warnings = @()
+            # Function returns when activity is null (after catch sets it to null)
+            Wait-PatLibraryScan -SectionId 2 -ServerUri 'http://plex.local:32400' -WarningVariable warnings 3>$null
+
+            $warnings | Should -Not -BeNullOrEmpty
+            $warnings[0] | Should -Match 'Failed to check activity status'
+        }
+    }
 }
