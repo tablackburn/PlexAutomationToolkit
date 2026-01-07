@@ -277,4 +277,212 @@ Describe 'Compare-PatWatchStatus' {
             $result[0].PSObject.TypeNames[0] | Should -Be 'PlexAutomationToolkit.WatchStatusDiff'
         }
     }
+
+    Context 'Server not found errors' {
+        It 'Throws when source server not found' {
+            Mock -ModuleName PlexAutomationToolkit Get-PatStoredServer {
+                param($Name)
+                if ($Name -eq 'Target') {
+                    return [PSCustomObject]@{ name = 'Target'; uri = 'http://target:32400' }
+                }
+                return $null
+            }
+
+            { Compare-PatWatchStatus -SourceServerName 'NonExistent' -TargetServerName 'Target' } |
+                Should -Throw "*Source server 'NonExistent' not found*"
+        }
+
+        It 'Throws when target server not found' {
+            Mock -ModuleName PlexAutomationToolkit Get-PatStoredServer {
+                param($Name)
+                if ($Name -eq 'Source') {
+                    return [PSCustomObject]@{ name = 'Source'; uri = 'http://source:32400' }
+                }
+                return $null
+            }
+
+            { Compare-PatWatchStatus -SourceServerName 'Source' -TargetServerName 'NonExistent' } |
+                Should -Throw "*Target server 'NonExistent' not found*"
+        }
+    }
+
+    Context 'Empty library sections' {
+        BeforeAll {
+            Mock -ModuleName PlexAutomationToolkit Get-PatStoredServer {
+                param($Name)
+                return [PSCustomObject]@{ name = $Name; uri = "http://$Name.test:32400" }
+            }
+        }
+
+        It 'Throws when source server has no library sections' {
+            Mock -ModuleName PlexAutomationToolkit Get-PatLibrary {
+                param($ServerUri)
+                if ($ServerUri -match 'Source') {
+                    return @{ Directory = $null }
+                }
+                return @{ Directory = @(@{ key = '/library/sections/1'; title = 'Movies'; type = 'movie' }) }
+            }
+
+            { Compare-PatWatchStatus -SourceServerName 'Source' -TargetServerName 'Target' } |
+                Should -Throw "*No library sections found on source server*"
+        }
+
+        It 'Throws when target server has no library sections' {
+            Mock -ModuleName PlexAutomationToolkit Get-PatLibrary {
+                param($ServerUri)
+                if ($ServerUri -match 'Target') {
+                    return @{ Directory = $null }
+                }
+                return @{ Directory = @(@{ key = '/library/sections/1'; title = 'Movies'; type = 'movie' }) }
+            }
+
+            { Compare-PatWatchStatus -SourceServerName 'Source' -TargetServerName 'Target' } |
+                Should -Throw "*No library sections found on target server*"
+        }
+    }
+
+    Context 'SectionId filtering' {
+        BeforeAll {
+            Mock -ModuleName PlexAutomationToolkit Get-PatStoredServer {
+                param($Name)
+                return [PSCustomObject]@{ name = $Name; uri = "http://$Name.test:32400" }
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Get-PatLibrary {
+                return @{
+                    Directory = @(
+                        @{ key = '/library/sections/1'; title = 'Movies'; type = 'movie' }
+                        @{ key = '/library/sections/2'; title = 'TV Shows'; type = 'show' }
+                        @{ key = '/library/sections/3'; title = 'Music'; type = 'artist' }
+                    )
+                }
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Get-PatLibraryItem {
+                param($SectionId, $ServerUri)
+                if ($SectionId -eq 1) {
+                    if ($ServerUri -match 'Source') {
+                        return @(@{ ratingKey = 1; title = 'Movie1'; year = 2020; viewCount = 1 })
+                    }
+                    return @(@{ ratingKey = 2; title = 'Movie1'; year = 2020; viewCount = 0 })
+                }
+                return @()
+            }
+        }
+
+        It 'Filters to specified section IDs' {
+            $result = Compare-PatWatchStatus -SourceServerName 'Source' -TargetServerName 'Target' -SectionId 1
+
+            Should -Invoke Get-PatLibraryItem -ModuleName PlexAutomationToolkit -ParameterFilter {
+                $SectionId -eq 1
+            }
+        }
+
+        It 'Only compares sections in SectionId array' {
+            $result = Compare-PatWatchStatus -SourceServerName 'Source' -TargetServerName 'Target' -SectionId @(1, 2)
+
+            # Section 3 (Music/artist type) should be excluded anyway, but section filtering happens first
+            Should -Invoke Get-PatLibraryItem -ModuleName PlexAutomationToolkit -Times 4
+        }
+    }
+
+    Context 'Servers in sync message' {
+        BeforeAll {
+            Mock -ModuleName PlexAutomationToolkit Get-PatStoredServer {
+                param($Name)
+                return [PSCustomObject]@{ name = $Name; uri = "http://$Name.test:32400" }
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Get-PatLibrary {
+                return @{
+                    Directory = @(
+                        @{ key = '/library/sections/1'; title = 'Movies'; type = 'movie' }
+                    )
+                }
+            }
+
+            # Both servers have same watch status - no differences
+            Mock -ModuleName PlexAutomationToolkit Get-PatLibraryItem {
+                return @(
+                    @{ ratingKey = 1; title = 'SyncedMovie'; year = 2020; viewCount = 1 }
+                )
+            }
+        }
+
+        It 'Shows in sync message when no differences found' {
+            $infoMessages = Compare-PatWatchStatus -SourceServerName 'Source' -TargetServerName 'Target' 6>&1
+
+            $infoMessages | Should -Match 'in sync'
+        }
+
+        It 'Shows filtered in sync message with WatchedOnSourceOnly' {
+            $infoMessages = Compare-PatWatchStatus -SourceServerName 'Source' -TargetServerName 'Target' -WatchedOnSourceOnly 6>&1
+
+            $infoMessages | Should -Match 'in sync'
+        }
+
+        It 'Shows filtered in sync message with WatchedOnTargetOnly' {
+            $infoMessages = Compare-PatWatchStatus -SourceServerName 'Source' -TargetServerName 'Target' -WatchedOnTargetOnly 6>&1
+
+            $infoMessages | Should -Match 'in sync'
+        }
+    }
+
+    Context 'Get-WatchStatusMatchKey helper function edge cases' {
+        It 'Handles empty title for movie' {
+            InModuleScope PlexAutomationToolkit {
+                $key = Get-WatchStatusMatchKey -Type 'movie' -Title '' -Year 2020
+
+                $key | Should -Be 'movie||2020'
+            }
+        }
+
+        It 'Handles null title for movie' {
+            InModuleScope PlexAutomationToolkit {
+                $key = Get-WatchStatusMatchKey -Type 'movie' -Title $null -Year 2020
+
+                $key | Should -Be 'movie||2020'
+            }
+        }
+
+        It 'Handles empty show name for episode' {
+            InModuleScope PlexAutomationToolkit {
+                $key = Get-WatchStatusMatchKey -Type 'episode' -ShowName '' -Season 1 -Episode 1
+
+                $key | Should -Be 'episode||S1E1'
+            }
+        }
+
+        It 'Handles null show name for episode' {
+            InModuleScope PlexAutomationToolkit {
+                $key = Get-WatchStatusMatchKey -Type 'episode' -ShowName $null -Season 1 -Episode 1
+
+                $key | Should -Be 'episode||S1E1'
+            }
+        }
+
+        It 'Returns unknown type fallback for unrecognized type' {
+            InModuleScope PlexAutomationToolkit {
+                $key = Get-WatchStatusMatchKey -Type 'music' -Title 'Some Song'
+
+                $key | Should -Be 'unknown|some song'
+            }
+        }
+
+        It 'Normalizes title by removing special characters' {
+            InModuleScope PlexAutomationToolkit {
+                $key = Get-WatchStatusMatchKey -Type 'movie' -Title "The Matrix: Reloaded!" -Year 2003
+
+                $key | Should -Be 'movie|the matrix reloaded|2003'
+            }
+        }
+
+        It 'Normalizes show name by removing special characters' {
+            InModuleScope PlexAutomationToolkit {
+                $key = Get-WatchStatusMatchKey -Type 'episode' -ShowName "Grey's Anatomy" -Season 1 -Episode 1
+
+                $key | Should -Be 'episode|greys anatomy|S1E1'
+            }
+        }
+    }
 }
