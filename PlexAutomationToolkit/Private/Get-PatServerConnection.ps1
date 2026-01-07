@@ -70,12 +70,12 @@ function Get-PatServerConnection {
 
         if (-not $server) {
             Write-Warning "Server with machineIdentifier '$MachineIdentifier' not found in Plex.tv resources"
-            return @()
+            return [PSCustomObject[]]@()
         }
 
         if (-not $server.connections -or $server.connections.Count -eq 0) {
             Write-Warning "No connections found for server '$($server.name)'"
-            return @()
+            return [PSCustomObject[]]@()
         }
 
         Write-Verbose "Found $($server.connections.Count) connection(s) for server '$($server.name)'"

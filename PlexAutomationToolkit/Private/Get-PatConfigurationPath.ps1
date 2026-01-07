@@ -78,7 +78,7 @@ function Get-PatConfigurationPath {
                     return $configurationPath
                 }
                 catch {
-                    # Documents not accessible, try LocalAppData
+                    Write-Debug "Documents folder not accessible ($($_.Exception.GetType().Name)), trying LocalAppData"
                 }
             }
             else {
