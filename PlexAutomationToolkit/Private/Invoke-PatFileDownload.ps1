@@ -95,12 +95,30 @@ function Invoke-PatFileDownload {
         $ProgressActivity = 'Downloading file'
     )
 
+    # Validate and resolve destination path to prevent directory traversal attacks
+    # Check for path traversal sequences in the path
+    if ($OutFile -match '\.\.[/\\]' -or $OutFile -match '[\x00-\x1F]') {
+        throw "OutFile path contains invalid path traversal sequences or control characters"
+    }
+
+    # Resolve to absolute path
+    $resolvedOutFile = [System.IO.Path]::GetFullPath($OutFile)
+
+    # Ensure the filename component doesn't contain traversal attempts
+    $fileName = [System.IO.Path]::GetFileName($resolvedOutFile)
+    if ($fileName -match '\.\.' -or [string]::IsNullOrWhiteSpace($fileName)) {
+        throw "OutFile has invalid filename component"
+    }
+
     # Ensure destination directory exists
-    $destinationDir = Split-Path -Path $OutFile -Parent
+    $destinationDir = Split-Path -Path $resolvedOutFile -Parent
     if ($destinationDir -and -not (Test-Path -Path $destinationDir)) {
         Write-Verbose "Creating destination directory: $destinationDir"
         New-Item -Path $destinationDir -ItemType Directory -Force | Out-Null
     }
+
+    # Use resolved path for all operations
+    $OutFile = $resolvedOutFile
 
     # Check for existing partial download
     $existingSize = 0

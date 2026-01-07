@@ -219,6 +219,13 @@ function Sync-PatMedia {
             if (-not $SkipRemoval -and $syncPlan.RemoveOperations.Count -gt 0) {
                 Write-Verbose "Removing $($syncPlan.RemoveOperations.Count) items..."
 
+                # Resolve destination to absolute path for validation
+                $resolvedDestination = [System.IO.Path]::GetFullPath($Destination)
+                # Ensure destination path ends with separator for proper prefix matching
+                if (-not $resolvedDestination.EndsWith([System.IO.Path]::DirectorySeparatorChar)) {
+                    $resolvedDestination += [System.IO.Path]::DirectorySeparatorChar
+                }
+
                 $removeCount = 0
                 foreach ($removeOp in $syncPlan.RemoveOperations) {
                     $removeCount++
@@ -230,16 +237,36 @@ function Sync-PatMedia {
                         -CurrentOperation $removeOp.Path `
                         -Id 1
 
-                    Write-Verbose "Removing: $($removeOp.Path)"
-                    Remove-Item -Path $removeOp.Path -Force -ErrorAction SilentlyContinue
+                    # Security: Validate file is within destination directory before deletion
+                    $resolvedRemovePath = [System.IO.Path]::GetFullPath($removeOp.Path)
+                    if (-not $resolvedRemovePath.StartsWith($resolvedDestination, [System.StringComparison]::OrdinalIgnoreCase)) {
+                        Write-Warning "Skipping removal of '$($removeOp.Path)' - path is outside destination directory"
+                        continue
+                    }
 
-                    # Try to remove empty parent directories
-                    $parent = Split-Path -Path $removeOp.Path -Parent
-                    while ($parent -and (Test-Path -Path $parent)) {
+                    Write-Verbose "Removing: $($removeOp.Path)"
+                    Remove-Item -Path $resolvedRemovePath -Force -ErrorAction SilentlyContinue
+
+                    # Try to remove empty parent directories (but stay within destination)
+                    $parent = Split-Path -Path $resolvedRemovePath -Parent
+                    $maxIterations = 100  # Prevent infinite loop
+                    $iterations = 0
+                    while ($parent -and (Test-Path -Path $parent) -and $iterations -lt $maxIterations) {
+                        $iterations++
+                        # Stop if we've reached the destination root
+                        $resolvedParent = [System.IO.Path]::GetFullPath($parent)
+                        if (-not $resolvedParent.StartsWith($resolvedDestination, [System.StringComparison]::OrdinalIgnoreCase)) {
+                            break
+                        }
                         $items = Get-ChildItem -Path $parent -Force -ErrorAction SilentlyContinue
                         if (-not $items) {
                             Remove-Item -Path $parent -Force -ErrorAction SilentlyContinue
-                            $parent = Split-Path -Path $parent -Parent
+                            $newParent = Split-Path -Path $parent -Parent
+                            # Ensure we're actually moving up
+                            if ($newParent -eq $parent) {
+                                break
+                            }
+                            $parent = $newParent
                         }
                         else {
                             break
@@ -315,8 +342,8 @@ function Sync-PatMedia {
                             if ($ServerUri) {
                                 $mediaInformationParameters['ServerUri'] = $ServerUri
                             }
-                            if ($Token) {
-                                $mediaInformationParameters['Token'] = $Token
+                            if ($effectiveToken) {
+                                $mediaInformationParameters['Token'] = $effectiveToken
                             }
 
                             $mediaInformation = Get-PatMediaInfo @mediaInformationParameters
@@ -420,8 +447,8 @@ function Sync-PatMedia {
                             if ($ServerUri) {
                                 $getPlaylistParameters['ServerUri'] = $ServerUri
                             }
-                            if ($Token) {
-                                $getPlaylistParameters['Token'] = $Token
+                            if ($effectiveToken) {
+                                $getPlaylistParameters['Token'] = $effectiveToken
                             }
 
                             $playlist = Get-PatPlaylist @getPlaylistParameters

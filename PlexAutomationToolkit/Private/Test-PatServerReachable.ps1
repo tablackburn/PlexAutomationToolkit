@@ -81,6 +81,7 @@ function Test-PatServerReachable {
     # This must be explicitly requested to prevent man-in-the-middle attacks
     $certValidationCallback = $null
     $certCallbackChanged = $false
+    $certMutex = $null
     if ($SkipCertificateCheck -and ($ServerUri -match '^https://')) {
         if ($PSVersionTable.PSVersion.Major -ge 6) {
             # PowerShell 6.0+ supports SkipCertificateCheck parameter
@@ -88,7 +89,19 @@ function Test-PatServerReachable {
         }
         else {
             # PowerShell 5.1 requires ServerCertificateValidationCallback
-            # Save the current callback to restore it later
+            # Use a named mutex to prevent race conditions when multiple calls modify the global callback
+            $certMutex = [System.Threading.Mutex]::new($false, 'Global\PlexAutomationToolkit_CertCallback')
+            $mutexAcquired = $certMutex.WaitOne(10000) # 10 second timeout
+            if (-not $mutexAcquired) {
+                # Could not acquire mutex - return error rather than risk race condition
+                $certMutex.Dispose()
+                Write-Verbose "Could not acquire certificate callback mutex for certificate skip"
+                return [PSCustomObject]@{
+                    Reachable      = $false
+                    ResponseTimeMs = $null
+                    Error          = "Could not safely skip certificate validation (mutex timeout)"
+                }
+            }
             $certValidationCallback = [System.Net.ServicePointManager]::ServerCertificateValidationCallback
             [System.Net.ServicePointManager]::ServerCertificateValidationCallback = { $true }
             $certCallbackChanged = $true
@@ -136,6 +149,11 @@ function Test-PatServerReachable {
         # Restore original certificate validation callback if we changed it
         if ($certCallbackChanged) {
             [System.Net.ServicePointManager]::ServerCertificateValidationCallback = $certValidationCallback
+        }
+        # Release mutex if acquired
+        if ($certMutex) {
+            $certMutex.ReleaseMutex()
+            $certMutex.Dispose()
         }
     }
 }

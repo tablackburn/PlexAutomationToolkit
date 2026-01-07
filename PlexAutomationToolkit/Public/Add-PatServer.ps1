@@ -159,6 +159,7 @@ function Add-PatServer {
             $httpsAvailable = $false
             $certValidationCallback = $null
             $certCallbackChanged = $false
+            $certMutex = $null
             try {
                 $testUri = Join-PatUri -BaseUri $httpsUri -Endpoint '/'
                 # Build request params - handle certificate skip for PS version compatibility
@@ -175,13 +176,27 @@ function Add-PatServer {
                 }
                 else {
                     # PowerShell 5.1 requires ServerCertificateValidationCallback
-                    $certValidationCallback = [System.Net.ServicePointManager]::ServerCertificateValidationCallback
-                    [System.Net.ServicePointManager]::ServerCertificateValidationCallback = { $true }
-                    $certCallbackChanged = $true
+                    # Use a named mutex to prevent race conditions when multiple calls modify the global callback
+                    $certMutex = [System.Threading.Mutex]::new($false, 'Global\PlexAutomationToolkit_CertCallback')
+                    $mutexAcquired = $certMutex.WaitOne(10000) # 10 second timeout
+                    if (-not $mutexAcquired) {
+                        # Could not acquire mutex - skip HTTPS check rather than risk race condition
+                        Write-Verbose "Could not acquire certificate callback mutex, skipping HTTPS availability check"
+                        $certMutex.Dispose()
+                        $certMutex = $null
+                    }
+                    else {
+                        $certValidationCallback = [System.Net.ServicePointManager]::ServerCertificateValidationCallback
+                        [System.Net.ServicePointManager]::ServerCertificateValidationCallback = { $true }
+                        $certCallbackChanged = $true
+                    }
                 }
 
-                $null = Invoke-RestMethod @requestParams
-                $httpsAvailable = $true
+                # Only proceed with HTTPS check if we either have PS6+ or successfully acquired mutex
+                if ($PSVersionTable.PSVersion.Major -ge 6 -or $certCallbackChanged) {
+                    $null = Invoke-RestMethod @requestParams
+                    $httpsAvailable = $true
+                }
             }
             catch {
                 # 401/403 means HTTPS works, just needs auth - that's fine
@@ -196,6 +211,11 @@ function Add-PatServer {
                 # Restore original certificate validation callback if we changed it
                 if ($certCallbackChanged) {
                     [System.Net.ServicePointManager]::ServerCertificateValidationCallback = $certValidationCallback
+                }
+                # Release mutex if acquired
+                if ($certMutex) {
+                    $certMutex.ReleaseMutex()
+                    $certMutex.Dispose()
                 }
             }
 
