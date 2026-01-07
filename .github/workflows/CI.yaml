@@ -18,7 +18,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Cache PowerShell modules
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.local/share/powershell/Modules
           key: ${{ runner.os }}-psmodules-lint-${{ hashFiles('build.depend.psd1') }}
@@ -61,7 +61,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Cache PowerShell modules
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             ~/Documents/PowerShell/Modules
@@ -107,7 +107,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Cache PowerShell modules
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             ~/Documents/PowerShell/Modules
