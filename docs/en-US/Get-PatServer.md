@@ -13,8 +13,8 @@ Retrieves Plex server information.
 ## SYNTAX
 
 ```
-Get-PatServer [[-ServerUri] <String>] [[-Token] <String>] [-ProgressAction <ActionPreference>]
- [<CommonParameters>]
+Get-PatServer [[-ServerName] <String>] [[-ServerUri] <String>] [[-Token] <String>]
+ [-ProgressAction <ActionPreference>] [<CommonParameters>]
 ```
 
 ## DESCRIPTION
@@ -39,6 +39,22 @@ Handy for quickly confirming server version and platform details are reachable.
 
 ## PARAMETERS
 
+### -ServerName
+The name of a stored server to use. Use Get-PatStoredServer to see available servers.
+This is more convenient than ServerUri as you don't need to remember the URI or token.
+
+```yaml
+Type: String
+Parameter Sets: (All)
+Aliases:
+
+Required: False
+Position: 1
+Default value: None
+Accept pipeline input: False
+Accept wildcard characters: False
+```
+
 ### -ServerUri
 The base URI of the Plex server (e.g., http://plex.example.com:32400)
 If not specified, uses the default stored server.
@@ -49,7 +65,7 @@ Parameter Sets: (All)
 Aliases:
 
 Required: False
-Position: 1
+Position: 2
 Default value: None
 Accept pipeline input: True (ByPropertyName, ByValue)
 Accept wildcard characters: False
@@ -65,7 +81,7 @@ Parameter Sets: (All)
 Aliases:
 
 Required: False
-Position: 2
+Position: 3
 Default value: None
 Accept pipeline input: False
 Accept wildcard characters: False

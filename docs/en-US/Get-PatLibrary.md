@@ -13,7 +13,7 @@ Retrieves Plex library information.
 ## SYNTAX
 
 ```
-Get-PatLibrary [[-ServerUri] <String>] [[-Token] <String>] [[-SectionId] <Int32>]
+Get-PatLibrary [[-ServerName] <String>] [[-ServerUri] <String>] [[-Token] <String>] [[-SectionId] <Int32>]
  [-ProgressAction <ActionPreference>] [<CommonParameters>]
 ```
 
@@ -40,6 +40,22 @@ Use this to inspect a single library section when you already know its numeric I
 
 ## PARAMETERS
 
+### -ServerName
+The name of a stored server to use. Use Get-PatStoredServer to see available servers.
+This is more convenient than ServerUri as you don't need to remember the URI or token.
+
+```yaml
+Type: String
+Parameter Sets: (All)
+Aliases:
+
+Required: False
+Position: 1
+Default value: None
+Accept pipeline input: False
+Accept wildcard characters: False
+```
+
 ### -ServerUri
 The base URI of the Plex server (e.g., http://plex.example.com:32400)
 If not specified, uses the default stored server.
@@ -50,7 +66,7 @@ Parameter Sets: (All)
 Aliases:
 
 Required: False
-Position: 1
+Position: 2
 Default value: None
 Accept pipeline input: False
 Accept wildcard characters: False
@@ -66,7 +82,7 @@ Parameter Sets: (All)
 Aliases:
 
 Required: False
-Position: 2
+Position: 3
 Default value: None
 Accept pipeline input: False
 Accept wildcard characters: False
@@ -82,7 +98,7 @@ Parameter Sets: (All)
 Aliases:
 
 Required: False
-Position: 3
+Position: 4
 Default value: 0
 Accept pipeline input: True (ByPropertyName, ByValue)
 Accept wildcard characters: False

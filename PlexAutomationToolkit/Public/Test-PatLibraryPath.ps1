@@ -22,6 +22,10 @@ function Test-PatLibraryPath {
         Optional library section name (e.g., "Movies"). When provided, also
         validates that the path is under one of the section's configured root paths.
 
+    .PARAMETER ServerName
+        The name of a stored server to use. Use Get-PatStoredServer to see available servers.
+        This is more convenient than ServerUri as you don't need to remember the URI or token.
+
     .PARAMETER ServerUri
         The base URI of the Plex server (e.g., http://plex.example.com:32400)
         If not specified, uses the default stored server.
@@ -34,6 +38,11 @@ function Test-PatLibraryPath {
         Test-PatLibraryPath -Path '/mnt/media/Movies/NewMovie'
 
         Tests whether the path exists on the Plex server.
+
+    .EXAMPLE
+        Test-PatLibraryPath -Path '/mnt/media/Movies/NewMovie' -ServerName 'Home'
+
+        Tests whether the path exists on the stored server named 'Home'.
 
     .EXAMPLE
         Test-PatLibraryPath -Path '/mnt/media/Movies/NewMovie' -SectionName 'Movies'
@@ -77,6 +86,10 @@ function Test-PatLibraryPath {
         $SectionId,
 
         [Parameter(Mandatory = $false)]
+        [string]
+        $ServerName,
+
+        [Parameter(Mandatory = $false)]
         [ValidateNotNullOrEmpty()]
         [ValidateScript({ Test-PatServerUri -Uri $_ })]
         [string]
@@ -90,11 +103,14 @@ function Test-PatLibraryPath {
 
     # Build parameters for internal calls
     $serverParameters = @{}
-    if ($ServerUri) {
-        $serverParameters['ServerUri'] = $ServerUri
+    if ($ServerName) {
+        $serverParameters['ServerName'] = $ServerName
     }
-    if ($Token) {
-        $serverParameters['Token'] = $Token
+    elseif ($ServerUri) {
+        $serverParameters['ServerUri'] = $ServerUri
+        if ($Token) {
+            $serverParameters['Token'] = $Token
+        }
     }
 
     # If section is specified, validate path is under a configured root

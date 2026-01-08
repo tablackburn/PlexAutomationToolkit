@@ -31,6 +31,11 @@ function Sync-PatMedia {
     .PARAMETER PassThru
         Returns the sync plan after completion.
 
+    .PARAMETER ServerName
+        The name of a stored server to use for the source media. Use Get-PatStoredServer to see
+        available servers. This is more convenient than ServerUri as you don't need to remember
+        the URI or token.
+
     .PARAMETER ServerUri
         The base URI of the Plex server. If not specified, uses the default stored server.
 
@@ -119,6 +124,10 @@ function Sync-PatMedia {
         $PassThru,
 
         [Parameter(Mandatory = $false)]
+        [string]
+        $ServerName,
+
+        [Parameter(Mandatory = $false)]
         [ValidateNotNullOrEmpty()]
         [ValidateScript({ Test-PatServerUri -Uri $_ })]
         [string]
@@ -149,36 +158,30 @@ function Sync-PatMedia {
     )
 
     begin {
-        # Use default server if ServerUri not specified
-        $server = $null
-        $effectiveUri = $ServerUri
-        if (-not $ServerUri) {
-            try {
-                $server = Get-PatStoredServer -Default -ErrorAction 'Stop'
-                if (-not $server) {
-                    throw "No default server configured. Use Add-PatServer with -Default or specify -ServerUri."
-                }
-                $effectiveUri = $server.uri
-                Write-Verbose "Using default server: $effectiveUri"
-            }
-            catch {
-                throw "Failed to get default server: $($_.Exception.Message)"
-            }
+        try {
+            $script:serverContext = Resolve-PatServerContext -ServerName $ServerName -ServerUri $ServerUri -Token $Token
         }
+        catch {
+            throw "Failed to resolve server: $($_.Exception.Message)"
+        }
+
+        $effectiveUri = $script:serverContext.Uri
+        $server = $script:serverContext.Server
     }
 
     process {
         try {
-            # Get the sync plan
+            # Get the sync plan - build parameters based on server context
             $syncPlanParameters = @{
                 Destination = $Destination
                 ErrorAction = 'Stop'
             }
-            if ($ServerUri) {
+            if ($script:serverContext.WasExplicitUri) {
                 $syncPlanParameters['ServerUri'] = $ServerUri
+                if ($Token) { $syncPlanParameters['Token'] = $Token }
             }
-            if ($Token) {
-                $syncPlanParameters['Token'] = $Token
+            elseif ($ServerName) {
+                $syncPlanParameters['ServerName'] = $ServerName
             }
             if ($PlaylistId) {
                 $syncPlanParameters['PlaylistId'] = $PlaylistId
@@ -339,11 +342,12 @@ function Sync-PatMedia {
                                 RatingKey   = $addOp.RatingKey
                                 ErrorAction = 'Stop'
                             }
-                            if ($ServerUri) {
+                            if ($script:serverContext.WasExplicitUri) {
                                 $mediaInformationParameters['ServerUri'] = $ServerUri
+                                if ($effectiveToken) { $mediaInformationParameters['Token'] = $effectiveToken }
                             }
-                            if ($effectiveToken) {
-                                $mediaInformationParameters['Token'] = $effectiveToken
+                            elseif ($ServerName) {
+                                $mediaInformationParameters['ServerName'] = $ServerName
                             }
 
                             $mediaInformation = Get-PatMediaInfo @mediaInformationParameters
@@ -444,11 +448,12 @@ function Sync-PatMedia {
                             else {
                                 $getPlaylistParameters['PlaylistName'] = $PlaylistName
                             }
-                            if ($ServerUri) {
+                            if ($script:serverContext.WasExplicitUri) {
                                 $getPlaylistParameters['ServerUri'] = $ServerUri
+                                if ($effectiveToken) { $getPlaylistParameters['Token'] = $effectiveToken }
                             }
-                            if ($effectiveToken) {
-                                $getPlaylistParameters['Token'] = $effectiveToken
+                            elseif ($ServerName) {
+                                $getPlaylistParameters['ServerName'] = $ServerName
                             }
 
                             $playlist = Get-PatPlaylist @getPlaylistParameters

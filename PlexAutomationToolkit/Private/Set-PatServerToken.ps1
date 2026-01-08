@@ -37,7 +37,6 @@ function Set-PatServerToken {
     [OutputType([PSCustomObject])]
     param (
         [Parameter(Mandatory = $true)]
-        [ValidateNotNullOrEmpty()]
         [string]
         $ServerName,
 

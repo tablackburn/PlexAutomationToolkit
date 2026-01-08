@@ -16,6 +16,10 @@ function Remove-PatPlaylistItem {
         from the media's rating key - it identifies the item's position in this
         specific playlist. Obtain this value from Get-PatPlaylist -IncludeItems.
 
+    .PARAMETER ServerName
+        The name of a stored server to use. Use Get-PatStoredServer to see available servers.
+        This is more convenient than ServerUri as you don't need to remember the URI or token.
+
     .PARAMETER ServerUri
         The base URI of the Plex server (e.g., http://plex.example.com:32400).
         If not specified, uses the default stored server.
@@ -31,6 +35,11 @@ function Remove-PatPlaylistItem {
         Remove-PatPlaylistItem -PlaylistId 12345 -PlaylistItemId 67890
 
         Removes the item with playlist item ID 67890 from playlist 12345.
+
+    .EXAMPLE
+        Remove-PatPlaylistItem -PlaylistId 12345 -PlaylistItemId 67890 -ServerName 'Home'
+
+        Removes an item from a playlist on the stored server named 'Home'.
 
     .EXAMPLE
         Get-PatPlaylist -PlaylistName 'My List' -IncludeItems |
@@ -75,6 +84,10 @@ function Remove-PatPlaylistItem {
         $PlaylistItemId,
 
         [Parameter(Mandatory = $false, ValueFromPipelineByPropertyName)]
+        [string]
+        $ServerName,
+
+        [Parameter(Mandatory = $false, ValueFromPipelineByPropertyName)]
         [ValidateNotNullOrEmpty()]
         [ValidateScript({ Test-PatServerUri -Uri $_ })]
         [string]
@@ -93,16 +106,18 @@ function Remove-PatPlaylistItem {
     begin {
         # Cache for server context (will be set per-item in process block if ServerUri varies)
         $script:cachedServerContext = $null
+        $script:cachedServerName = $null
         $script:cachedServerUri = $null
         $script:cachedToken = $null
     }
 
     process {
         try {
-            # Resolve server context (cache if ServerUri and Token are the same)
-            if ($ServerUri -ne $script:cachedServerUri -or $Token -ne $script:cachedToken) {
+            # Resolve server context (cache if server parameters are the same)
+            if ($ServerName -ne $script:cachedServerName -or $ServerUri -ne $script:cachedServerUri -or $Token -ne $script:cachedToken) {
                 try {
-                    $script:cachedServerContext = Resolve-PatServerContext -ServerUri $ServerUri -Token $Token
+                    $script:cachedServerContext = Resolve-PatServerContext -ServerName $ServerName -ServerUri $ServerUri -Token $Token
+                    $script:cachedServerName = $ServerName
                     $script:cachedServerUri = $ServerUri
                     $script:cachedToken = $Token
                 }

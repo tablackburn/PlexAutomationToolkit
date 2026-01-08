@@ -14,14 +14,14 @@ Generates a sync plan for transferring media from a Plex playlist to a destinati
 
 ### ByName (Default)
 ```
-Get-PatSyncPlan [-PlaylistName <String>] -Destination <String> [-ServerUri <String>] [-Token <String>]
- [-ProgressAction <ActionPreference>] [<CommonParameters>]
+Get-PatSyncPlan [-PlaylistName <String>] -Destination <String> [-ServerName <String>] [-ServerUri <String>]
+ [-Token <String>] [-ProgressAction <ActionPreference>] [<CommonParameters>]
 ```
 
 ### ById
 ```
-Get-PatSyncPlan -PlaylistId <Int32> -Destination <String> [-ServerUri <String>] [-Token <String>]
- [-ProgressAction <ActionPreference>] [<CommonParameters>]
+Get-PatSyncPlan -PlaylistId <Int32> -Destination <String> [-ServerName <String>] [-ServerUri <String>]
+ [-Token <String>] [-ProgressAction <ActionPreference>] [<CommonParameters>]
 ```
 
 ## DESCRIPTION
@@ -88,6 +88,22 @@ Parameter Sets: (All)
 Aliases:
 
 Required: True
+Position: Named
+Default value: None
+Accept pipeline input: False
+Accept wildcard characters: False
+```
+
+### -ServerName
+The name of a stored server to use. Use Get-PatStoredServer to see available servers.
+This is more convenient than ServerUri as you don't need to remember the URI or token.
+
+```yaml
+Type: String
+Parameter Sets: (All)
+Aliases:
+
+Required: False
 Position: Named
 Default value: None
 Accept pipeline input: False

@@ -538,7 +538,7 @@ Describe 'Update-PatLibrary' {
         }
 
         It 'Throws with server error context' {
-            { Update-PatLibrary -SectionId 2 -Confirm:$false } | Should -Throw '*Failed to get default server*'
+            { Update-PatLibrary -SectionId 2 -Confirm:$false } | Should -Throw '*Failed to resolve server*'
         }
     }
 

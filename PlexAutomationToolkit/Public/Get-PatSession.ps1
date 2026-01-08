@@ -15,6 +15,10 @@ function Get-PatSession {
     .PARAMETER Player
         Optional filter to show only sessions from a specific player/device name.
 
+    .PARAMETER ServerName
+        The name of a stored server to use. Use Get-PatStoredServer to see available servers.
+        This is more convenient than ServerUri as you don't need to remember the URI or token.
+
     .PARAMETER ServerUri
         The base URI of the Plex server (e.g., http://plex.example.com:32400).
         If not specified, uses the default stored server.
@@ -27,6 +31,11 @@ function Get-PatSession {
         Get-PatSession
 
         Retrieves all active playback sessions from the default Plex server.
+
+    .EXAMPLE
+        Get-PatSession -ServerName 'Home'
+
+        Retrieves all active playback sessions from the stored server named 'Home'.
 
     .EXAMPLE
         Get-PatSession -Username 'john'
@@ -82,6 +91,10 @@ function Get-PatSession {
         $Player,
 
         [Parameter(Mandatory = $false)]
+        [string]
+        $ServerName,
+
+        [Parameter(Mandatory = $false)]
         [ValidateNotNullOrEmpty()]
         [ValidateScript({ Test-PatServerUri -Uri $_ })]
         [string]
@@ -93,36 +106,17 @@ function Get-PatSession {
         $Token
     )
 
-    # Use default server if ServerUri not specified
-    $server = $null
-    $effectiveUri = $ServerUri
-    if (-not $ServerUri) {
-        try {
-            $server = Get-PatStoredServer -Default -ErrorAction 'Stop'
-            if (-not $server) {
-                throw "No default server configured. Use Add-PatServer with -Default or specify -ServerUri."
-            }
-            $effectiveUri = $server.uri
-        }
-        catch {
-            throw "Failed to get default server: $($_.Exception.Message)"
-        }
+    try {
+        $serverContext = Resolve-PatServerContext -ServerName $ServerName -ServerUri $ServerUri -Token $Token
     }
+    catch {
+        throw "Failed to resolve server: $($_.Exception.Message)"
+    }
+
+    $effectiveUri = $serverContext.Uri
+    $headers = $serverContext.Headers
 
     Write-Verbose "Retrieving sessions from $effectiveUri"
-
-    # Build headers with authentication
-    $headers = if ($server) {
-        Get-PatAuthenticationHeader -Server $server
-    }
-    else {
-        $h = @{ Accept = 'application/json' }
-        if (-not [string]::IsNullOrWhiteSpace($Token)) {
-            $h['X-Plex-Token'] = $Token
-            Write-Debug "Adding X-Plex-Token header for authenticated request"
-        }
-        $h
-    }
 
     # Query the sessions endpoint
     $endpoint = '/status/sessions'

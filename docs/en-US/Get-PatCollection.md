@@ -14,26 +14,26 @@ Retrieves collections from a Plex server library.
 
 ### All (Default)
 ```
-Get-PatCollection [-LibraryName <String>] [-LibraryId <Int32>] [-IncludeItems] [-ServerUri <String>]
- [-Token <String>] [-ProgressAction <ActionPreference>] [<CommonParameters>]
+Get-PatCollection [-LibraryName <String>] [-LibraryId <Int32>] [-IncludeItems] [-ServerName <String>]
+ [-ServerUri <String>] [-Token <String>] [-ProgressAction <ActionPreference>] [<CommonParameters>]
 ```
 
 ### ById
 ```
-Get-PatCollection -CollectionId <Int32> [-IncludeItems] [-ServerUri <String>] [-Token <String>]
- [-ProgressAction <ActionPreference>] [<CommonParameters>]
+Get-PatCollection -CollectionId <Int32> [-IncludeItems] [-ServerName <String>] [-ServerUri <String>]
+ [-Token <String>] [-ProgressAction <ActionPreference>] [<CommonParameters>]
 ```
 
 ### ByNameWithLibraryId
 ```
-Get-PatCollection -CollectionName <String> -LibraryId <Int32> [-IncludeItems] [-ServerUri <String>]
- [-Token <String>] [-ProgressAction <ActionPreference>] [<CommonParameters>]
+Get-PatCollection -CollectionName <String> -LibraryId <Int32> [-IncludeItems] [-ServerName <String>]
+ [-ServerUri <String>] [-Token <String>] [-ProgressAction <ActionPreference>] [<CommonParameters>]
 ```
 
 ### ByNameWithLibraryName
 ```
-Get-PatCollection -CollectionName <String> -LibraryName <String> [-IncludeItems] [-ServerUri <String>]
- [-Token <String>] [-ProgressAction <ActionPreference>] [<CommonParameters>]
+Get-PatCollection -CollectionName <String> -LibraryName <String> [-IncludeItems] [-ServerName <String>]
+ [-ServerUri <String>] [-Token <String>] [-ProgressAction <ActionPreference>] [<CommonParameters>]
 ```
 
 ## DESCRIPTION
@@ -185,6 +185,22 @@ Aliases:
 Required: False
 Position: Named
 Default value: False
+Accept pipeline input: False
+Accept wildcard characters: False
+```
+
+### -ServerName
+The name of a stored server to use. Use Get-PatStoredServer to see available servers.
+This is more convenient than ServerUri as you don't need to remember the URI or token.
+
+```yaml
+Type: String
+Parameter Sets: (All)
+Aliases:
+
+Required: False
+Position: Named
+Default value: None
 Accept pipeline input: False
 Accept wildcard characters: False
 ```

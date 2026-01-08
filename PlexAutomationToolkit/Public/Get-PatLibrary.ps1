@@ -6,6 +6,10 @@ function Get-PatLibrary {
     .DESCRIPTION
         Gets information about all Plex library sections or a specific library section.
 
+    .PARAMETER ServerName
+        The name of a stored server to use. Use Get-PatStoredServer to see available servers.
+        This is more convenient than ServerUri as you don't need to remember the URI or token.
+
     .PARAMETER ServerUri
         The base URI of the Plex server (e.g., http://plex.example.com:32400)
         If not specified, uses the default stored server.
@@ -16,6 +20,11 @@ function Get-PatLibrary {
 
     .PARAMETER SectionId
         Optional ID of a specific library section to retrieve. If omitted, returns all sections.
+
+    .EXAMPLE
+        Get-PatLibrary -ServerName 'Home'
+
+        Retrieves all library sections from the stored server named 'Home'.
 
     .EXAMPLE
         Get-PatLibrary -ServerUri "http://plex.example.com:32400"
@@ -51,6 +60,10 @@ function Get-PatLibrary {
     [CmdletBinding()]
     param (
         [Parameter(Mandatory = $false)]
+        [string]
+        $ServerName,
+
+        [Parameter(Mandatory = $false)]
         [ValidateNotNullOrEmpty()]
         [ValidateScript({ Test-PatServerUri -Uri $_ })]
         [string]
@@ -68,49 +81,27 @@ function Get-PatLibrary {
     )
 
     begin {
-        # Use default server if ServerUri not specified
-        $server = $null
-        if (-not $ServerUri) {
-            try {
-                $server = Get-PatStoredServer -Default -ErrorAction 'Stop'
-                if (-not $server) {
-                    throw "No default server configured. Use Add-PatServer with -Default or specify -ServerUri."
-                }
-                $ServerUri = $server.uri
-                Write-Verbose "Using default server: $ServerUri"
-            }
-            catch {
-                throw "Failed to get default server: $($_.Exception.Message)"
-            }
+        try {
+            $serverContext = Resolve-PatServerContext -ServerName $ServerName -ServerUri $ServerUri -Token $Token
         }
-        else {
-            Write-Verbose "Using specified server: $ServerUri"
+        catch {
+            throw "Failed to resolve server: $($_.Exception.Message)"
         }
 
-        # Build headers with authentication if we have server object
-        $headers = if ($server) {
-            Get-PatAuthenticationHeader -Server $server
-        }
-        else {
-            $h = @{ Accept = 'application/json' }
-            if (-not [string]::IsNullOrWhiteSpace($Token)) {
-                $h['X-Plex-Token'] = $Token
-                Write-Debug "Adding X-Plex-Token header for authenticated request"
-            }
-            $h
-        }
+        $effectiveUri = $serverContext.Uri
+        $headers = $serverContext.Headers
     }
 
     process {
         if ($SectionId) {
             $endpoint = "/library/sections/$SectionId"
-            Write-Verbose "Retrieving library section $SectionId from $ServerUri"
+            Write-Verbose "Retrieving library section $SectionId from $effectiveUri"
         }
         else {
             $endpoint = '/library/sections'
-            Write-Verbose "Retrieving all library sections from $ServerUri"
+            Write-Verbose "Retrieving all library sections from $effectiveUri"
         }
-        $uri = Join-PatUri -BaseUri $ServerUri -Endpoint $endpoint
+        $uri = Join-PatUri -BaseUri $effectiveUri -Endpoint $endpoint
 
         try {
             $result = Invoke-PatApi -Uri $uri -Headers $headers -ErrorAction 'Stop'

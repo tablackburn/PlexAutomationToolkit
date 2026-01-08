@@ -25,6 +25,10 @@ function Wait-PatLibraryScan {
     .PARAMETER PassThru
         If specified, returns the final activity status when complete.
 
+    .PARAMETER ServerName
+        The name of a stored server to use. Use Get-PatStoredServer to see available servers.
+        This is more convenient than ServerUri as you don't need to remember the URI or token.
+
     .PARAMETER ServerUri
         The base URI of the Plex server (e.g., http://plex.example.com:32400)
         If not specified, uses the default stored server.
@@ -38,6 +42,11 @@ function Wait-PatLibraryScan {
         Wait-PatLibraryScan -SectionName 'Movies'
 
         Triggers a library scan and waits for it to complete.
+
+    .EXAMPLE
+        Wait-PatLibraryScan -SectionName 'Movies' -ServerName 'Home'
+
+        Waits for a library scan on the stored server named 'Home'.
 
     .EXAMPLE
         Wait-PatLibraryScan -SectionId 2 -Timeout 60
@@ -86,6 +95,10 @@ function Wait-PatLibraryScan {
         $PassThru,
 
         [Parameter(Mandatory = $false)]
+        [string]
+        $ServerName,
+
+        [Parameter(Mandatory = $false)]
         [ValidateNotNullOrEmpty()]
         [ValidateScript({ Test-PatServerUri -Uri $_ })]
         [string]
@@ -99,11 +112,14 @@ function Wait-PatLibraryScan {
 
     # Build parameters for internal calls
     $serverParameters = @{}
-    if ($ServerUri) {
-        $serverParameters['ServerUri'] = $ServerUri
+    if ($ServerName) {
+        $serverParameters['ServerName'] = $ServerName
     }
-    if ($Token) {
-        $serverParameters['Token'] = $Token
+    elseif ($ServerUri) {
+        $serverParameters['ServerUri'] = $ServerUri
+        if ($Token) {
+            $serverParameters['Token'] = $Token
+        }
     }
 
     # Resolve section name to ID if needed

@@ -146,7 +146,7 @@ Describe 'Get-PatServer' {
                 throw 'Config error'
             }
 
-            { Get-PatServer } | Should -Throw "*Failed to get default server*"
+            { Get-PatServer } | Should -Throw "*Failed to resolve server*"
         }
 
         It 'Should cache default server for performance' {

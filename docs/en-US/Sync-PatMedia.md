@@ -15,7 +15,7 @@ Syncs media from a Plex playlist to a destination folder.
 ### ByName (Default)
 ```
 Sync-PatMedia [-PlaylistName <String>] -Destination <String> [-SkipSubtitles] [-SkipRemoval] [-Force]
- [-PassThru] [-ServerUri <String>] [-Token <String>] [-SyncWatchStatus] [-RemoveWatched]
+ [-PassThru] [-ServerName <String>] [-ServerUri <String>] [-Token <String>] [-SyncWatchStatus] [-RemoveWatched]
  [-SourceServerName <String>] [-TargetServerName <String>] [-ProgressAction <ActionPreference>] [-WhatIf]
  [-Confirm] [<CommonParameters>]
 ```
@@ -23,8 +23,9 @@ Sync-PatMedia [-PlaylistName <String>] -Destination <String> [-SkipSubtitles] [-
 ### ById
 ```
 Sync-PatMedia -PlaylistId <Int32> -Destination <String> [-SkipSubtitles] [-SkipRemoval] [-Force] [-PassThru]
- [-ServerUri <String>] [-Token <String>] [-SyncWatchStatus] [-RemoveWatched] [-SourceServerName <String>]
- [-TargetServerName <String>] [-ProgressAction <ActionPreference>] [-WhatIf] [-Confirm] [<CommonParameters>]
+ [-ServerName <String>] [-ServerUri <String>] [-Token <String>] [-SyncWatchStatus] [-RemoveWatched]
+ [-SourceServerName <String>] [-TargetServerName <String>] [-ProgressAction <ActionPreference>] [-WhatIf]
+ [-Confirm] [<CommonParameters>]
 ```
 
 ## DESCRIPTION
@@ -161,6 +162,23 @@ Aliases:
 Required: False
 Position: Named
 Default value: False
+Accept pipeline input: False
+Accept wildcard characters: False
+```
+
+### -ServerName
+The name of a stored server to use for the source media. Use Get-PatStoredServer to see
+available servers. This is more convenient than ServerUri as you don't need to remember
+the URI or token.
+
+```yaml
+Type: String
+Parameter Sets: (All)
+Aliases:
+
+Required: False
+Position: Named
+Default value: None
 Accept pipeline input: False
 Accept wildcard characters: False
 ```

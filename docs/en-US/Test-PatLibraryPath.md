@@ -14,20 +14,20 @@ Tests whether a path exists on the Plex server's filesystem.
 
 ### PathOnly (Default)
 ```
-Test-PatLibraryPath [-Path] <String> [-ServerUri <String>] [-Token <String>]
+Test-PatLibraryPath [-Path] <String> [-ServerName <String>] [-ServerUri <String>] [-Token <String>]
  [-ProgressAction <ActionPreference>] [<CommonParameters>]
 ```
 
 ### ByName
 ```
-Test-PatLibraryPath [-Path] <String> [-SectionName <String>] [-ServerUri <String>] [-Token <String>]
- [-ProgressAction <ActionPreference>] [<CommonParameters>]
+Test-PatLibraryPath [-Path] <String> [-SectionName <String>] [-ServerName <String>] [-ServerUri <String>]
+ [-Token <String>] [-ProgressAction <ActionPreference>] [<CommonParameters>]
 ```
 
 ### ById
 ```
-Test-PatLibraryPath [-Path] <String> [-SectionId <Int32>] [-ServerUri <String>] [-Token <String>]
- [-ProgressAction <ActionPreference>] [<CommonParameters>]
+Test-PatLibraryPath [-Path] <String> [-SectionId <Int32>] [-ServerName <String>] [-ServerUri <String>]
+ [-Token <String>] [-ProgressAction <ActionPreference>] [<CommonParameters>]
 ```
 
 ## DESCRIPTION
@@ -119,6 +119,22 @@ Aliases:
 Required: False
 Position: Named
 Default value: 0
+Accept pipeline input: False
+Accept wildcard characters: False
+```
+
+### -ServerName
+The name of a stored server to use. Use Get-PatStoredServer to see available servers.
+This is more convenient than ServerUri as you don't need to remember the URI or token.
+
+```yaml
+Type: String
+Parameter Sets: (All)
+Aliases:
+
+Required: False
+Position: Named
+Default value: None
 Accept pipeline input: False
 Accept wildcard characters: False
 ```

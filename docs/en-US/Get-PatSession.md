@@ -13,8 +13,8 @@ Retrieves active playback sessions from a Plex server.
 ## SYNTAX
 
 ```
-Get-PatSession [[-Username] <String>] [[-Player] <String>] [[-ServerUri] <String>] [[-Token] <String>]
- [-ProgressAction <ActionPreference>] [<CommonParameters>]
+Get-PatSession [[-Username] <String>] [[-Player] <String>] [[-ServerName] <String>] [[-ServerUri] <String>]
+ [[-Token] <String>] [-ProgressAction <ActionPreference>] [<CommonParameters>]
 ```
 
 ## DESCRIPTION
@@ -93,6 +93,22 @@ Accept pipeline input: False
 Accept wildcard characters: False
 ```
 
+### -ServerName
+The name of a stored server to use. Use Get-PatStoredServer to see available servers.
+This is more convenient than ServerUri as you don't need to remember the URI or token.
+
+```yaml
+Type: String
+Parameter Sets: (All)
+Aliases:
+
+Required: False
+Position: 3
+Default value: None
+Accept pipeline input: False
+Accept wildcard characters: False
+```
+
 ### -ServerUri
 The base URI of the Plex server (e.g., http://plex.example.com:32400).
 If not specified, uses the default stored server.
@@ -103,7 +119,7 @@ Parameter Sets: (All)
 Aliases:
 
 Required: False
-Position: 3
+Position: 4
 Default value: None
 Accept pipeline input: False
 Accept wildcard characters: False
@@ -119,7 +135,7 @@ Parameter Sets: (All)
 Aliases:
 
 Required: False
-Position: 4
+Position: 5
 Default value: None
 Accept pipeline input: False
 Accept wildcard characters: False

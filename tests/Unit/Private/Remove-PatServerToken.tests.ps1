@@ -103,7 +103,7 @@ Describe 'Remove-PatServerToken' {
             # that when the secret exists, an attempt is made (which fails with a warning)
             InModuleScope PlexAutomationToolkit {
                 Mock Get-PatSecretManagementAvailable { $true }
-                Mock Get-SecretInfo { [PSCustomObject]@{ Name = 'PlexAutomationToolkit/TestServer' } }
+                Mock Get-SecretInfo { [PSCustomObject]@{ Name = 'PlexAutomationToolkit/TestServer'; Vault = 'PlexSecrets' } }
 
                 $warnings = Remove-PatServerToken -ServerName 'TestServer' 3>&1
                 # When Remove-Secret is called but fails (not properly mocked), we get a warning
@@ -130,7 +130,7 @@ Describe 'Remove-PatServerToken' {
         It 'Catches the error and emits a warning' {
             InModuleScope PlexAutomationToolkit {
                 Mock Get-PatSecretManagementAvailable { $true }
-                Mock Get-SecretInfo { [PSCustomObject]@{ Name = 'PlexAutomationToolkit/TestServer' } }
+                Mock Get-SecretInfo { [PSCustomObject]@{ Name = 'PlexAutomationToolkit/TestServer'; Vault = 'PlexSecrets' } }
                 Mock Remove-Secret { throw 'Vault access denied' }
 
                 $warnings = Remove-PatServerToken -ServerName 'TestServer' 3>&1
@@ -142,7 +142,7 @@ Describe 'Remove-PatServerToken' {
         It 'Does not throw' {
             InModuleScope PlexAutomationToolkit {
                 Mock Get-PatSecretManagementAvailable { $true }
-                Mock Get-SecretInfo { [PSCustomObject]@{ Name = 'PlexAutomationToolkit/TestServer' } }
+                Mock Get-SecretInfo { [PSCustomObject]@{ Name = 'PlexAutomationToolkit/TestServer'; Vault = 'PlexSecrets' } }
                 Mock Remove-Secret { throw 'Vault access denied' }
 
                 { Remove-PatServerToken -ServerName 'TestServer' } | Should -Not -Throw

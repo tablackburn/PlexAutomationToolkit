@@ -920,7 +920,7 @@ Describe 'Get-PatSyncPlan' {
 
         It 'Throws with context when Get-PatStoredServer fails' {
             { Get-PatSyncPlan -Destination $script:TestDir } |
-                Should -Throw "*Failed to get default server*"
+                Should -Throw "*Failed to resolve server*"
         }
     }
 

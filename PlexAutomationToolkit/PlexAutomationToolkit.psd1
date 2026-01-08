@@ -104,6 +104,7 @@ FunctionsToExport = @(
     'Sync-PatMedia'
     'Sync-PatWatchStatus'
     'Test-PatLibraryPath'
+    'Test-PatServer'
     'Update-PatLibrary'
     'Wait-PatLibraryScan'
 )

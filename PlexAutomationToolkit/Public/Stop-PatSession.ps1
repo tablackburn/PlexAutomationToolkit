@@ -18,6 +18,10 @@ function Stop-PatSession {
         Optional message to display to the user whose session is being terminated.
         For example: "Server maintenance in progress" or "Bandwidth limit exceeded".
 
+    .PARAMETER ServerName
+        The name of a stored server to use. Use Get-PatStoredServer to see available servers.
+        This is more convenient than ServerUri as you don't need to remember the URI or token.
+
     .PARAMETER ServerUri
         The base URI of the Plex server (e.g., http://plex.example.com:32400).
         If not specified, uses the default stored server.
@@ -33,6 +37,11 @@ function Stop-PatSession {
         Stop-PatSession -SessionId 'abc123def456'
 
         Terminates the session with the specified ID (prompts for confirmation).
+
+    .EXAMPLE
+        Stop-PatSession -SessionId 'abc123def456' -ServerName 'Home'
+
+        Terminates a session on the stored server named 'Home'.
 
     .EXAMPLE
         Stop-PatSession -SessionId 'abc123def456' -Reason 'Server maintenance'
@@ -80,6 +89,10 @@ function Stop-PatSession {
         $Reason,
 
         [Parameter(Mandatory = $false)]
+        [string]
+        $ServerName,
+
+        [Parameter(Mandatory = $false)]
         [ValidateNotNullOrEmpty()]
         [ValidateScript({ Test-PatServerUri -Uri $_ })]
         [string]
@@ -96,34 +109,15 @@ function Stop-PatSession {
     )
 
     begin {
-        # Use default server if ServerUri not specified
-        $server = $null
-        $effectiveUri = $ServerUri
-        if (-not $ServerUri) {
-            try {
-                $server = Get-PatStoredServer -Default -ErrorAction 'Stop'
-                if (-not $server) {
-                    throw "No default server configured. Use Add-PatServer with -Default or specify -ServerUri."
-                }
-                $effectiveUri = $server.uri
-            }
-            catch {
-                throw "Failed to get default server: $($_.Exception.Message)"
-            }
+        try {
+            $script:serverContext = Resolve-PatServerContext -ServerName $ServerName -ServerUri $ServerUri -Token $Token
+        }
+        catch {
+            throw "Failed to resolve server: $($_.Exception.Message)"
         }
 
-        # Build headers with authentication if we have server object or token
-        $headers = if ($server) {
-            Get-PatAuthenticationHeader -Server $server
-        }
-        else {
-            $h = @{ Accept = 'application/json' }
-            if (-not [string]::IsNullOrWhiteSpace($Token)) {
-                $h['X-Plex-Token'] = $Token
-                Write-Debug "Adding X-Plex-Token header for authenticated request"
-            }
-            $h
-        }
+        $effectiveUri = $script:serverContext.Uri
+        $headers = $script:serverContext.Headers
     }
 
     process {
@@ -133,7 +127,16 @@ function Stop-PatSession {
         $sessionInformation = $null
         if ($PassThru -or $PSCmdlet.ShouldProcess) {
             try {
-                $sessions = Get-PatSession -ServerUri $effectiveUri
+                # Build params for Get-PatSession
+                $sessionParams = @{}
+                if ($script:serverContext.WasExplicitUri) {
+                    $sessionParams['ServerUri'] = $effectiveUri
+                    if ($Token) { $sessionParams['Token'] = $Token }
+                }
+                elseif ($ServerName) {
+                    $sessionParams['ServerName'] = $ServerName
+                }
+                $sessions = Get-PatSession @sessionParams
                 $sessionInformation = $sessions | Where-Object { $_.SessionId -eq $SessionId }
             }
             catch {

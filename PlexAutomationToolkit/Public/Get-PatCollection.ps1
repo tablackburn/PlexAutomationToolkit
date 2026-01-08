@@ -27,6 +27,10 @@ function Get-PatCollection {
         When specified, also retrieves the items within each collection.
         Items are returned in a nested 'Items' property on each collection object.
 
+    .PARAMETER ServerName
+        The name of a stored server to use. Use Get-PatStoredServer to see available servers.
+        This is more convenient than ServerUri as you don't need to remember the URI or token.
+
     .PARAMETER ServerUri
         The base URI of the Plex server (e.g., http://plex.example.com:32400).
         If not specified, uses the default stored server.
@@ -39,6 +43,11 @@ function Get-PatCollection {
         Get-PatCollection
 
         Retrieves all collections from all libraries on the default server.
+
+    .EXAMPLE
+        Get-PatCollection -ServerName 'Home' -LibraryName 'Movies'
+
+        Retrieves all collections from the 'Movies' library on the 'Home' server.
 
     .EXAMPLE
         Get-PatCollection -LibraryName 'Movies'
@@ -111,6 +120,10 @@ function Get-PatCollection {
         $IncludeItems,
 
         [Parameter(Mandatory = $false)]
+        [string]
+        $ServerName,
+
+        [Parameter(Mandatory = $false)]
         [ValidateNotNullOrEmpty()]
         [ValidateScript({ Test-PatServerUri -Uri $_ })]
         [string]
@@ -124,7 +137,7 @@ function Get-PatCollection {
 
     begin {
         try {
-            $script:serverContext = Resolve-PatServerContext -ServerUri $ServerUri -Token $Token
+            $script:serverContext = Resolve-PatServerContext -ServerName $ServerName -ServerUri $ServerUri -Token $Token
         }
         catch {
             throw "Failed to resolve server: $($_.Exception.Message)"

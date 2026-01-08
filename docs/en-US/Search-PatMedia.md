@@ -14,20 +14,22 @@ Searches for media items across Plex libraries.
 
 ### All (Default)
 ```
-Search-PatMedia [-Query] <String> [-ServerUri <String>] [-Token <String>] [-Type <String[]>] [-Limit <Int32>]
- [-ProgressAction <ActionPreference>] [<CommonParameters>]
+Search-PatMedia [-Query] <String> [-ServerName <String>] [-ServerUri <String>] [-Token <String>]
+ [-Type <String[]>] [-Limit <Int32>] [-ProgressAction <ActionPreference>] [<CommonParameters>]
 ```
 
 ### ByName
 ```
-Search-PatMedia [-Query] <String> [-ServerUri <String>] [-Token <String>] [-SectionName <String>]
- [-Type <String[]>] [-Limit <Int32>] [-ProgressAction <ActionPreference>] [<CommonParameters>]
+Search-PatMedia [-Query] <String> [-ServerName <String>] [-ServerUri <String>] [-Token <String>]
+ [-SectionName <String>] [-Type <String[]>] [-Limit <Int32>] [-ProgressAction <ActionPreference>]
+ [<CommonParameters>]
 ```
 
 ### ById
 ```
-Search-PatMedia [-Query] <String> [-ServerUri <String>] [-Token <String>] [-SectionId <Int32>]
- [-Type <String[]>] [-Limit <Int32>] [-ProgressAction <ActionPreference>] [<CommonParameters>]
+Search-PatMedia [-Query] <String> [-ServerName <String>] [-ServerUri <String>] [-Token <String>]
+ [-SectionId <Int32>] [-Type <String[]>] [-Limit <Int32>] [-ProgressAction <ActionPreference>]
+ [<CommonParameters>]
 ```
 
 ## DESCRIPTION
@@ -86,6 +88,22 @@ Required: True
 Position: 1
 Default value: None
 Accept pipeline input: True (ByValue)
+Accept wildcard characters: False
+```
+
+### -ServerName
+The name of a stored server to use. Use Get-PatStoredServer to see available servers.
+This is more convenient than ServerUri as you don't need to remember the URI or token.
+
+```yaml
+Type: String
+Parameter Sets: (All)
+Aliases:
+
+Required: False
+Position: Named
+Default value: None
+Accept pipeline input: False
 Accept wildcard characters: False
 ```
 
