@@ -149,12 +149,12 @@ Describe 'Get-PatServer' {
             { Get-PatServer } | Should -Throw "*Failed to resolve server*"
         }
 
-        It 'Should cache default server for performance' {
+        It 'Should resolve server for each call' {
             Get-PatServer
             Get-PatServer
 
-            # Should only call Get-PatStoredServer once in begin block
-            Should -Invoke Get-PatStoredServer -ModuleName PlexAutomationToolkit -Times 1
+            # Each call resolves server independently (caching only applies within a single pipeline invocation)
+            Should -Invoke Get-PatStoredServer -ModuleName PlexAutomationToolkit -Times 2
         }
     }
 

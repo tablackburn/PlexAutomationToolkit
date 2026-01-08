@@ -62,11 +62,12 @@ function Get-PatServer {
     )
 
     begin {
-        # Cache for server context when using ServerName or default
+        # Cache for server context when using ServerName (not pipeline-compatible)
+        # Default server resolution is deferred to process block to support pipeline input
         $script:cachedContext = $null
-        if ($ServerName -or (-not $ServerUri -and -not $Token)) {
+        if ($ServerName) {
             try {
-                $script:cachedContext = Resolve-PatServerContext -ServerName $ServerName -ServerUri $ServerUri -Token $Token
+                $script:cachedContext = Resolve-PatServerContext -ServerName $ServerName
             }
             catch {
                 throw "Failed to resolve server: $($_.Exception.Message)"
