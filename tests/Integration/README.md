@@ -36,7 +36,7 @@ Integration tests verify PlexAutomationToolkit against a real Plex server. These
 ### Optional
 - `PLEX_TEST_SECTION_ID` - Specific section ID to test (discovered dynamically if not set)
 - `PLEX_TEST_SECTION_NAME` - Specific section name to test (discovered dynamically if not set)
-- `PLEX_ALLOW_MUTATIONS` - Set to `'true'` to enable tests that trigger library refresh
+- `PLEX_ALLOW_LIBRARY_REFRESH` - Set to `'true'` to enable tests that trigger library scan operations
 
 ## CI/CD Setup (GitHub Actions)
 
@@ -70,10 +70,17 @@ Tests in this category use dynamic discovery and work with any Plex server confi
 
 Tests use temporary entries with "IntegrationTest-" prefix and always clean up after completion.
 
-### Mutating Tests (Require `PLEX_ALLOW_MUTATIONS=true`)
-- Library refresh operations
+### CRUD Tests (Run by Default - Safe with Cleanup)
+- Collection create/read/update/delete
+- Playlist create/read/update/delete
+- Media sync (downloads to temp directory)
 
-These tests trigger server work (scanning for new content). Set `$env:PLEX_ALLOW_MUTATIONS = 'true'` to enable.
+These tests create temporary resources tracked in memory and automatically cleaned up in AfterAll blocks. They run by default because cleanup is reliable.
+
+### Library Refresh Tests (Require `PLEX_ALLOW_LIBRARY_REFRESH=true`)
+- Library scan/refresh operations
+
+These tests trigger server-side background tasks that cannot be undone. Set `$env:PLEX_ALLOW_LIBRARY_REFRESH = 'true'` to enable.
 
 ## Troubleshooting
 

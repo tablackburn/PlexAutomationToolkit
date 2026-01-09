@@ -128,7 +128,7 @@ jobs:
           PLEX_TEST_SECTION_ID: ${{ secrets.PLEX_TEST_SECTION_ID }}
           PLEX_TEST_SECTION_NAME: ${{ secrets.PLEX_TEST_SECTION_NAME }}
           PLEX_TEST_LIBRARY_PATH: ${{ secrets.PLEX_TEST_LIBRARY_PATH }}
-          PLEX_ALLOW_MUTATIONS: 'false'
+          PLEX_ALLOW_LIBRARY_REFRESH: 'false'
         run: |
           if (-not $env:PLEX_SERVER_URI -or -not $env:PLEX_TOKEN) {
             Write-Host "::warning::Integration tests skipped - PLEX_SERVER_URI or PLEX_TOKEN secrets not configured"

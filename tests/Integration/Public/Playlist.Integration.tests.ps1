@@ -1,19 +1,10 @@
 BeforeDiscovery {
     # Check if integration tests should run
     $script:integrationEnabled = $false
-    $script:mutationTestsEnabled = $false
 
     if ($env:PLEX_SERVER_URI -and $env:PLEX_TOKEN) {
         $script:integrationEnabled = $true
         Write-Host "Playlist integration tests ENABLED - Testing against: $env:PLEX_SERVER_URI" -ForegroundColor Green
-
-        if ($env:PLEX_ALLOW_MUTATIONS -eq 'true') {
-            $script:mutationTestsEnabled = $true
-            Write-Host "Mutation tests ENABLED - Playlists will be created/modified" -ForegroundColor Yellow
-        }
-        else {
-            Write-Host "Mutation tests DISABLED - Set PLEX_ALLOW_MUTATIONS=true to enable" -ForegroundColor Yellow
-        }
     }
     else {
         $missingVars = @()
@@ -122,7 +113,7 @@ Describe 'Get-PatPlaylist Integration Tests' -Skip:(-not $script:integrationEnab
     }
 }
 
-Describe 'Playlist CRUD Integration Tests' -Skip:(-not $script:mutationTestsEnabled) {
+Describe 'Playlist CRUD Integration Tests' -Skip:(-not $script:integrationEnabled) {
 
     BeforeAll {
         # Backup and setup test server

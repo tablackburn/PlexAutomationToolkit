@@ -1,19 +1,19 @@
 BeforeDiscovery {
     # Check if integration tests should run
     $script:integrationEnabled = $false
-    $script:mutationsEnabled = $false
+    $script:libraryRefreshEnabled = $false
 
     if ($env:PLEX_SERVER_URI -and $env:PLEX_TOKEN) {
         $script:integrationEnabled = $true
 
-        if ($env:PLEX_ALLOW_MUTATIONS -eq 'true') {
-            $script:mutationsEnabled = $true
-            Write-Host "Integration tests ENABLED with MUTATIONS - Testing against: $env:PLEX_SERVER_URI" -ForegroundColor Green
-            Write-Host "WARNING: Mutation tests will trigger library refresh operations on your Plex server" -ForegroundColor Yellow
+        if ($env:PLEX_ALLOW_LIBRARY_REFRESH -eq 'true') {
+            $script:libraryRefreshEnabled = $true
+            Write-Host "Integration tests ENABLED with LIBRARY REFRESH - Testing against: $env:PLEX_SERVER_URI" -ForegroundColor Green
+            Write-Host "WARNING: Library refresh tests will trigger scan operations on your Plex server" -ForegroundColor Yellow
         }
         else {
-            Write-Host "Integration tests ENABLED (mutations disabled) - Testing against: $env:PLEX_SERVER_URI" -ForegroundColor Green
-            Write-Host "Set PLEX_ALLOW_MUTATIONS='true' to enable mutation tests (library refresh operations)" -ForegroundColor Cyan
+            Write-Host "Integration tests ENABLED (library refresh disabled) - Testing against: $env:PLEX_SERVER_URI" -ForegroundColor Green
+            Write-Host "Set PLEX_ALLOW_LIBRARY_REFRESH='true' to enable library refresh tests" -ForegroundColor Cyan
         }
     }
     else {
@@ -87,7 +87,7 @@ Describe 'Update-PatLibrary Integration Tests' -Skip:(-not $script:integrationEn
         }
     }
 
-    Context 'Library refresh by section ID' -Skip:(-not $script:mutationsEnabled) {
+    Context 'Library refresh by section ID' -Skip:(-not $script:libraryRefreshEnabled) {
 
         It 'Successfully refreshes library by section ID' {
             { Update-PatLibrary -SectionId $script:testSectionId -Confirm:$false } | Should -Not -Throw
@@ -107,7 +107,7 @@ Describe 'Update-PatLibrary Integration Tests' -Skip:(-not $script:integrationEn
         }
     }
 
-    Context 'Library refresh by section name' -Skip:(-not $script:mutationsEnabled) {
+    Context 'Library refresh by section name' -Skip:(-not $script:libraryRefreshEnabled) {
 
         It 'Successfully refreshes library by section name' {
             { Update-PatLibrary -SectionName $script:testSectionName -Confirm:$false } | Should -Not -Throw
@@ -118,7 +118,7 @@ Describe 'Update-PatLibrary Integration Tests' -Skip:(-not $script:integrationEn
         }
     }
 
-    Context 'Library refresh with specific path' -Skip:(-not $script:mutationsEnabled) {
+    Context 'Library refresh with specific path' -Skip:(-not $script:libraryRefreshEnabled) {
 
         It 'Successfully refreshes library with specific path by section ID' {
             # This tests path-based refresh - using SkipPathValidation since we're testing parameter handling
@@ -135,7 +135,7 @@ Describe 'Update-PatLibrary Integration Tests' -Skip:(-not $script:integrationEn
         }
     }
 
-    Context 'Using explicit ServerUri parameter' -Skip:(-not $script:mutationsEnabled) {
+    Context 'Using explicit ServerUri parameter' -Skip:(-not $script:libraryRefreshEnabled) {
 
         It 'Works with explicit ServerUri and Token parameters' {
             # Tests the -Token parameter which allows explicit ServerUri to work with authentication
@@ -165,7 +165,7 @@ Describe 'Update-PatLibrary Integration Tests' -Skip:(-not $script:integrationEn
         }
     }
 
-    Context 'ShouldProcess confirmation behavior' -Skip:(-not $script:mutationsEnabled) {
+    Context 'ShouldProcess confirmation behavior' -Skip:(-not $script:libraryRefreshEnabled) {
 
         It 'Respects -Confirm:$false parameter' {
             # Should execute without prompting
@@ -206,7 +206,7 @@ Describe 'Update-PatLibrary Integration Tests' -Skip:(-not $script:integrationEn
             }
         }
 
-        It 'Update-PatLibrary validates path without -SkipPathValidation' -Skip:(-not $script:mutationsEnabled) {
+        It 'Update-PatLibrary validates path without -SkipPathValidation' -Skip:(-not $script:libraryRefreshEnabled) {
             # Get library paths to find which section contains our test path
             $libraryPaths = Get-PatLibraryPath
             $matchingSection = $libraryPaths | Where-Object {
