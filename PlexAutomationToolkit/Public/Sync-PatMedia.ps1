@@ -294,6 +294,10 @@ function Sync-PatMedia {
                     $null
                 }
 
+                if (-not $effectiveToken) {
+                    Write-Warning "No authentication token available. Downloads may fail with 401 Unauthorized errors. Use -Token parameter or configure a server with Add-PatServer."
+                }
+
                 $downloadCount = 0
                 $downloadedBytes = 0
                 $totalBytes = $syncPlan.BytesToDownload

@@ -148,9 +148,15 @@ function Resolve-PatServerContext {
         }
     }
 
-    $server = Get-PatStoredServer -Default -ErrorAction 'Stop'
+    try {
+        $server = Get-PatStoredServer -Default -ErrorAction 'Stop'
+    }
+    catch {
+        throw "No server specified and failed to retrieve default server. Use -ServerName, -ServerUri, or configure a default server with Add-PatServer -Default. Error: $($_.Exception.Message)"
+    }
+
     if (-not $server) {
-        throw "No default server configured. Use Add-PatServer with -Default or specify -ServerUri."
+        throw "No default server configured. Use Add-PatServer with -Default, or specify -ServerName or -ServerUri."
     }
 
     # Get authentication token for reachability testing

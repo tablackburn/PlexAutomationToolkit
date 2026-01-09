@@ -98,15 +98,48 @@ function Test-PatServer {
         }
         catch {
             $errorMessage = $_.Exception.Message
+            $innerException = $_.Exception.InnerException
 
-            # Try to determine if it's a connection issue vs auth issue
-            if ($errorMessage -match '401|Unauthorized') {
+            # Categorize errors by checking exception types first (more robust than regex)
+            $isAuthError = $false
+            $isConnectionError = $false
+
+            # Check for HTTP status code in WebException or HttpRequestException
+            if ($innerException -is [System.Net.WebException]) {
+                $webResponse = $innerException.Response
+                if ($webResponse -and $webResponse.StatusCode -eq 401) {
+                    $isAuthError = $true
+                }
+                elseif ($innerException.Status -eq [System.Net.WebExceptionStatus]::ConnectFailure -or
+                        $innerException.Status -eq [System.Net.WebExceptionStatus]::NameResolutionFailure -or
+                        $innerException.Status -eq [System.Net.WebExceptionStatus]::Timeout) {
+                    $isConnectionError = $true
+                }
+            }
+            elseif ($innerException -is [System.Net.Http.HttpRequestException]) {
+                # Check for status code property (available in .NET 5+)
+                if ($innerException.PSObject.Properties['StatusCode'] -and $innerException.StatusCode -eq 401) {
+                    $isAuthError = $true
+                }
+            }
+
+            # Fall back to message pattern matching if exception type checks didn't categorize
+            if (-not $isAuthError -and -not $isConnectionError) {
+                if ($errorMessage -match '\b401\b|Unauthorized') {
+                    $isAuthError = $true
+                }
+                elseif ($errorMessage -match 'Unable to connect|ConnectFailure|NameResolutionFailure|timeout|unreachable|The remote name could not be resolved') {
+                    $isConnectionError = $true
+                }
+            }
+
+            # Set result based on categorization
+            if ($isAuthError) {
                 $result.IsConnected = $true
                 $result.IsAuthenticated = $false
                 $result.Error = 'Authentication failed - token may be invalid or expired'
             }
-            elseif ($errorMessage -match 'Unable to connect|timeout|network|unreachable' -or
-                    $errorMessage -match 'The remote name could not be resolved') {
+            elseif ($isConnectionError) {
                 $result.IsConnected = $false
                 $result.IsAuthenticated = $false
                 $result.Error = "Server unreachable: $errorMessage"

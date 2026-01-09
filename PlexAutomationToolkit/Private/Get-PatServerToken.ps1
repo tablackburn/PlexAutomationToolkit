@@ -31,6 +31,7 @@ function Get-PatServerToken {
     [OutputType([string])]
     param (
         [Parameter(Mandatory = $true, ParameterSetName = 'ByName')]
+        [ValidateNotNullOrEmpty()]
         [string]
         $ServerName,
 
