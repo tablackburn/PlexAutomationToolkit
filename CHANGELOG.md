@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-01-09
+
+### Added
+
+- New `-ServerName` parameter on 26+ public functions for easier server targeting
+  - Use stored server names instead of remembering URIs and tokens
+  - Works with `Get-PatServer`, `Get-PatLibrary`, `Sync-PatMedia`, `Update-PatLibrary`, and more
+  - Mutually exclusive with `-ServerUri` parameter
+- New `Test-PatServer` function to validate server connectivity and authentication
+- New private helper `Resolve-PatServerContext` for consistent server resolution across all functions
+
 ## [0.9.0] - 2026-01-06
 
 ### Added
