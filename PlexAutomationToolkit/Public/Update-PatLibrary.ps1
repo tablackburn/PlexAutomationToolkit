@@ -195,19 +195,23 @@ function Update-PatLibrary {
     $headers = $serverContext.Headers
     $usingStoredServer = -not $serverContext.WasExplicitUri
 
+    # Build reusable server parameters for child cmdlet calls
+    # This eliminates duplicated conditional logic throughout the function
+    $serverParams = @{}
+    if ($serverContext.WasExplicitUri) {
+        $serverParams['ServerUri'] = $effectiveUri
+        if ($Token) { $serverParams['Token'] = $Token }
+    }
+    elseif ($ServerName) {
+        $serverParams['ServerName'] = $ServerName
+    }
+
     # If using section name, resolve it to section ID
     $resolvedSectionId = $SectionId
     if ($PSCmdlet.ParameterSetName -eq 'ByName') {
         try {
             # If using stored server, don't pass ServerUri so Get-PatLibrary can retrieve server object with token
-            $libParams = @{ ErrorAction = 'Stop' }
-            if ($serverContext.WasExplicitUri) {
-                $libParams['ServerUri'] = $effectiveUri
-                if ($Token) { $libParams['Token'] = $Token }
-            }
-            elseif ($ServerName) {
-                $libParams['ServerName'] = $ServerName
-            }
+            $libParams = @{ ErrorAction = 'Stop' } + $serverParams
             $sections = Get-PatLibrary @libParams
             $matchedSection = $sections.Directory | Where-Object { $_.title -eq $SectionName }
 
@@ -229,15 +233,7 @@ function Update-PatLibrary {
     # Pre-validation: Check if path exists (default behavior, skip with -SkipPathValidation)
     if ($Path -and -not $SkipPathValidation) {
         Write-Verbose "Validating path: $Path"
-        $testParameters = @{ Path = $Path }
-        # Only pass ServerUri/Token when using explicit URI, otherwise pass ServerName
-        if ($serverContext.WasExplicitUri) {
-            if ($effectiveUri) { $testParameters['ServerUri'] = $effectiveUri }
-            if ($Token) { $testParameters['Token'] = $Token }
-        }
-        elseif ($ServerName) {
-            $testParameters['ServerName'] = $ServerName
-        }
+        $testParameters = @{ Path = $Path } + $serverParams
         if ($resolvedSectionId) { $testParameters['SectionId'] = $resolvedSectionId }
 
         $pathValid = Test-PatLibraryPath @testParameters
@@ -304,14 +300,7 @@ function Update-PatLibrary {
             }
             elseif ($PassThru) {
                 # Return the refreshed library section
-                $libParams = @{ SectionId = $resolvedSectionId; ErrorAction = 'Stop' }
-                if ($serverContext.WasExplicitUri) {
-                    $libParams['ServerUri'] = $effectiveUri
-                    if ($Token) { $libParams['Token'] = $Token }
-                }
-                elseif ($ServerName) {
-                    $libParams['ServerName'] = $ServerName
-                }
+                $libParams = @{ SectionId = $resolvedSectionId; ErrorAction = 'Stop' } + $serverParams
                 Get-PatLibrary @libParams
             }
         }

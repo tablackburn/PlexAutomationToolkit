@@ -101,8 +101,16 @@ Describe 'Resolve-PatServerContext' {
             }
         }
 
-        It 'Should propagate the error' {
+        It 'Should throw with helpful error message including original error' {
+            { Resolve-PatServerContext } | Should -Throw '*No server specified and failed to retrieve default server*'
+        }
+
+        It 'Should include original error details' {
             { Resolve-PatServerContext } | Should -Throw '*Config file not found*'
+        }
+
+        It 'Should suggest alternatives in error message' {
+            { Resolve-PatServerContext } | Should -Throw '*-ServerName*-ServerUri*Add-PatServer*'
         }
     }
 

@@ -128,7 +128,7 @@ function Test-PatServer {
                 if ($errorMessage -match '\b401\b|Unauthorized') {
                     $isAuthError = $true
                 }
-                elseif ($errorMessage -match 'Unable to connect|ConnectFailure|NameResolutionFailure|timeout|unreachable|The remote name could not be resolved') {
+                elseif ($errorMessage -match 'Unable to connect|ConnectFailure|NameResolutionFailure|timed?\s*out|unreachable|The remote name could not be resolved') {
                     $isConnectionError = $true
                 }
             }
