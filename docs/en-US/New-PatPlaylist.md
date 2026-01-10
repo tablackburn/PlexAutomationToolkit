@@ -13,8 +13,9 @@ Creates a new playlist on a Plex server.
 ## SYNTAX
 
 ```
-New-PatPlaylist [-Title] <String> [[-Type] <String>] [-RatingKey] <Int32[]> [[-ServerUri] <String>]
- [[-Token] <String>] [-PassThru] [-ProgressAction <ActionPreference>] [-WhatIf] [-Confirm] [<CommonParameters>]
+New-PatPlaylist [-Title] <String> [[-Type] <String>] [-RatingKey] <Int32[]> [[-ServerName] <String>]
+ [[-ServerUri] <String>] [[-Token] <String>] [-PassThru] [-ProgressAction <ActionPreference>] [-WhatIf]
+ [-Confirm] [<CommonParameters>]
 ```
 
 ## DESCRIPTION
@@ -107,6 +108,22 @@ Accept pipeline input: True (ByPropertyName, ByValue)
 Accept wildcard characters: False
 ```
 
+### -ServerName
+The name of a stored server to use. Use Get-PatStoredServer to see available servers.
+This is more convenient than ServerUri as you don't need to remember the URI or token.
+
+```yaml
+Type: String
+Parameter Sets: (All)
+Aliases:
+
+Required: False
+Position: 4
+Default value: None
+Accept pipeline input: False
+Accept wildcard characters: False
+```
+
 ### -ServerUri
 The base URI of the Plex server (e.g., http://plex.example.com:32400).
 If not specified, uses the default stored server.
@@ -117,7 +134,7 @@ Parameter Sets: (All)
 Aliases:
 
 Required: False
-Position: 4
+Position: 5
 Default value: None
 Accept pipeline input: False
 Accept wildcard characters: False
@@ -133,7 +150,7 @@ Parameter Sets: (All)
 Aliases:
 
 Required: False
-Position: 5
+Position: 6
 Default value: None
 Accept pipeline input: False
 Accept wildcard characters: False

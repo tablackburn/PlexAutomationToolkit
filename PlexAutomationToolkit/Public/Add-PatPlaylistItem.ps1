@@ -18,6 +18,10 @@ function Add-PatPlaylistItem {
         One or more media item rating keys to add to the playlist.
         Rating keys can be obtained from library browsing commands like Get-PatLibraryItem.
 
+    .PARAMETER ServerName
+        The name of a stored server to use. Use Get-PatStoredServer to see available servers.
+        This is more convenient than ServerUri as you don't need to remember the URI or token.
+
     .PARAMETER ServerUri
         The base URI of the Plex server (e.g., http://plex.example.com:32400).
         If not specified, uses the default stored server.
@@ -33,6 +37,11 @@ function Add-PatPlaylistItem {
         Add-PatPlaylistItem -PlaylistId 12345 -RatingKey 67890
 
         Adds the media item with rating key 67890 to playlist 12345.
+
+    .EXAMPLE
+        Add-PatPlaylistItem -PlaylistName 'My Playlist' -RatingKey 67890 -ServerName 'Home'
+
+        Adds an item to a playlist on the stored server named 'Home'.
 
     .EXAMPLE
         Add-PatPlaylistItem -PlaylistName 'My Favorites' -RatingKey 111, 222, 333
@@ -74,6 +83,10 @@ function Add-PatPlaylistItem {
         $RatingKey,
 
         [Parameter(Mandatory = $false)]
+        [string]
+        $ServerName,
+
+        [Parameter(Mandatory = $false)]
         [ValidateNotNullOrEmpty()]
         [ValidateScript({ Test-PatServerUri -Uri $_ })]
         [string]
@@ -91,7 +104,7 @@ function Add-PatPlaylistItem {
 
     begin {
         try {
-            $script:serverContext = Resolve-PatServerContext -ServerUri $ServerUri -Token $Token
+            $script:serverContext = Resolve-PatServerContext -ServerName $ServerName -ServerUri $ServerUri -Token $Token
         }
         catch {
             throw "Failed to resolve server: $($_.Exception.Message)"

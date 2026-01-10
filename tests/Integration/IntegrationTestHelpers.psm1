@@ -41,7 +41,7 @@ function Get-IntegrationTestContext {
         Token           = $env:PLEX_TOKEN
         TestSectionId   = $env:PLEX_TEST_SECTION_ID
         TestSectionName = $env:PLEX_TEST_SECTION_NAME
-        AllowMutations  = ($env:PLEX_ALLOW_MUTATIONS -eq 'true')
+        AllowLibraryRefresh = ($env:PLEX_ALLOW_LIBRARY_REFRESH -eq 'true')
     }
 }
 

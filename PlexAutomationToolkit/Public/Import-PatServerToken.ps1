@@ -55,7 +55,6 @@ function Import-PatServerToken {
     [CmdletBinding(SupportsShouldProcess, ConfirmImpact = 'Medium')]
     param (
         [Parameter(Mandatory = $false)]
-        [ValidateNotNullOrEmpty()]
         [string]
         $ServerName,
 

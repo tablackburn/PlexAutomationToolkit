@@ -538,7 +538,7 @@ Describe 'Update-PatLibrary' {
         }
 
         It 'Throws with server error context' {
-            { Update-PatLibrary -SectionId 2 -Confirm:$false } | Should -Throw '*Failed to get default server*'
+            { Update-PatLibrary -SectionId 2 -Confirm:$false } | Should -Throw '*Failed to resolve server*'
         }
     }
 
@@ -697,6 +697,165 @@ Describe 'Update-PatLibrary' {
         It 'Throws with wrapped error message' {
             { Update-PatLibrary -ServerUri 'http://plex.local:32400' -SectionName 'Movies' -Confirm:$false } |
                 Should -Throw '*Failed to resolve section name*'
+        }
+    }
+
+    Context 'When using ServerName parameter' {
+        BeforeAll {
+            Mock -ModuleName PlexAutomationToolkit Get-PatStoredServer {
+                param($Name, $Default)
+                if ($Name -eq 'HomeServer') {
+                    return [PSCustomObject]@{
+                        name    = 'HomeServer'
+                        uri     = 'http://home.test:32400'
+                        token   = 'home-token'
+                        default = $false
+                    }
+                }
+                return $null
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Get-PatAuthenticationHeader {
+                return @{
+                    Accept         = 'application/json'
+                    'X-Plex-Token' = 'home-token'
+                }
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Invoke-PatApi {
+                return $null
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Join-PatUri {
+                return 'http://home.test:32400/library/sections/2/refresh'
+            }
+        }
+
+        It 'Uses the named server for refresh' {
+            Update-PatLibrary -ServerName 'HomeServer' -SectionId 2 -Confirm:$false
+            Should -Invoke -ModuleName PlexAutomationToolkit Get-PatStoredServer -ParameterFilter {
+                $Name -eq 'HomeServer'
+            }
+        }
+
+        It 'Calls Join-PatUri with named server URI' {
+            Update-PatLibrary -ServerName 'HomeServer' -SectionId 2 -Confirm:$false
+            Should -Invoke -ModuleName PlexAutomationToolkit Join-PatUri -ParameterFilter {
+                $BaseUri -eq 'http://home.test:32400'
+            }
+        }
+
+        It 'Uses Get-PatAuthenticationHeader for named server' {
+            Update-PatLibrary -ServerName 'HomeServer' -SectionId 2 -Confirm:$false
+            Should -Invoke -ModuleName PlexAutomationToolkit Get-PatAuthenticationHeader -ParameterFilter {
+                $Server.name -eq 'HomeServer'
+            }
+        }
+    }
+
+    Context 'When using ServerName with SectionName' {
+        BeforeAll {
+            Mock -ModuleName PlexAutomationToolkit Get-PatStoredServer {
+                param($Name, $Default)
+                if ($Name -eq 'HomeServer') {
+                    return [PSCustomObject]@{
+                        name    = 'HomeServer'
+                        uri     = 'http://home.test:32400'
+                        token   = 'home-token'
+                        default = $false
+                    }
+                }
+                return $null
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Get-PatAuthenticationHeader {
+                return @{
+                    Accept         = 'application/json'
+                    'X-Plex-Token' = 'home-token'
+                }
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Get-PatLibrary {
+                return @{
+                    Directory = @(
+                        @{ key = '2'; title = 'Movies' }
+                        @{ key = '3'; title = 'TV Shows' }
+                    )
+                }
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Invoke-PatApi {
+                return $null
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Join-PatUri {
+                param($BaseUri, $Endpoint, $QueryString)
+                return "$BaseUri$Endpoint"
+            }
+        }
+
+        It 'Passes ServerName to Get-PatLibrary for section name resolution' {
+            Update-PatLibrary -ServerName 'HomeServer' -SectionName 'Movies' -Confirm:$false
+            Should -Invoke -ModuleName PlexAutomationToolkit Get-PatLibrary -ParameterFilter {
+                $ServerName -eq 'HomeServer'
+            }
+        }
+
+        It 'Does not pass ServerUri when using ServerName' {
+            Update-PatLibrary -ServerName 'HomeServer' -SectionName 'Movies' -Confirm:$false
+            Should -Invoke -ModuleName PlexAutomationToolkit Get-PatLibrary -ParameterFilter {
+                -not $ServerUri -and $ServerName -eq 'HomeServer'
+            }
+        }
+    }
+
+    Context 'When using ServerName with PassThru' {
+        BeforeAll {
+            Mock -ModuleName PlexAutomationToolkit Get-PatStoredServer {
+                param($Name, $Default)
+                if ($Name -eq 'HomeServer') {
+                    return [PSCustomObject]@{
+                        name    = 'HomeServer'
+                        uri     = 'http://home.test:32400'
+                        token   = 'home-token'
+                        default = $false
+                    }
+                }
+                return $null
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Get-PatAuthenticationHeader {
+                return @{
+                    Accept         = 'application/json'
+                    'X-Plex-Token' = 'home-token'
+                }
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Invoke-PatApi {
+                return $null
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Join-PatUri {
+                return 'http://home.test:32400/library/sections/2/refresh'
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Get-PatLibrary {
+                return @{
+                    size      = 1
+                    Directory = @{
+                        key   = '2'
+                        type  = 'movie'
+                        title = 'Movies'
+                    }
+                }
+            }
+        }
+
+        It 'Passes ServerName to Get-PatLibrary when using PassThru' {
+            Update-PatLibrary -ServerName 'HomeServer' -SectionId 2 -PassThru -Confirm:$false
+            Should -Invoke -ModuleName PlexAutomationToolkit Get-PatLibrary -ParameterFilter {
+                $ServerName -eq 'HomeServer'
+            }
         }
     }
 

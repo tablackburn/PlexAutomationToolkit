@@ -7,6 +7,10 @@ function Get-PatLibraryPath {
         Gets the configured filesystem paths for Plex library sections.
         Returns paths for all sections, a specific section by ID, or a specific section by name.
 
+    .PARAMETER ServerName
+        The name of a stored server to use. Use Get-PatStoredServer to see available servers.
+        This is more convenient than ServerUri as you don't need to remember the URI or token.
+
     .PARAMETER ServerUri
         The base URI of the Plex server (e.g., http://plex.example.com:32400)
         If not specified, uses the default stored server.
@@ -57,6 +61,10 @@ function Get-PatLibraryPath {
         $SectionId,
 
         [Parameter(Mandatory = $false)]
+        [string]
+        $ServerName,
+
+        [Parameter(Mandatory = $false)]
         [ValidateNotNullOrEmpty()]
         [ValidateScript({ Test-PatServerUri -Uri $_ })]
         [string]
@@ -68,34 +76,24 @@ function Get-PatLibraryPath {
         $Token
     )
 
-    # Use default server if ServerUri not specified
-    $effectiveUri = $ServerUri
-    $usingDefaultServer = $false
-    if (-not $ServerUri) {
-        try {
-            $server = Get-PatStoredServer -Default -ErrorAction 'Stop'
-            if (-not $server) {
-                throw "No default server configured. Use Add-PatServer with -Default or specify -ServerUri."
-            }
-            $effectiveUri = $server.uri
-            $usingDefaultServer = $true
-        }
-        catch {
-            throw "Failed to get default server: $($_.Exception.Message)"
-        }
+    try {
+        $serverContext = Resolve-PatServerContext -ServerName $ServerName -ServerUri $ServerUri -Token $Token
+    }
+    catch {
+        throw "Failed to resolve server: $($_.Exception.Message)"
     }
 
     try {
-        # Get all sections first
-        # If using default server, don't pass ServerUri so Get-PatLibrary can retrieve server object with token
-        if ($usingDefaultServer) {
-            $allSections = Get-PatLibrary -ErrorAction 'Stop'
+        # Get all sections first - use appropriate server parameters
+        $libParams = @{ ErrorAction = 'Stop' }
+        if ($serverContext.WasExplicitUri) {
+            $libParams['ServerUri'] = $serverContext.Uri
+            if ($Token) { $libParams['Token'] = $Token }
         }
-        else {
-            $libraryParameters = @{ ServerUri = $effectiveUri; ErrorAction = 'Stop' }
-            if ($Token) { $libraryParameters['Token'] = $Token }
-            $allSections = Get-PatLibrary @libraryParameters
+        elseif ($ServerName) {
+            $libParams['ServerName'] = $ServerName
         }
+        $allSections = Get-PatLibrary @libParams
 
         # If SectionName is provided, filter to that section
         if ($SectionName) {

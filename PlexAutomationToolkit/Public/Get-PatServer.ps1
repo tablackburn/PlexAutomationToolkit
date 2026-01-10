@@ -6,6 +6,10 @@ function Get-PatServer {
     .DESCRIPTION
         Gets information about a Plex server including version, platform, and capabilities.
 
+    .PARAMETER ServerName
+        The name of a stored server to use. Use Get-PatStoredServer to see available servers.
+        This is more convenient than ServerUri as you don't need to remember the URI or token.
+
     .PARAMETER ServerUri
         The base URI of the Plex server (e.g., http://plex.example.com:32400)
         If not specified, uses the default stored server.
@@ -13,6 +17,11 @@ function Get-PatServer {
     .PARAMETER Token
         The Plex authentication token. Required when using -ServerUri to authenticate
         with the server. If not specified with -ServerUri, requests may fail with 401.
+
+    .EXAMPLE
+        Get-PatServer -ServerName 'Home'
+
+        Retrieves server information from the stored server named 'Home'.
 
     .EXAMPLE
         Get-PatServer -ServerUri "http://plex.example.com:32400"
@@ -36,6 +45,10 @@ function Get-PatServer {
     #>
     [CmdletBinding()]
     param (
+        [Parameter(Mandatory = $false)]
+        [string]
+        $ServerName,
+
         [Parameter(Mandatory = $false, ValueFromPipeline, ValueFromPipelineByPropertyName)]
         [ValidateNotNullOrEmpty()]
         [ValidateScript({ Test-PatServerUri -Uri $_ })]
@@ -49,50 +62,36 @@ function Get-PatServer {
     )
 
     begin {
-        # Will store server for default case
-        $defaultServer = $null
+        # Cache for server context when using ServerName (not pipeline-compatible)
+        # Default server resolution is deferred to process block to support pipeline input
+        $script:cachedContext = $null
+        if ($ServerName) {
+            try {
+                $script:cachedContext = Resolve-PatServerContext -ServerName $ServerName
+            }
+            catch {
+                throw "Failed to resolve server: $($_.Exception.Message)"
+            }
+        }
     }
 
     process {
-        # Use default server if ServerUri not specified
-        $server = $null
-        $effectiveUri = $ServerUri
-        if (-not $ServerUri) {
-            # Cache default server lookup
-            if (-not $defaultServer) {
-                try {
-                    $defaultServer = Get-PatStoredServer -Default -ErrorAction 'Stop'
-                    if (-not $defaultServer) {
-                        throw "No default server configured. Use Add-PatServer with -Default or specify -ServerUri."
-                    }
-                    Write-Verbose "Using default server: $($defaultServer.uri)"
-                }
-                catch {
-                    throw "Failed to get default server: $($_.Exception.Message)"
-                }
+        # Use cached context or resolve for pipeline input
+        $serverContext = $script:cachedContext
+        if (-not $serverContext) {
+            try {
+                $serverContext = Resolve-PatServerContext -ServerUri $ServerUri -Token $Token
             }
-            $server = $defaultServer
-            $effectiveUri = $server.uri
+            catch {
+                throw "Failed to resolve server: $($_.Exception.Message)"
+            }
         }
-        else {
-            Write-Verbose "Using specified server: $ServerUri"
-        }
+
+        $effectiveUri = $serverContext.Uri
+        $headers = $serverContext.Headers
 
         Write-Verbose "Retrieving server information from $effectiveUri"
         $uri = Join-PatUri -BaseUri $effectiveUri -Endpoint '/'
-
-        # Build headers with authentication if we have server object or token
-        $headers = if ($server) {
-            Get-PatAuthenticationHeader -Server $server
-        }
-        else {
-            $h = @{ Accept = 'application/json' }
-            if (-not [string]::IsNullOrWhiteSpace($Token)) {
-                $h['X-Plex-Token'] = $Token
-                Write-Debug "Adding X-Plex-Token header for authenticated request"
-            }
-            $h
-        }
 
         try {
             $result = Invoke-PatApi -Uri $uri -Headers $headers -ErrorAction 'Stop'

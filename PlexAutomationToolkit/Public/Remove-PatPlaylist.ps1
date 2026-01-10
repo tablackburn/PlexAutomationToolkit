@@ -14,6 +14,10 @@ function Remove-PatPlaylist {
     .PARAMETER PlaylistName
         The name of the playlist to remove. Supports tab completion.
 
+    .PARAMETER ServerName
+        The name of a stored server to use. Use Get-PatStoredServer to see available servers.
+        This is more convenient than ServerUri as you don't need to remember the URI or token.
+
     .PARAMETER ServerUri
         The base URI of the Plex server (e.g., http://plex.example.com:32400).
         If not specified, uses the default stored server.
@@ -29,6 +33,11 @@ function Remove-PatPlaylist {
         Remove-PatPlaylist -PlaylistId 12345
 
         Removes the playlist with ID 12345 after confirmation.
+
+    .EXAMPLE
+        Remove-PatPlaylist -PlaylistName 'Test Playlist' -ServerName 'Home' -Confirm:$false
+
+        Removes the playlist from the stored server named 'Home'.
 
     .EXAMPLE
         Remove-PatPlaylist -PlaylistName 'Old Playlist' -Confirm:$false
@@ -68,6 +77,10 @@ function Remove-PatPlaylist {
         $PlaylistName,
 
         [Parameter(Mandatory = $false)]
+        [string]
+        $ServerName,
+
+        [Parameter(Mandatory = $false)]
         [ValidateNotNullOrEmpty()]
         [ValidateScript({ Test-PatServerUri -Uri $_ })]
         [string]
@@ -85,7 +98,7 @@ function Remove-PatPlaylist {
 
     begin {
         try {
-            $script:serverContext = Resolve-PatServerContext -ServerUri $ServerUri -Token $Token
+            $script:serverContext = Resolve-PatServerContext -ServerName $ServerName -ServerUri $ServerUri -Token $Token
         }
         catch {
             throw "Failed to resolve server: $($_.Exception.Message)"

@@ -18,6 +18,10 @@ function Get-PatSyncPlan {
     .PARAMETER Destination
         The destination path where media files will be synced (e.g., 'E:\' for a USB drive).
 
+    .PARAMETER ServerName
+        The name of a stored server to use. Use Get-PatStoredServer to see available servers.
+        This is more convenient than ServerUri as you don't need to remember the URI or token.
+
     .PARAMETER ServerUri
         The base URI of the Plex server. If not specified, uses the default stored server.
 
@@ -29,6 +33,11 @@ function Get-PatSyncPlan {
         Get-PatSyncPlan -Destination 'E:\'
 
         Shows what files would be synced from the default 'Travel' playlist to drive E:.
+
+    .EXAMPLE
+        Get-PatSyncPlan -Destination 'E:\' -ServerName 'Home'
+
+        Shows sync plan for the 'Travel' playlist on the stored server named 'Home'.
 
     .EXAMPLE
         Get-PatSyncPlan -PlaylistName 'Vacation' -Destination 'D:\PlexMedia'
@@ -72,6 +81,10 @@ function Get-PatSyncPlan {
         $Destination,
 
         [Parameter(Mandatory = $false)]
+        [string]
+        $ServerName,
+
+        [Parameter(Mandatory = $false)]
         [ValidateNotNullOrEmpty()]
         [ValidateScript({ Test-PatServerUri -Uri $_ })]
         [string]
@@ -84,22 +97,14 @@ function Get-PatSyncPlan {
     )
 
     begin {
-        # Use default server if ServerUri not specified
-        $server = $null
-        $effectiveUri = $ServerUri
-        if (-not $ServerUri) {
-            try {
-                $server = Get-PatStoredServer -Default -ErrorAction 'Stop'
-                if (-not $server) {
-                    throw "No default server configured. Use Add-PatServer with -Default or specify -ServerUri."
-                }
-                $effectiveUri = $server.uri
-                Write-Verbose "Using default server: $effectiveUri"
-            }
-            catch {
-                throw "Failed to get default server: $($_.Exception.Message)"
-            }
+        try {
+            $script:serverContext = Resolve-PatServerContext -ServerName $ServerName -ServerUri $ServerUri -Token $Token
         }
+        catch {
+            throw "Failed to resolve server: $($_.Exception.Message)"
+        }
+
+        $effectiveUri = $script:serverContext.Uri
     }
 
     process {
@@ -108,19 +113,19 @@ function Get-PatSyncPlan {
             $resolvedDestination = [System.IO.Path]::GetFullPath($Destination)
             Write-Verbose "Resolved destination path: $resolvedDestination"
 
-            # Get the playlist
+            # Get the playlist - build parameters based on server context
             $playlistParameters = @{
                 IncludeItems = $true
                 ErrorAction  = 'Stop'
             }
-            if ($effectiveUri -and -not $ServerUri) {
-                # Using default server, don't pass ServerUri
-            }
-            elseif ($ServerUri) {
+            if ($script:serverContext.WasExplicitUri) {
                 $playlistParameters['ServerUri'] = $ServerUri
                 if ($Token) {
                     $playlistParameters['Token'] = $Token
                 }
+            }
+            elseif ($ServerName) {
+                $playlistParameters['ServerName'] = $ServerName
             }
 
             if ($PlaylistId) {
@@ -154,11 +159,12 @@ function Get-PatSyncPlan {
                         RatingKey   = $item.RatingKey
                         ErrorAction = 'Stop'
                     }
-                    if ($ServerUri) {
+                    if ($script:serverContext.WasExplicitUri) {
                         $mediaInformationParameters['ServerUri'] = $ServerUri
+                        if ($Token) { $mediaInformationParameters['Token'] = $Token }
                     }
-                    if ($Token) {
-                        $mediaInformationParameters['Token'] = $Token
+                    elseif ($ServerName) {
+                        $mediaInformationParameters['ServerName'] = $ServerName
                     }
 
                     $mediaInformation = Get-PatMediaInfo @mediaInformationParameters

@@ -8,6 +8,10 @@ function Update-PatLibrary {
         Optionally scans a specific path within the library.
         You can specify the section by ID or by friendly name.
 
+    .PARAMETER ServerName
+        The name of a stored server to use. Use Get-PatStoredServer to see available servers.
+        This is more convenient than ServerUri as you don't need to remember the URI or token.
+
     .PARAMETER ServerUri
         The base URI of the Plex server (e.g., http://plex.example.com:32400)
         If not specified, uses the default stored server.
@@ -163,6 +167,11 @@ function Update-PatLibrary {
 
         [Parameter(Mandatory = $false, ParameterSetName = 'ByName')]
         [Parameter(Mandatory = $false, ParameterSetName = 'ById')]
+        [string]
+        $ServerName,
+
+        [Parameter(Mandatory = $false, ParameterSetName = 'ByName')]
+        [Parameter(Mandatory = $false, ParameterSetName = 'ById')]
         [ValidateNotNullOrEmpty()]
         [ValidateScript({ Test-PatServerUri -Uri $_ })]
         [string]
@@ -175,35 +184,35 @@ function Update-PatLibrary {
         $Token
     )
 
-    # Use default server if ServerUri not specified
-    $server = $null
-    $effectiveUri = $ServerUri
-    $usingDefaultServer = $false
-    if (-not $ServerUri) {
-        try {
-            $server = Get-PatStoredServer -Default -ErrorAction 'Stop'
-            if (-not $server) {
-                throw "No default server configured. Use Add-PatServer with -Default or specify -ServerUri."
-            }
-            $effectiveUri = $server.uri
-            $usingDefaultServer = $true
-        }
-        catch {
-            throw "Failed to get default server: $($_.Exception.Message)"
-        }
+    try {
+        $serverContext = Resolve-PatServerContext -ServerName $ServerName -ServerUri $ServerUri -Token $Token
+    }
+    catch {
+        throw "Failed to resolve server: $($_.Exception.Message)"
+    }
+
+    $effectiveUri = $serverContext.Uri
+    $headers = $serverContext.Headers
+    $usingStoredServer = -not $serverContext.WasExplicitUri
+
+    # Build reusable server parameters for child cmdlet calls
+    # This eliminates duplicated conditional logic throughout the function
+    $serverParams = @{}
+    if ($serverContext.WasExplicitUri) {
+        $serverParams['ServerUri'] = $effectiveUri
+        if ($Token) { $serverParams['Token'] = $Token }
+    }
+    elseif ($ServerName) {
+        $serverParams['ServerName'] = $ServerName
     }
 
     # If using section name, resolve it to section ID
     $resolvedSectionId = $SectionId
     if ($PSCmdlet.ParameterSetName -eq 'ByName') {
         try {
-            # If using default server, don't pass ServerUri so Get-PatLibrary can retrieve server object with token
-            if ($usingDefaultServer) {
-                $sections = Get-PatLibrary -ErrorAction 'Stop'
-            }
-            else {
-                $sections = Get-PatLibrary -ServerUri $effectiveUri -ErrorAction 'Stop'
-            }
+            # If using stored server, don't pass ServerUri so Get-PatLibrary can retrieve server object with token
+            $libParams = @{ ErrorAction = 'Stop' } + $serverParams
+            $sections = Get-PatLibrary @libParams
             $matchedSection = $sections.Directory | Where-Object { $_.title -eq $SectionName }
 
             if (-not $matchedSection) {
@@ -224,13 +233,7 @@ function Update-PatLibrary {
     # Pre-validation: Check if path exists (default behavior, skip with -SkipPathValidation)
     if ($Path -and -not $SkipPathValidation) {
         Write-Verbose "Validating path: $Path"
-        $testParameters = @{ Path = $Path }
-        # Only pass ServerUri/Token when NOT using default server, so Test-PatLibraryPath
-        # can retrieve the default server with its stored authentication token
-        if (-not $usingDefaultServer) {
-            if ($effectiveUri) { $testParameters['ServerUri'] = $effectiveUri }
-            if ($Token) { $testParameters['Token'] = $Token }
-        }
+        $testParameters = @{ Path = $Path } + $serverParams
         if ($resolvedSectionId) { $testParameters['SectionId'] = $resolvedSectionId }
 
         $pathValid = Test-PatLibraryPath @testParameters
@@ -266,19 +269,6 @@ function Update-PatLibrary {
         $target = "section $resolvedSectionId"
     }
 
-    # Build headers with authentication if we have server object or token
-    $headers = if ($server) {
-        Get-PatAuthenticationHeader -Server $server
-    }
-    else {
-        $h = @{ Accept = 'application/json' }
-        if (-not [string]::IsNullOrWhiteSpace($Token)) {
-            $h['X-Plex-Token'] = $Token
-            Write-Debug "Adding X-Plex-Token header for authenticated request"
-        }
-        $h
-    }
-
     if ($PSCmdlet.ShouldProcess($target, 'Refresh library')) {
         try {
             Invoke-PatApi -Uri $uri -Method 'Post' -Headers $headers -ErrorAction 'Stop'
@@ -310,12 +300,8 @@ function Update-PatLibrary {
             }
             elseif ($PassThru) {
                 # Return the refreshed library section
-                if ($usingDefaultServer) {
-                    Get-PatLibrary -SectionId $resolvedSectionId -ErrorAction 'Stop'
-                }
-                else {
-                    Get-PatLibrary -ServerUri $effectiveUri -SectionId $resolvedSectionId -ErrorAction 'Stop'
-                }
+                $libParams = @{ SectionId = $resolvedSectionId; ErrorAction = 'Stop' } + $serverParams
+                Get-PatLibrary @libParams
             }
         }
         catch {

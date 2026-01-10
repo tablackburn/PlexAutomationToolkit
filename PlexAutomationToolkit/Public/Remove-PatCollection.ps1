@@ -23,6 +23,10 @@ function Remove-PatCollection {
         The library section ID containing the collection. Required when using -CollectionName.
         Use Get-PatLibrary to find library IDs.
 
+    .PARAMETER ServerName
+        The name of a stored server to use. Use Get-PatStoredServer to see available servers.
+        This is more convenient than ServerUri as you don't need to remember the URI or token.
+
     .PARAMETER ServerUri
         The base URI of the Plex server (e.g., http://plex.example.com:32400).
         If not specified, uses the default stored server.
@@ -38,6 +42,11 @@ function Remove-PatCollection {
         Remove-PatCollection -CollectionId 12345
 
         Removes the collection with ID 12345 after confirmation.
+
+    .EXAMPLE
+        Remove-PatCollection -CollectionName 'Old' -LibraryName 'Movies' -ServerName 'Home' -Confirm:$false
+
+        Removes a collection from the stored server named 'Home'.
 
     .EXAMPLE
         Remove-PatCollection -CollectionName 'Old Collection' -LibraryName 'Movies' -Confirm:$false
@@ -88,6 +97,10 @@ function Remove-PatCollection {
         $LibraryId,
 
         [Parameter(Mandatory = $false)]
+        [string]
+        $ServerName,
+
+        [Parameter(Mandatory = $false)]
         [ValidateNotNullOrEmpty()]
         [ValidateScript({ Test-PatServerUri -Uri $_ })]
         [string]
@@ -105,7 +118,7 @@ function Remove-PatCollection {
 
     begin {
         try {
-            $script:serverContext = Resolve-PatServerContext -ServerUri $ServerUri -Token $Token
+            $script:serverContext = Resolve-PatServerContext -ServerName $ServerName -ServerUri $ServerUri -Token $Token
         }
         catch {
             throw "Failed to resolve server: $($_.Exception.Message)"

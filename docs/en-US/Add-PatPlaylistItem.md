@@ -14,14 +14,14 @@ Adds items to an existing playlist on a Plex server.
 
 ### ById (Default)
 ```
-Add-PatPlaylistItem -PlaylistId <Int32> -RatingKey <Int32[]> [-ServerUri <String>] [-Token <String>]
- [-PassThru] [-ProgressAction <ActionPreference>] [-WhatIf] [-Confirm] [<CommonParameters>]
+Add-PatPlaylistItem -PlaylistId <Int32> -RatingKey <Int32[]> [-ServerName <String>] [-ServerUri <String>]
+ [-Token <String>] [-PassThru] [-ProgressAction <ActionPreference>] [-WhatIf] [-Confirm] [<CommonParameters>]
 ```
 
 ### ByName
 ```
-Add-PatPlaylistItem -PlaylistName <String> -RatingKey <Int32[]> [-ServerUri <String>] [-Token <String>]
- [-PassThru] [-ProgressAction <ActionPreference>] [-WhatIf] [-Confirm] [<CommonParameters>]
+Add-PatPlaylistItem -PlaylistName <String> -RatingKey <Int32[]> [-ServerName <String>] [-ServerUri <String>]
+ [-Token <String>] [-PassThru] [-ProgressAction <ActionPreference>] [-WhatIf] [-Confirm] [<CommonParameters>]
 ```
 
 ## DESCRIPTION
@@ -109,6 +109,22 @@ Required: True
 Position: Named
 Default value: None
 Accept pipeline input: True (ByPropertyName, ByValue)
+Accept wildcard characters: False
+```
+
+### -ServerName
+The name of a stored server to use. Use Get-PatStoredServer to see available servers.
+This is more convenient than ServerUri as you don't need to remember the URI or token.
+
+```yaml
+Type: String
+Parameter Sets: (All)
+Aliases:
+
+Required: False
+Position: Named
+Default value: None
+Accept pipeline input: False
 Accept wildcard characters: False
 ```
 

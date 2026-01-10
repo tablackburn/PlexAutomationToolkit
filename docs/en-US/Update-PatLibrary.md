@@ -15,14 +15,14 @@ Refreshes a Plex library section.
 ### ByName (Default)
 ```
 Update-PatLibrary -SectionName <String> [-Path <String>] [-PassThru] [-SkipPathValidation] [-Wait]
- [-Timeout <Int32>] [-ReportChanges] [-ServerUri <String>] [-Token <String>]
+ [-Timeout <Int32>] [-ReportChanges] [-ServerName <String>] [-ServerUri <String>] [-Token <String>]
  [-ProgressAction <ActionPreference>] [-WhatIf] [-Confirm] [<CommonParameters>]
 ```
 
 ### ById
 ```
 Update-PatLibrary -SectionId <Int32> [-Path <String>] [-PassThru] [-SkipPathValidation] [-Wait]
- [-Timeout <Int32>] [-ReportChanges] [-ServerUri <String>] [-Token <String>]
+ [-Timeout <Int32>] [-ReportChanges] [-ServerName <String>] [-ServerUri <String>] [-Token <String>]
  [-ProgressAction <ActionPreference>] [-WhatIf] [-Confirm] [<CommonParameters>]
 ```
 
@@ -209,6 +209,22 @@ Aliases:
 Required: False
 Position: Named
 Default value: False
+Accept pipeline input: False
+Accept wildcard characters: False
+```
+
+### -ServerName
+The name of a stored server to use. Use Get-PatStoredServer to see available servers.
+This is more convenient than ServerUri as you don't need to remember the URI or token.
+
+```yaml
+Type: String
+Parameter Sets: (All)
+Aliases:
+
+Required: False
+Position: Named
+Default value: None
 Accept pipeline input: False
 Accept wildcard characters: False
 ```

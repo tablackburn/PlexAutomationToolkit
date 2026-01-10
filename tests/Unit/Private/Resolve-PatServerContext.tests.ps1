@@ -101,8 +101,82 @@ Describe 'Resolve-PatServerContext' {
             }
         }
 
-        It 'Should propagate the error' {
+        It 'Should throw with helpful error message including original error' {
+            { Resolve-PatServerContext } | Should -Throw '*No server specified and failed to retrieve default server*'
+        }
+
+        It 'Should include original error details' {
             { Resolve-PatServerContext } | Should -Throw '*Config file not found*'
+        }
+
+        It 'Should suggest alternatives in error message' {
+            { Resolve-PatServerContext } | Should -Throw '*-ServerName*-ServerUri*Add-PatServer*'
+        }
+    }
+
+    Context 'When ServerName is provided' {
+        BeforeEach {
+            function Get-PatStoredServer { }
+            function Select-PatServerUri { }
+
+            Mock Get-PatStoredServer {
+                [PSCustomObject]@{
+                    name    = 'Home'
+                    uri     = 'http://home:32400'
+                    token   = 'home-token-123'
+                    default = $false
+                }
+            }
+
+            Mock Select-PatServerUri {
+                [PSCustomObject]@{
+                    Uri     = 'http://home:32400'
+                    IsLocal = $false
+                    SelectionReason = 'Primary URI selected'
+                }
+            }
+        }
+
+        It 'Should return context with named server URI' {
+            $ctx = Resolve-PatServerContext -ServerName 'Home'
+
+            $ctx.Uri | Should -Be 'http://home:32400'
+            $ctx.WasExplicitUri | Should -Be $false
+            $ctx.Server | Should -Not -BeNullOrEmpty
+        }
+
+        It 'Should return headers with authentication from named server' {
+            $ctx = Resolve-PatServerContext -ServerName 'Home'
+
+            $ctx.Headers['Accept'] | Should -Be 'application/json'
+            $ctx.Headers['X-Plex-Token'] | Should -Be 'home-token-123'
+        }
+
+        It 'Should return server name in context' {
+            $ctx = Resolve-PatServerContext -ServerName 'Home'
+
+            $ctx.Server.name | Should -Be 'Home'
+        }
+    }
+
+    Context 'When both ServerName and ServerUri are provided' {
+        It 'Should throw an error' {
+            { Resolve-PatServerContext -ServerName 'Home' -ServerUri 'http://explicit:32400' } |
+                Should -Throw '*Cannot specify both -ServerName and -ServerUri*'
+        }
+    }
+
+    Context 'When named server is not found' {
+        BeforeEach {
+            function Get-PatStoredServer { }
+            Mock Get-PatStoredServer {
+                throw "Server 'NonExistent' not found"
+            }
+        }
+
+        It 'Should throw an error' {
+            { Resolve-PatServerContext -ServerName 'NonExistent' } |
+                Should -Throw "*Server 'NonExistent' not found*"
         }
     }
 }

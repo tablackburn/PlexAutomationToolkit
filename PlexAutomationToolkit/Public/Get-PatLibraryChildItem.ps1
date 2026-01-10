@@ -7,6 +7,10 @@ function Get-PatLibraryChildItem {
         Browses the filesystem on the Plex server, listing subdirectories and files
         at a specified path. Uses the Plex internal browse service endpoint.
 
+    .PARAMETER ServerName
+        The name of a stored server to use. Use Get-PatStoredServer to see available servers.
+        This is more convenient than ServerUri as you don't need to remember the URI or token.
+
     .PARAMETER ServerUri
         The base URI of the Plex server (e.g., http://plex.example.com:32400)
         If not specified, uses the default stored server.
@@ -71,6 +75,10 @@ function Get-PatLibraryChildItem {
         $SectionId,
 
         [Parameter(Mandatory = $false)]
+        [string]
+        $ServerName,
+
+        [Parameter(Mandatory = $false)]
         [ValidateNotNullOrEmpty()]
         [ValidateScript({ Test-PatServerUri -Uri $_ })]
         [string]
@@ -82,38 +90,31 @@ function Get-PatLibraryChildItem {
         $Token
     )
 
-    # Use default server if ServerUri not specified
-    $server = $null
-    $effectiveUri = $ServerUri
-    $usingDefaultServer = $false
-    if (-not $ServerUri) {
-        try {
-            $server = Get-PatStoredServer -Default -ErrorAction 'Stop'
-            if (-not $server) {
-                throw "No default server configured. Use Add-PatServer with -Default or specify -ServerUri."
-            }
-            $effectiveUri = $server.uri
-            $usingDefaultServer = $true
-        }
-        catch {
-            throw "Failed to get default server: $($_.Exception.Message)"
-        }
+    try {
+        $serverContext = Resolve-PatServerContext -ServerName $ServerName -ServerUri $ServerUri -Token $Token
     }
+    catch {
+        throw "Failed to resolve server: $($_.Exception.Message)"
+    }
+
+    $effectiveUri = $serverContext.Uri
+    $headers = $serverContext.Headers
 
     try {
         $pathsToBrowse = @()
 
         # If section parameters provided, collect all section locations
         if ($SectionName -or $SectionId) {
-            # If using default server, don't pass ServerUri so Get-PatLibrary can retrieve server object with token
-            if ($usingDefaultServer) {
-                $sections = Get-PatLibrary -ErrorAction 'Stop'
+            # Build params for Get-PatLibrary
+            $libParams = @{ ErrorAction = 'Stop' }
+            if ($serverContext.WasExplicitUri) {
+                $libParams['ServerUri'] = $effectiveUri
+                if ($Token) { $libParams['Token'] = $Token }
             }
-            else {
-                $libraryParameters = @{ ServerUri = $effectiveUri; ErrorAction = 'Stop' }
-                if ($Token) { $libraryParameters['Token'] = $Token }
-                $sections = Get-PatLibrary @libraryParameters
+            elseif ($ServerName) {
+                $libParams['ServerName'] = $ServerName
             }
+            $sections = Get-PatLibrary @libParams
 
             $matchingSection = $null
             if ($SectionName) {
@@ -150,19 +151,6 @@ function Get-PatLibraryChildItem {
         if (-not $pathsToBrowse -or $pathsToBrowse.Count -eq 0) {
             # No path specified, no section provided -> browse root
             $pathsToBrowse = @($null)
-        }
-
-        # Build headers with authentication if we have server object or token
-        $headers = if ($server) {
-            Get-PatAuthenticationHeader -Server $server
-        }
-        else {
-            $h = @{ Accept = 'application/json' }
-            if (-not [string]::IsNullOrWhiteSpace($Token)) {
-                $h['X-Plex-Token'] = $Token
-                Write-Debug "Adding X-Plex-Token header for authenticated request"
-            }
-            $h
         }
 
         $results = @()

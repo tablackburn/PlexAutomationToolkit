@@ -12,6 +12,10 @@ function Get-PatMediaInfo {
         The unique identifier (ratingKey) of the media item to retrieve.
         This is the Plex internal ID for movies, episodes, or other media.
 
+    .PARAMETER ServerName
+        The name of a stored server to use. Use Get-PatStoredServer to see available servers.
+        This is more convenient than ServerUri as you don't need to remember the URI or token.
+
     .PARAMETER ServerUri
         The base URI of the Plex server (e.g., http://plex.example.com:32400).
         If not specified, uses the default stored server.
@@ -24,6 +28,11 @@ function Get-PatMediaInfo {
         Get-PatMediaInfo -RatingKey 12345
 
         Retrieves detailed media information for the item with ratingKey 12345.
+
+    .EXAMPLE
+        Get-PatMediaInfo -RatingKey 12345 -ServerName 'Home'
+
+        Retrieves media info from the stored server named 'Home'.
 
     .EXAMPLE
         Get-PatPlaylist -PlaylistName 'Travel' -IncludeItems | Select-Object -ExpandProperty Items | Get-PatMediaInfo
@@ -60,6 +69,10 @@ function Get-PatMediaInfo {
         $RatingKey,
 
         [Parameter(Mandatory = $false)]
+        [string]
+        $ServerName,
+
+        [Parameter(Mandatory = $false)]
         [ValidateNotNullOrEmpty()]
         [ValidateScript({ Test-PatServerUri -Uri $_ })]
         [string]
@@ -72,38 +85,15 @@ function Get-PatMediaInfo {
     )
 
     begin {
-        # Use default server if ServerUri not specified
-        $server = $null
-        $effectiveUri = $ServerUri
-        if (-not $ServerUri) {
-            try {
-                $server = Get-PatStoredServer -Default -ErrorAction 'Stop'
-                if (-not $server) {
-                    throw "No default server configured. Use Add-PatServer with -Default or specify -ServerUri."
-                }
-                $effectiveUri = $server.uri
-                Write-Verbose "Using default server: $effectiveUri"
-            }
-            catch {
-                throw "Failed to get default server: $($_.Exception.Message)"
-            }
+        try {
+            $script:serverContext = Resolve-PatServerContext -ServerName $ServerName -ServerUri $ServerUri -Token $Token
         }
-        else {
-            Write-Verbose "Using specified server: $effectiveUri"
+        catch {
+            throw "Failed to resolve server: $($_.Exception.Message)"
         }
 
-        # Build headers with authentication if we have server object or token
-        $headers = if ($server) {
-            Get-PatAuthenticationHeader -Server $server
-        }
-        else {
-            $h = @{ Accept = 'application/json' }
-            if (-not [string]::IsNullOrWhiteSpace($Token)) {
-                $h['X-Plex-Token'] = $Token
-                Write-Debug "Adding X-Plex-Token header for authenticated request"
-            }
-            $h
-        }
+        $effectiveUri = $script:serverContext.Uri
+        $headers = $script:serverContext.Headers
     }
 
     process {

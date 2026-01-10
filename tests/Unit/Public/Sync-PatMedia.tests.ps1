@@ -687,6 +687,293 @@ Describe 'Sync-PatMedia' {
         }
     }
 
+    Context 'ServerName parameter' {
+        BeforeAll {
+            Mock -ModuleName PlexAutomationToolkit Get-PatStoredServer {
+                param($Name, $Default)
+                if ($Name -eq 'HomeServer') {
+                    return [PSCustomObject]@{
+                        name    = 'HomeServer'
+                        uri     = 'http://home.test:32400'
+                        token   = 'home-token'
+                        default = $false
+                    }
+                }
+                return $null
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Get-PatAuthenticationHeader {
+                return @{
+                    Accept         = 'application/json'
+                    'X-Plex-Token' = 'home-token'
+                }
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Get-PatSyncPlan {
+                return [PSCustomObject]@{
+                    PSTypeName       = 'PlexAutomationToolkit.SyncPlan'
+                    PlaylistName     = 'Travel'
+                    PlaylistId       = 100
+                    Destination      = $script:TestDir
+                    TotalItems       = 1
+                    ItemsToAdd       = 1
+                    ItemsToRemove    = 0
+                    ItemsUnchanged   = 0
+                    BytesToDownload  = 1000
+                    BytesToRemove    = 0
+                    DestinationFree  = 1000000000
+                    DestinationAfter = 999999000
+                    SpaceSufficient  = $true
+                    AddOperations    = @(
+                        [PSCustomObject]@{
+                            RatingKey       = 1001
+                            Title           = 'Test Movie'
+                            Type            = 'movie'
+                            Year            = 2023
+                            GrandparentTitle = $null
+                            ParentIndex     = $null
+                            Index           = $null
+                            DestinationPath = [System.IO.Path]::Combine($script:TestDir, 'Movies', 'Test Movie (2023)', 'Test Movie (2023).mkv')
+                            MediaSize       = 1000
+                            SubtitleCount   = 0
+                            PartKey         = '/library/parts/3001/file.mkv'
+                            Container       = 'mkv'
+                        }
+                    )
+                    RemoveOperations = @()
+                    ServerUri        = 'http://home.test:32400'
+                }
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Invoke-PatFileDownload {
+                param($Uri, $OutFile, $ExpectedSize, $Resume)
+
+                # Create the file
+                $dir = Split-Path -Path $OutFile -Parent
+                if (-not (Test-Path -Path $dir)) {
+                    New-Item -Path $dir -ItemType Directory -Force | Out-Null
+                }
+                [System.IO.File]::WriteAllBytes($OutFile, [byte[]](1, 2, 3))
+
+                return Get-Item -Path $OutFile
+            }
+        }
+
+        It 'Passes ServerName to Get-PatSyncPlan' {
+            Sync-PatMedia -PlaylistName 'Travel' -Destination $script:TestDir -ServerName 'HomeServer' -Confirm:$false
+
+            Should -Invoke -CommandName Get-PatSyncPlan -ModuleName PlexAutomationToolkit -ParameterFilter {
+                $ServerName -eq 'HomeServer'
+            }
+        }
+
+        It 'Does not pass ServerUri when using ServerName' {
+            Sync-PatMedia -PlaylistName 'Travel' -Destination $script:TestDir -ServerName 'HomeServer' -Confirm:$false
+
+            Should -Invoke -CommandName Get-PatSyncPlan -ModuleName PlexAutomationToolkit -ParameterFilter {
+                -not $ServerUri -and $ServerName -eq 'HomeServer'
+            }
+        }
+
+        It 'Downloads media successfully with ServerName' {
+            Sync-PatMedia -PlaylistName 'Travel' -Destination $script:TestDir -ServerName 'HomeServer' -Confirm:$false
+
+            Should -Invoke -CommandName Invoke-PatFileDownload -ModuleName PlexAutomationToolkit -Times 1
+        }
+
+        It 'Returns sync plan with PassThru when using ServerName' {
+            $result = Sync-PatMedia -PlaylistName 'Travel' -Destination $script:TestDir -ServerName 'HomeServer' -PassThru -Confirm:$false
+
+            $result | Should -Not -BeNullOrEmpty
+            $result.PlaylistName | Should -Be 'Travel'
+        }
+    }
+
+    Context 'ServerName with subtitle download' {
+        BeforeAll {
+            Mock -ModuleName PlexAutomationToolkit Get-PatStoredServer {
+                param($Name, $Default)
+                if ($Name -eq 'HomeServer') {
+                    return [PSCustomObject]@{
+                        name    = 'HomeServer'
+                        uri     = 'http://home.test:32400'
+                        token   = 'home-token'
+                        default = $false
+                    }
+                }
+                return $null
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Get-PatAuthenticationHeader {
+                return @{
+                    Accept         = 'application/json'
+                    'X-Plex-Token' = 'home-token'
+                }
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Get-PatSyncPlan {
+                return [PSCustomObject]@{
+                    PSTypeName       = 'PlexAutomationToolkit.SyncPlan'
+                    PlaylistName     = 'Travel'
+                    PlaylistId       = 100
+                    Destination      = $script:TestDir
+                    TotalItems       = 1
+                    ItemsToAdd       = 1
+                    ItemsToRemove    = 0
+                    ItemsUnchanged   = 0
+                    BytesToDownload  = 1000
+                    BytesToRemove    = 0
+                    DestinationFree  = 1000000000
+                    DestinationAfter = 999999000
+                    SpaceSufficient  = $true
+                    AddOperations    = @(
+                        [PSCustomObject]@{
+                            RatingKey       = 1001
+                            Title           = 'Subbed Movie'
+                            Type            = 'movie'
+                            Year            = 2023
+                            GrandparentTitle = $null
+                            DestinationPath = [System.IO.Path]::Combine($script:TestDir, 'Movies', 'Subbed Movie (2023)', 'Subbed Movie (2023).mkv')
+                            MediaSize       = 1000
+                            SubtitleCount   = 1
+                            PartKey         = '/library/parts/3001/file.mkv'
+                            Container       = 'mkv'
+                        }
+                    )
+                    RemoveOperations = @()
+                    ServerUri        = 'http://home.test:32400'
+                }
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Get-PatMediaInfo {
+                return [PSCustomObject]@{
+                    RatingKey = 1001
+                    Title     = 'Subbed Movie'
+                    Type      = 'movie'
+                    Year      = 2023
+                    Media     = @(
+                        [PSCustomObject]@{
+                            Part = @(
+                                [PSCustomObject]@{
+                                    Streams = @(
+                                        [PSCustomObject]@{
+                                            StreamType   = 3
+                                            External     = $true
+                                            Key          = '/library/streams/5001'
+                                            LanguageCode = 'eng'
+                                            Format       = 'srt'
+                                        }
+                                    )
+                                }
+                            )
+                        }
+                    )
+                }
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Invoke-PatFileDownload {
+                param($Uri, $OutFile)
+                $dir = Split-Path -Path $OutFile -Parent
+                if (-not (Test-Path -Path $dir)) {
+                    New-Item -Path $dir -ItemType Directory -Force | Out-Null
+                }
+                [System.IO.File]::WriteAllBytes($OutFile, [byte[]](1, 2, 3))
+                return Get-Item -Path $OutFile
+            }
+        }
+
+        It 'Passes ServerName to Get-PatMediaInfo for subtitle info' {
+            Sync-PatMedia -PlaylistName 'Travel' -Destination $script:TestDir -ServerName 'HomeServer' -Confirm:$false
+
+            Should -Invoke -CommandName Get-PatMediaInfo -ModuleName PlexAutomationToolkit -ParameterFilter {
+                $ServerName -eq 'HomeServer'
+            }
+        }
+    }
+
+    Context 'ServerName with RemoveWatched' {
+        BeforeAll {
+            Mock -ModuleName PlexAutomationToolkit Get-PatStoredServer {
+                param($Name, $Default)
+                if ($Name -eq 'HomeServer') {
+                    return [PSCustomObject]@{
+                        name    = 'HomeServer'
+                        uri     = 'http://home.test:32400'
+                        token   = 'home-token'
+                        default = $false
+                    }
+                }
+                return $null
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Get-PatAuthenticationHeader {
+                return @{
+                    Accept         = 'application/json'
+                    'X-Plex-Token' = 'home-token'
+                }
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Get-PatSyncPlan {
+                return [PSCustomObject]@{
+                    PlaylistName     = 'Travel'
+                    PlaylistId       = 100
+                    TotalItems       = 0
+                    ItemsToAdd       = 0
+                    ItemsToRemove    = 0
+                    ItemsUnchanged   = 0
+                    BytesToDownload  = 0
+                    BytesToRemove    = 0
+                    DestinationFree  = 1000000000
+                    DestinationAfter = 1000000000
+                    SpaceSufficient  = $true
+                    AddOperations    = @()
+                    RemoveOperations = @()
+                    ServerUri        = 'http://home.test:32400'
+                }
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Compare-PatWatchStatus {
+                return @(
+                    [PSCustomObject]@{
+                        Title           = 'Watched Movie'
+                        Type            = 'movie'
+                        Year            = 2023
+                        SourceRatingKey = 2001
+                        TargetRatingKey = 1001
+                    }
+                )
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Get-PatPlaylist {
+                return [PSCustomObject]@{
+                    Title      = 'Travel'
+                    PlaylistId = 100
+                    Items      = @(
+                        [PSCustomObject]@{
+                            RatingKey      = 1001
+                            PlaylistItemId = 5001
+                            Title          = 'Watched Movie'
+                            Type           = 'movie'
+                            Year           = 2023
+                        }
+                    )
+                }
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Remove-PatPlaylistItem { }
+        }
+
+        It 'Passes ServerName to Get-PatPlaylist when RemoveWatched is specified' {
+            Sync-PatMedia -PlaylistName 'Travel' -Destination $script:TestDir -ServerName 'HomeServer' `
+                -SourceServerName 'Source' -TargetServerName 'Target' `
+                -RemoveWatched -Confirm:$false
+
+            Should -Invoke -CommandName Get-PatPlaylist -ModuleName PlexAutomationToolkit -ParameterFilter {
+                $ServerName -eq 'HomeServer'
+            }
+        }
+    }
+
     Context 'Combined SyncWatchStatus and RemoveWatched' {
         BeforeAll {
             Mock -ModuleName PlexAutomationToolkit Get-PatSyncPlan {

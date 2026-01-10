@@ -26,6 +26,10 @@ function Add-PatCollectionItem {
         One or more media item rating keys to add to the collection.
         Rating keys can be obtained from library browsing commands like Get-PatLibraryItem.
 
+    .PARAMETER ServerName
+        The name of a stored server to use. Use Get-PatStoredServer to see available servers.
+        This is more convenient than ServerUri as you don't need to remember the URI or token.
+
     .PARAMETER ServerUri
         The base URI of the Plex server (e.g., http://plex.example.com:32400).
         If not specified, uses the default stored server.
@@ -41,6 +45,11 @@ function Add-PatCollectionItem {
         Add-PatCollectionItem -CollectionId 12345 -RatingKey 67890
 
         Adds the media item with rating key 67890 to collection 12345.
+
+    .EXAMPLE
+        Add-PatCollectionItem -CollectionName 'Marvel' -LibraryName 'Movies' -RatingKey 67890 -ServerName 'Home'
+
+        Adds an item to a collection on the stored server named 'Home'.
 
     .EXAMPLE
         Add-PatCollectionItem -CollectionName 'Marvel Movies' -LibraryName 'Movies' -RatingKey 111, 222, 333
@@ -93,6 +102,10 @@ function Add-PatCollectionItem {
         $RatingKey,
 
         [Parameter(Mandatory = $false)]
+        [string]
+        $ServerName,
+
+        [Parameter(Mandatory = $false)]
         [ValidateNotNullOrEmpty()]
         [ValidateScript({ Test-PatServerUri -Uri $_ })]
         [string]
@@ -110,7 +123,7 @@ function Add-PatCollectionItem {
 
     begin {
         try {
-            $script:serverContext = Resolve-PatServerContext -ServerUri $ServerUri -Token $Token
+            $script:serverContext = Resolve-PatServerContext -ServerName $ServerName -ServerUri $ServerUri -Token $Token
         }
         catch {
             throw "Failed to resolve server: $($_.Exception.Message)"

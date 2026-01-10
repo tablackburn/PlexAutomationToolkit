@@ -1,19 +1,10 @@
 BeforeDiscovery {
     # Check if integration tests should run
     $script:integrationEnabled = $false
-    $script:syncTestsEnabled = $false
 
     if ($env:PLEX_SERVER_URI -and $env:PLEX_TOKEN) {
         $script:integrationEnabled = $true
         Write-Host "Media sync integration tests ENABLED - Testing against: $env:PLEX_SERVER_URI" -ForegroundColor Green
-
-        if ($env:PLEX_ALLOW_MUTATIONS -eq 'true') {
-            $script:syncTestsEnabled = $true
-            Write-Host "Sync tests ENABLED - Files will be downloaded to temp directory" -ForegroundColor Yellow
-        }
-        else {
-            Write-Host "Sync tests DISABLED - Set PLEX_ALLOW_MUTATIONS=true to enable" -ForegroundColor Yellow
-        }
     }
     else {
         $missingVars = @()
@@ -195,7 +186,7 @@ Describe 'Get-PatSyncPlan Integration Tests' -Skip:(-not $script:integrationEnab
     }
 }
 
-Describe 'Sync-PatMedia Integration Tests' -Skip:(-not $script:syncTestsEnabled) {
+Describe 'Sync-PatMedia Integration Tests' -Skip:(-not $script:integrationEnabled) {
 
     BeforeAll {
         # Setup test server

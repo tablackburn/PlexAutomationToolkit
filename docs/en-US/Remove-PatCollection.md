@@ -14,20 +14,21 @@ Removes a collection from a Plex library.
 
 ### ById (Default)
 ```
-Remove-PatCollection -CollectionId <Int32> [-ServerUri <String>] [-Token <String>] [-PassThru]
- [-ProgressAction <ActionPreference>] [-WhatIf] [-Confirm] [<CommonParameters>]
+Remove-PatCollection -CollectionId <Int32> [-ServerName <String>] [-ServerUri <String>] [-Token <String>]
+ [-PassThru] [-ProgressAction <ActionPreference>] [-WhatIf] [-Confirm] [<CommonParameters>]
 ```
 
 ### ByNameWithLibraryId
 ```
-Remove-PatCollection -CollectionName <String> -LibraryId <Int32> [-ServerUri <String>] [-Token <String>]
- [-PassThru] [-ProgressAction <ActionPreference>] [-WhatIf] [-Confirm] [<CommonParameters>]
+Remove-PatCollection -CollectionName <String> -LibraryId <Int32> [-ServerName <String>] [-ServerUri <String>]
+ [-Token <String>] [-PassThru] [-ProgressAction <ActionPreference>] [-WhatIf] [-Confirm] [<CommonParameters>]
 ```
 
 ### ByNameWithLibraryName
 ```
-Remove-PatCollection -CollectionName <String> -LibraryName <String> [-ServerUri <String>] [-Token <String>]
- [-PassThru] [-ProgressAction <ActionPreference>] [-WhatIf] [-Confirm] [<CommonParameters>]
+Remove-PatCollection -CollectionName <String> -LibraryName <String> [-ServerName <String>]
+ [-ServerUri <String>] [-Token <String>] [-PassThru] [-ProgressAction <ActionPreference>] [-WhatIf] [-Confirm]
+ [<CommonParameters>]
 ```
 
 ## DESCRIPTION
@@ -137,6 +138,22 @@ Aliases:
 Required: True
 Position: Named
 Default value: 0
+Accept pipeline input: False
+Accept wildcard characters: False
+```
+
+### -ServerName
+The name of a stored server to use. Use Get-PatStoredServer to see available servers.
+This is more convenient than ServerUri as you don't need to remember the URI or token.
+
+```yaml
+Type: String
+Parameter Sets: (All)
+Aliases:
+
+Required: False
+Position: Named
+Default value: None
 Accept pipeline input: False
 Accept wildcard characters: False
 ```

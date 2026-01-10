@@ -447,7 +447,7 @@ Describe 'Get-PatLibraryItem' {
         }
 
         It 'Throws wrapped error message' {
-            { Get-PatLibraryItem -SectionId 2 } | Should -Throw '*Failed to get default server*'
+            { Get-PatLibraryItem -SectionId 2 } | Should -Throw '*Failed to resolve server*'
         }
     }
 

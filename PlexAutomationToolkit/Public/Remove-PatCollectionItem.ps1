@@ -27,6 +27,10 @@ function Remove-PatCollectionItem {
         One or more rating keys of the items to remove from the collection.
         Obtain these values from Get-PatCollection -IncludeItems.
 
+    .PARAMETER ServerName
+        The name of a stored server to use. Use Get-PatStoredServer to see available servers.
+        This is more convenient than ServerUri as you don't need to remember the URI or token.
+
     .PARAMETER ServerUri
         The base URI of the Plex server (e.g., http://plex.example.com:32400).
         If not specified, uses the default stored server.
@@ -42,6 +46,11 @@ function Remove-PatCollectionItem {
         Remove-PatCollectionItem -CollectionId 12345 -RatingKey 67890
 
         Removes the item with rating key 67890 from collection 12345.
+
+    .EXAMPLE
+        Remove-PatCollectionItem -CollectionName 'Marvel' -LibraryName 'Movies' -RatingKey 67890 -ServerName 'Home'
+
+        Removes an item from a collection on the stored server named 'Home'.
 
     .EXAMPLE
         Remove-PatCollectionItem -CollectionName 'Marvel Movies' -LibraryName 'Movies' -RatingKey 111, 222
@@ -101,6 +110,10 @@ function Remove-PatCollectionItem {
         $RatingKey,
 
         [Parameter(Mandatory = $false)]
+        [string]
+        $ServerName,
+
+        [Parameter(Mandatory = $false)]
         [ValidateNotNullOrEmpty()]
         [ValidateScript({ Test-PatServerUri -Uri $_ })]
         [string]
@@ -118,7 +131,7 @@ function Remove-PatCollectionItem {
 
     begin {
         try {
-            $script:serverContext = Resolve-PatServerContext -ServerUri $ServerUri -Token $Token
+            $script:serverContext = Resolve-PatServerContext -ServerName $ServerName -ServerUri $ServerUri -Token $Token
         }
         catch {
             throw "Failed to resolve server: $($_.Exception.Message)"

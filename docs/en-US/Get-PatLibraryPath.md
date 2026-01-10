@@ -14,19 +14,19 @@ Retrieves library section paths from a Plex server.
 
 ### All (Default)
 ```
-Get-PatLibraryPath [-ServerUri <String>] [-Token <String>] [-ProgressAction <ActionPreference>]
- [<CommonParameters>]
+Get-PatLibraryPath [-ServerName <String>] [-ServerUri <String>] [-Token <String>]
+ [-ProgressAction <ActionPreference>] [<CommonParameters>]
 ```
 
 ### ByName
 ```
-Get-PatLibraryPath [-SectionName <String>] [-ServerUri <String>] [-Token <String>]
+Get-PatLibraryPath [-SectionName <String>] [-ServerName <String>] [-ServerUri <String>] [-Token <String>]
  [-ProgressAction <ActionPreference>] [<CommonParameters>]
 ```
 
 ### ById
 ```
-Get-PatLibraryPath [-SectionId <Int32>] [-ServerUri <String>] [-Token <String>]
+Get-PatLibraryPath [-SectionId <Int32>] [-ServerName <String>] [-ServerUri <String>] [-Token <String>]
  [-ProgressAction <ActionPreference>] [<CommonParameters>]
 ```
 
@@ -79,6 +79,22 @@ Aliases:
 Required: False
 Position: Named
 Default value: 0
+Accept pipeline input: False
+Accept wildcard characters: False
+```
+
+### -ServerName
+The name of a stored server to use. Use Get-PatStoredServer to see available servers.
+This is more convenient than ServerUri as you don't need to remember the URI or token.
+
+```yaml
+Type: String
+Parameter Sets: (All)
+Aliases:
+
+Required: False
+Position: Named
+Default value: None
 Accept pipeline input: False
 Accept wildcard characters: False
 ```

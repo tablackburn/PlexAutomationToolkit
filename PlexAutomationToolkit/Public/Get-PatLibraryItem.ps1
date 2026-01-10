@@ -7,6 +7,10 @@ function Get-PatLibraryItem {
         Gets all media items (movies, TV shows, music, etc.) from a specified Plex library section.
         Returns metadata for each item including title, year, rating, and other properties.
 
+    .PARAMETER ServerName
+        The name of a stored server to use. Use Get-PatStoredServer to see available servers.
+        This is more convenient than ServerUri as you don't need to remember the URI or token.
+
     .PARAMETER ServerUri
         The base URI of the Plex server (e.g., http://plex.example.com:32400)
         If not specified, uses the default stored server.
@@ -25,6 +29,11 @@ function Get-PatLibraryItem {
         Get-PatLibraryItem -SectionId 1
 
         Retrieves all items from library section 1.
+
+    .EXAMPLE
+        Get-PatLibraryItem -SectionName 'Movies' -ServerName 'Home'
+
+        Retrieves all items from the Movies library on the stored server named 'Home'.
 
     .EXAMPLE
         Get-PatLibraryItem -SectionName "Movies"
@@ -53,6 +62,10 @@ function Get-PatLibraryItem {
         $SectionId,
 
         [Parameter(Mandatory = $false)]
+        [string]
+        $ServerName,
+
+        [Parameter(Mandatory = $false)]
         [ValidateNotNullOrEmpty()]
         [ValidateScript({ Test-PatServerUri -Uri $_ })]
         [string]
@@ -65,40 +78,15 @@ function Get-PatLibraryItem {
     )
 
     begin {
-        # Use default server if ServerUri not specified
-        $server = $null
-        $effectiveUri = $ServerUri
-        $usingDefaultServer = $false
-        if (-not $ServerUri) {
-            try {
-                $server = Get-PatStoredServer -Default -ErrorAction 'Stop'
-                if (-not $server) {
-                    throw "No default server configured. Use Add-PatServer with -Default or specify -ServerUri."
-                }
-                $effectiveUri = $server.uri
-                $usingDefaultServer = $true
-                Write-Verbose "Using default server: $effectiveUri"
-            }
-            catch {
-                throw "Failed to get default server: $($_.Exception.Message)"
-            }
+        try {
+            $script:serverContext = Resolve-PatServerContext -ServerName $ServerName -ServerUri $ServerUri -Token $Token
         }
-        else {
-            Write-Verbose "Using specified server: $ServerUri"
+        catch {
+            throw "Failed to resolve server: $($_.Exception.Message)"
         }
 
-        # Build headers with authentication if we have server object or token
-        $headers = if ($server) {
-            Get-PatAuthenticationHeader -Server $server
-        }
-        else {
-            $h = @{ Accept = 'application/json' }
-            if (-not [string]::IsNullOrWhiteSpace($Token)) {
-                $h['X-Plex-Token'] = $Token
-                Write-Debug "Adding X-Plex-Token header for authenticated request"
-            }
-            $h
-        }
+        $effectiveUri = $script:serverContext.Uri
+        $headers = $script:serverContext.Headers
     }
 
     process {
@@ -106,13 +94,16 @@ function Get-PatLibraryItem {
             # Resolve SectionName to SectionId if needed
             $resolvedSectionId = $SectionId
             if ($SectionName) {
-                # If using default server, don't pass ServerUri so Get-PatLibrary can use token
-                if ($usingDefaultServer) {
-                    $sections = Get-PatLibrary -ErrorAction 'Stop'
+                # Build params for Get-PatLibrary
+                $libParams = @{ ErrorAction = 'Stop' }
+                if ($script:serverContext.WasExplicitUri) {
+                    $libParams['ServerUri'] = $effectiveUri
+                    if ($Token) { $libParams['Token'] = $Token }
                 }
-                else {
-                    $sections = Get-PatLibrary -ServerUri $effectiveUri -ErrorAction 'Stop'
+                elseif ($ServerName) {
+                    $libParams['ServerName'] = $ServerName
                 }
+                $sections = Get-PatLibrary @libParams
                 $matchingSection = $sections.Directory | Where-Object { $_.title -eq $SectionName }
                 if (-not $matchingSection) {
                     throw "Library section '$SectionName' not found"
