@@ -89,7 +89,7 @@ Accept wildcard characters: False
 ```
 
 ### -ProgressAction
-{{ Fill ProgressAction Description }}
+Determines how the cmdlet responds to progress updates. This is a common parameter.
 
 ```yaml
 Type: ActionPreference
