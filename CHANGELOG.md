@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [0.10.1] - 2026-01-10
+
+### Fixed
+
+- Division-by-zero error in `Invoke-PatFileDownload` when downloading files with unknown size
+- HTTP security warning spam - now only shows once per session instead of on every API call
+
+### Changed
+
+- Extract `Format-ByteSize` to standalone private function for better testability and reuse
+- Improve test coverage for `Register-PatArgumentCompleter` (63% → 72%)
+
 ## [0.10.0] - 2026-01-09
 
 ### Added
