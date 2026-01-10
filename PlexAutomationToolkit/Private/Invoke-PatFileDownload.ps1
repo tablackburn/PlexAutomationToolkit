@@ -156,15 +156,6 @@ function Invoke-PatFileDownload {
         Remove-Item -Path $OutFile -Force
     }
 
-    # Helper function to format bytes for display
-    function Format-ByteSize {
-        param([long]$Bytes)
-        if ($Bytes -ge 1GB) { return '{0:N2} GB' -f ($Bytes / 1GB) }
-        elseif ($Bytes -ge 1MB) { return '{0:N1} MB' -f ($Bytes / 1MB) }
-        elseif ($Bytes -ge 1KB) { return '{0:N0} KB' -f ($Bytes / 1KB) }
-        else { return '{0} bytes' -f $Bytes }
-    }
-
     try {
         Write-Verbose "Downloading file from: $Uri"
         Write-Verbose "Destination: $OutFile"
@@ -261,7 +252,7 @@ function Invoke-PatFileDownload {
                     if (($now - $lastProgressUpdate) -ge $progressUpdateInterval) {
                         $lastProgressUpdate = $now
 
-                        $percentComplete = [int](($totalBytesRead / $totalSize) * 100)
+                        $percentComplete = if ($totalSize -gt 0) { [int](($totalBytesRead / $totalSize) * 100) } else { 0 }
                         $percentComplete = [Math]::Min($percentComplete, 100)
 
                         # Calculate download speed

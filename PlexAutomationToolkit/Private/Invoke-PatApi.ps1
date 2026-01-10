@@ -58,9 +58,12 @@ function Invoke-PatApi {
         $BaseDelaySeconds = 1
     )
 
-    # Warn if using HTTP with authentication token
+    # Warn if using HTTP with authentication token (only once per session to avoid spam)
     if ($Uri -match '^http://' -and $Headers.ContainsKey('X-Plex-Token')) {
-        Write-Warning "Sending authentication token over unencrypted HTTP connection. Consider using HTTPS."
+        if (-not $script:HttpWarningShown) {
+            $script:HttpWarningShown = $true
+            Write-Warning "Sending authentication token over unencrypted HTTP connection. Consider using HTTPS."
+        }
     }
 
     $apiQueryParameters = @{
