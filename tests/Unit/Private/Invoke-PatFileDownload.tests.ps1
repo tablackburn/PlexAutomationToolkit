@@ -174,6 +174,66 @@ Describe 'Invoke-PatFileDownload' {
             $script:capturedHeaders | Should -Not -BeNullOrEmpty
             $script:capturedHeaders['Range'] | Should -Be 'bytes=3-'
         }
+
+        It 'Starts fresh when existing file is larger than expected' {
+            $outFile = Join-Path -Path $script:TestDir -ChildPath 'toolarge.txt'
+            $largeContent = [byte[]](1, 2, 3, 4, 5, 6, 7, 8, 9, 10)  # 10 bytes
+            [System.IO.File]::WriteAllBytes($outFile, $largeContent)
+
+            $capturedHeaders = $null
+            Mock -ModuleName PlexAutomationToolkit Invoke-WebRequest {
+                param($Uri, $OutFile, $Headers, $UseBasicParsing, $ErrorAction)
+                $script:capturedHeaders = $Headers
+                if ($OutFile) {
+                    [System.IO.File]::WriteAllBytes($OutFile, [byte[]](1, 2, 3, 4, 5))
+                }
+            }
+
+            $result = & $script:InvokePatFileDownload -Uri 'http://test/file' -OutFile $outFile -ExpectedSize 5 -Resume
+
+            $result.Length | Should -Be 5
+            # Should not have Range header when starting fresh
+            $script:capturedHeaders.ContainsKey('Range') | Should -Be $false
+        }
+
+        It 'Starts fresh when resuming without expected size' {
+            $outFile = Join-Path -Path $script:TestDir -ChildPath 'noexpected.txt'
+            $existingContent = [byte[]](1, 2, 3)  # Some existing content
+            [System.IO.File]::WriteAllBytes($outFile, $existingContent)
+
+            $capturedHeaders = $null
+            Mock -ModuleName PlexAutomationToolkit Invoke-WebRequest {
+                param($Uri, $OutFile, $Headers, $UseBasicParsing, $ErrorAction)
+                $script:capturedHeaders = $Headers
+                if ($OutFile) {
+                    [System.IO.File]::WriteAllBytes($OutFile, [byte[]](1, 2, 3, 4, 5))
+                }
+            }
+
+            # Resume without ExpectedSize - should start fresh
+            $result = & $script:InvokePatFileDownload -Uri 'http://test/file' -OutFile $outFile -Resume
+
+            $result.Length | Should -Be 5
+            # Should not have Range header when no expected size
+            $script:capturedHeaders.ContainsKey('Range') | Should -Be $false
+        }
+
+        It 'Preserves partial file on error when resuming' {
+            $outFile = Join-Path -Path $script:TestDir -ChildPath 'preserve-partial.txt'
+            $partialContent = [byte[]](1, 2, 3)
+            [System.IO.File]::WriteAllBytes($outFile, $partialContent)
+
+            Mock -ModuleName PlexAutomationToolkit Invoke-WebRequest {
+                throw "Connection reset"
+            }
+
+            { & $script:InvokePatFileDownload -Uri 'http://test/file' -OutFile $outFile -ExpectedSize 10 -Resume } |
+                Should -Throw
+
+            # File should still exist when Resume was set
+            Test-Path -Path $outFile | Should -Be $true
+            (Get-Item -Path $outFile).Length | Should -Be 3
+        }
     }
 
     Context 'Error handling' {
@@ -247,6 +307,98 @@ Describe 'Invoke-PatFileDownload' {
         It 'Throws on empty OutFile' {
             { & $script:InvokePatFileDownload -Uri 'http://test/file' -OutFile '' } |
                 Should -Throw
+        }
+    }
+
+    Context 'Authentication handling' {
+        It 'Includes X-Plex-Token header when Token is provided' {
+            $capturedHeaders = $null
+            Mock -ModuleName PlexAutomationToolkit Invoke-WebRequest {
+                param($Uri, $OutFile, $Headers, $UseBasicParsing, $ErrorAction)
+                $script:capturedHeaders = $Headers
+                if ($OutFile) {
+                    [System.IO.File]::WriteAllBytes($OutFile, [byte[]](1, 2, 3))
+                }
+            }
+
+            $outFile = Join-Path -Path $script:TestDir -ChildPath 'auth-test.txt'
+
+            & $script:InvokePatFileDownload -Uri 'http://test/file' -OutFile $outFile -Token 'my-secret-token'
+
+            $script:capturedHeaders | Should -Not -BeNullOrEmpty
+            $script:capturedHeaders['X-Plex-Token'] | Should -Be 'my-secret-token'
+        }
+
+        It 'Does not include X-Plex-Token header when Token is not provided' {
+            $capturedHeaders = $null
+            Mock -ModuleName PlexAutomationToolkit Invoke-WebRequest {
+                param($Uri, $OutFile, $Headers, $UseBasicParsing, $ErrorAction)
+                $script:capturedHeaders = $Headers
+                if ($OutFile) {
+                    [System.IO.File]::WriteAllBytes($OutFile, [byte[]](1, 2, 3))
+                }
+            }
+
+            $outFile = Join-Path -Path $script:TestDir -ChildPath 'no-auth-test.txt'
+
+            & $script:InvokePatFileDownload -Uri 'http://test/file' -OutFile $outFile
+
+            $script:capturedHeaders.ContainsKey('X-Plex-Token') | Should -Be $false
+        }
+    }
+
+    Context 'Path security validation' {
+        It 'Throws on path traversal with backslash ..' {
+            # Use raw string to avoid Join-Path normalizing the path
+            $outFile = "$($script:TestDir)\..\..\..\etc\passwd"
+
+            { & $script:InvokePatFileDownload -Uri 'http://test/file' -OutFile $outFile } |
+                Should -Throw "*invalid path traversal*"
+        }
+
+        It 'Throws on path traversal with forward slash ..' {
+            # Test forward slash variant to ensure regex catches both separators
+            $outFile = "$($script:TestDir)/../../../etc/passwd"
+
+            { & $script:InvokePatFileDownload -Uri 'http://test/file' -OutFile $outFile } |
+                Should -Throw "*invalid path traversal*"
+        }
+
+        It 'Throws on path with null character' {
+            # Use explicit char casting to ensure actual null byte
+            $outFile = Join-Path -Path $script:TestDir -ChildPath "file$([char]0)name.txt"
+
+            { & $script:InvokePatFileDownload -Uri 'http://test/file' -OutFile $outFile } |
+                Should -Throw "*invalid path traversal*"
+        }
+
+        It 'Throws on path with tab character' {
+            # Test tab (0x09) from the blocked control character range
+            $outFile = Join-Path -Path $script:TestDir -ChildPath "file$([char]9)name.txt"
+
+            { & $script:InvokePatFileDownload -Uri 'http://test/file' -OutFile $outFile } |
+                Should -Throw "*invalid path traversal*"
+        }
+
+        It 'Throws on path with newline character' {
+            # Test newline (0x0A) from the blocked control character range
+            $outFile = Join-Path -Path $script:TestDir -ChildPath "file$([char]10)name.txt"
+
+            { & $script:InvokePatFileDownload -Uri 'http://test/file' -OutFile $outFile } |
+                Should -Throw "*invalid path traversal*"
+        }
+
+        It 'Throws on empty filename after path resolution' {
+            # Test that a path resolving to just a directory (empty filename) is rejected
+            # The trailing slash/backslash results in an empty filename component
+            $outFile = if ($IsWindows -or $env:OS -match 'Windows') {
+                "$($script:TestDir)\"
+            } else {
+                "$($script:TestDir)/"
+            }
+
+            { & $script:InvokePatFileDownload -Uri 'http://test/file' -OutFile $outFile } |
+                Should -Throw "*invalid filename*"
         }
     }
 
