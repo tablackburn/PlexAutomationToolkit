@@ -260,9 +260,10 @@ function Invoke-PatFileDownload {
                         $bytesPerSecond = if ($elapsedSeconds -gt 0) { $totalBytesRead / $elapsedSeconds } else { 0 }
                         $speedDisplay = Format-ByteSize -Bytes ([long]$bytesPerSecond)
 
-                        # Estimate remaining time
-                        $remainingBytes = $totalSize - $totalBytesRead
-                        $secondsRemaining = if ($bytesPerSecond -gt 0) { [int]($remainingBytes / $bytesPerSecond) } else { -1 }
+                        # Estimate remaining time (use -1 for unknown when totalSize is 0 or speed is 0)
+                        $secondsRemaining = if ($totalSize -gt 0 -and $bytesPerSecond -gt 0) {
+                            [int](($totalSize - $totalBytesRead) / $bytesPerSecond)
+                        } else { -1 }
 
                         $statusMessage = "$(Format-ByteSize $totalBytesRead) / $(Format-ByteSize $totalSize) @ $speedDisplay/s"
 
