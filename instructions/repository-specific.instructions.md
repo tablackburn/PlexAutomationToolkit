@@ -203,7 +203,7 @@ Integration tests verify PlexAutomationToolkit against a real Plex server. They 
 
 - `PLEX_SERVER_URI` - Plex server URI (e.g., `http://192.168.1.100:32400`)
 - `PLEX_TOKEN` - Plex authentication token (obtain via `Get-PatToken`)
-- `PLEX_ALLOW_MUTATIONS` - Set to `'true'` for mutation tests
+- `PLEX_ALLOW_LIBRARY_REFRESH` - Set to `'true'` for library refresh tests (optional)
 
 **Setup:**
 
@@ -226,10 +226,11 @@ Integration tests verify PlexAutomationToolkit against a real Plex server. They 
 - Uses temporary test entries with "IntegrationTest-" prefix
 - Always cleans up in `AfterAll` blocks
 
-**Mutation Tests** (require `PLEX_ALLOW_MUTATIONS = 'true'`):
+**Library Refresh Tests** (require `PLEX_ALLOW_LIBRARY_REFRESH = 'true'`):
 
 - Library refresh operations (`Update-PatLibrary`)
-- Triggers Plex server to scan for new content
+- Triggers Plex server background scan tasks that cannot be undone
+- Other mutation tests (collections, playlists, media sync) run by default since they clean up after themselves
 
 ### Integration Test Implementation Pattern
 
@@ -257,7 +258,7 @@ GitHub Actions automatically runs integration tests when these secrets are confi
 
 - `PLEX_SERVER_URI`
 - `PLEX_TOKEN`
-- `PLEX_ALLOW_MUTATIONS` (optional)
+- `PLEX_ALLOW_LIBRARY_REFRESH` (optional, enables library refresh tests)
 
 If secrets are not set, integration tests are automatically skipped (not failed).
 
