@@ -312,7 +312,12 @@ Describe 'Invoke-PatApi' {
             }
         }
 
-        It 'Should warn when using HTTP with X-Plex-Token' {
+        BeforeEach {
+            # Reset the warning flag before each test to ensure isolated test behavior
+            $script:HttpWarningShown = $false
+        }
+
+        It 'Should warn when using HTTP with X-Plex-Token on first call' {
             $headers = @{
                 'Accept' = 'application/json'
                 'X-Plex-Token' = 'test-token'
@@ -322,6 +327,28 @@ Describe 'Invoke-PatApi' {
             $null = Invoke-PatApi -Uri 'http://localhost:32400/test' -Headers $headers -WarningVariable warnings 3>$null
 
             $warnings | Should -Match 'unencrypted HTTP'
+        }
+
+        It 'Should only warn once per session (not on subsequent calls)' {
+            $headers = @{
+                'Accept' = 'application/json'
+                'X-Plex-Token' = 'test-token'
+            }
+
+            # First call - should warn
+            $warnings1 = @()
+            $null = Invoke-PatApi -Uri 'http://localhost:32400/test' -Headers $headers -WarningVariable warnings1 3>$null
+            $warnings1 | Should -Match 'unencrypted HTTP'
+
+            # Second call - should NOT warn again
+            $warnings2 = @()
+            $null = Invoke-PatApi -Uri 'http://localhost:32400/test2' -Headers $headers -WarningVariable warnings2 3>$null
+            $warnings2 | Should -BeNullOrEmpty
+
+            # Third call - should still NOT warn
+            $warnings3 = @()
+            $null = Invoke-PatApi -Uri 'http://localhost:32400/test3' -Headers $headers -WarningVariable warnings3 3>$null
+            $warnings3 | Should -BeNullOrEmpty
         }
 
         It 'Should not warn when using HTTPS with token' {
