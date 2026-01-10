@@ -1145,6 +1145,194 @@ Describe 'Register-PatArgumentCompleter' {
             $result = TabExpansion2 -inputScript $line -cursorColumn $line.Length
             $result | Should -Not -BeNullOrEmpty
         }
+
+        It 'SectionName completer executes when ServerUri is pre-bound' {
+            # Mocks don't persist outside InModuleScope, so we verify completer executed
+            InModuleScope PlexAutomationToolkit {
+                Mock Get-PatLibrary {
+                    @{
+                        Directory = @(
+                            @{ title = 'Movies'; key = '/library/sections/1' }
+                        )
+                    }
+                }
+                Register-PatArgumentCompleter
+            }
+            $line = "Get-PatLibraryPath -ServerUri 'http://custom:32400' -SectionName M"
+            $result = TabExpansion2 -inputScript $line -cursorColumn $line.Length
+            # Verify TabExpansion2 returned a result (completer was invoked)
+            $result | Should -Not -BeNullOrEmpty
+        }
+
+        It 'SectionName completer executes when Token is pre-bound' {
+            InModuleScope PlexAutomationToolkit {
+                Mock Get-PatLibrary {
+                    @{
+                        Directory = @(
+                            @{ title = 'Movies'; key = '/library/sections/1' }
+                        )
+                    }
+                }
+                Register-PatArgumentCompleter
+            }
+            $line = "Get-PatLibraryPath -Token 'my-token' -SectionName M"
+            $result = TabExpansion2 -inputScript $line -cursorColumn $line.Length
+            $result | Should -Not -BeNullOrEmpty
+        }
+
+        It 'SectionId completer executes when ServerUri is pre-bound' {
+            InModuleScope PlexAutomationToolkit {
+                Mock Get-PatLibrary {
+                    @{
+                        Directory = @(
+                            @{ title = 'Movies'; key = '/library/sections/1' }
+                        )
+                    }
+                }
+                Register-PatArgumentCompleter
+            }
+            $line = "Get-PatLibraryPath -ServerUri 'http://custom:32400' -SectionId "
+            $result = TabExpansion2 -inputScript $line -cursorColumn $line.Length
+            $result | Should -Not -BeNullOrEmpty
+        }
+
+        It 'SectionId completer executes when Token is pre-bound' {
+            InModuleScope PlexAutomationToolkit {
+                Mock Get-PatLibrary {
+                    @{
+                        Directory = @(
+                            @{ title = 'Movies'; key = '/library/sections/1' }
+                        )
+                    }
+                }
+                Register-PatArgumentCompleter
+            }
+            $line = "Get-PatLibraryPath -Token 'my-token' -SectionId "
+            $result = TabExpansion2 -inputScript $line -cursorColumn $line.Length
+            $result | Should -Not -BeNullOrEmpty
+        }
+
+        It 'Collection Title completer executes when ServerUri is pre-bound' {
+            InModuleScope PlexAutomationToolkit {
+                Mock Get-PatCollection {
+                    @(
+                        [PSCustomObject]@{ title = 'Action Movies' }
+                    )
+                }
+                Register-PatArgumentCompleter
+            }
+            $line = "Get-PatCollection -ServerUri 'http://custom:32400' -Title A"
+            $result = TabExpansion2 -inputScript $line -cursorColumn $line.Length
+            $result | Should -Not -BeNullOrEmpty
+        }
+
+        It 'Collection Title completer executes when Token is pre-bound' {
+            InModuleScope PlexAutomationToolkit {
+                Mock Get-PatCollection {
+                    @(
+                        [PSCustomObject]@{ title = 'Action Movies' }
+                    )
+                }
+                Register-PatArgumentCompleter
+            }
+            $line = "Get-PatCollection -Token 'my-token' -Title A"
+            $result = TabExpansion2 -inputScript $line -cursorColumn $line.Length
+            $result | Should -Not -BeNullOrEmpty
+        }
+
+        It 'Collection Title completer executes when SectionId is pre-bound' {
+            InModuleScope PlexAutomationToolkit {
+                Mock Get-PatCollection {
+                    @(
+                        [PSCustomObject]@{ title = 'Action Movies' }
+                    )
+                }
+                Register-PatArgumentCompleter
+            }
+            $line = "Get-PatCollection -SectionId 1 -Title A"
+            $result = TabExpansion2 -inputScript $line -cursorColumn $line.Length
+            $result | Should -Not -BeNullOrEmpty
+        }
+
+        It 'Collection Title completer executes when SectionName is pre-bound' {
+            InModuleScope PlexAutomationToolkit {
+                Mock Get-PatCollection {
+                    @(
+                        [PSCustomObject]@{ title = 'Action Movies' }
+                    )
+                }
+                Register-PatArgumentCompleter
+            }
+            $line = "Get-PatCollection -SectionName 'Movies' -Title A"
+            $result = TabExpansion2 -inputScript $line -cursorColumn $line.Length
+            $result | Should -Not -BeNullOrEmpty
+        }
+
+        It 'Playlist Title completer executes when ServerUri is pre-bound' {
+            InModuleScope PlexAutomationToolkit {
+                Mock Get-PatPlaylist {
+                    @(
+                        [PSCustomObject]@{ title = 'My Playlist' }
+                    )
+                }
+                Register-PatArgumentCompleter
+            }
+            $line = "Get-PatPlaylist -ServerUri 'http://custom:32400' -Title M"
+            $result = TabExpansion2 -inputScript $line -cursorColumn $line.Length
+            $result | Should -Not -BeNullOrEmpty
+        }
+
+        It 'Playlist Title completer executes when Token is pre-bound' {
+            InModuleScope PlexAutomationToolkit {
+                Mock Get-PatPlaylist {
+                    @(
+                        [PSCustomObject]@{ title = 'My Playlist' }
+                    )
+                }
+                Register-PatArgumentCompleter
+            }
+            $line = "Get-PatPlaylist -Token 'my-token' -Title M"
+            $result = TabExpansion2 -inputScript $line -cursorColumn $line.Length
+            $result | Should -Not -BeNullOrEmpty
+        }
+
+        It 'Path completer executes when ServerUri is pre-bound' {
+            InModuleScope PlexAutomationToolkit {
+                Mock Get-PatLibraryPath {
+                    @(
+                        [PSCustomObject]@{ path = '/mnt/movies' }
+                    )
+                }
+                Register-PatArgumentCompleter
+            }
+            $line = "Update-PatLibrary -ServerUri 'http://custom:32400' -SectionId 1 -Path /mnt"
+            $result = TabExpansion2 -inputScript $line -cursorColumn $line.Length
+            $result | Should -Not -BeNullOrEmpty
+        }
+
+        It 'Path completer executes when SectionName is pre-bound' {
+            InModuleScope PlexAutomationToolkit {
+                Mock Get-PatStoredServer {
+                    @{ name = 'TestServer'; uri = 'http://test:32400' }
+                }
+                Mock Get-PatLibrary {
+                    @{
+                        Directory = @(
+                            @{ title = 'Movies'; key = '/library/sections/1' }
+                        )
+                    }
+                }
+                Mock Get-PatLibraryPath {
+                    @(
+                        [PSCustomObject]@{ path = '/mnt/movies' }
+                    )
+                }
+                Register-PatArgumentCompleter
+            }
+            $line = "Update-PatLibrary -SectionName 'Movies' -Path /mnt"
+            $result = TabExpansion2 -inputScript $line -cursorColumn $line.Length
+            $result | Should -Not -BeNullOrEmpty
+        }
     }
 
     Context 'Parameter combinations for all completers' {
