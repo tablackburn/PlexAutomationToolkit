@@ -375,6 +375,42 @@ Describe 'Get-PatMediaSubtitle' {
 
             Should -Invoke -CommandName Invoke-PatFileDownload -ModuleName PlexAutomationToolkit -Times 0
         }
+
+        It 'Handles empty Media array gracefully' {
+            Mock -ModuleName PlexAutomationToolkit Get-PatMediaInfo {
+                return [PSCustomObject]@{
+                    RatingKey = 1001
+                    Media     = @()
+                }
+            }
+
+            $mediaPath = Join-Path -Path $script:TestDir -ChildPath 'Movie.mkv'
+
+            { & $script:GetPatMediaSubtitle -RatingKey 1001 -MediaDestinationPath $mediaPath `
+                -ServerUri 'http://plex:32400' } | Should -Not -Throw
+
+            Should -Invoke -CommandName Invoke-PatFileDownload -ModuleName PlexAutomationToolkit -Times 0
+        }
+
+        It 'Handles empty Part array gracefully' {
+            Mock -ModuleName PlexAutomationToolkit Get-PatMediaInfo {
+                return [PSCustomObject]@{
+                    RatingKey = 1001
+                    Media     = @(
+                        [PSCustomObject]@{
+                            Part = @()
+                        }
+                    )
+                }
+            }
+
+            $mediaPath = Join-Path -Path $script:TestDir -ChildPath 'Movie.mkv'
+
+            { & $script:GetPatMediaSubtitle -RatingKey 1001 -MediaDestinationPath $mediaPath `
+                -ServerUri 'http://plex:32400' } | Should -Not -Throw
+
+            Should -Invoke -CommandName Invoke-PatFileDownload -ModuleName PlexAutomationToolkit -Times 0
+        }
     }
 
     Context 'Error handling' {

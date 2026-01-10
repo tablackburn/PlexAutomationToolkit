@@ -418,6 +418,31 @@ Describe 'Remove-PatWatchedPlaylistItem' {
                 $ServerName -eq 'HomeServer' -and -not $ServerUri
             }
         }
+
+        It 'Passes ServerName to Remove-PatPlaylistItem' {
+            $watchDiffs = @(
+                [PSCustomObject]@{ Title = 'Movie'; TargetRatingKey = 1001 }
+            )
+
+            & $script:RemovePatWatchedPlaylistItem -WatchDiff $watchDiffs -PlaylistName 'Travel' -ServerName 'HomeServer'
+
+            Should -Invoke -CommandName Remove-PatPlaylistItem -ModuleName PlexAutomationToolkit -ParameterFilter {
+                $ServerName -eq 'HomeServer'
+            }
+        }
+
+        It 'Passes ServerUri and Token to Remove-PatPlaylistItem' {
+            $watchDiffs = @(
+                [PSCustomObject]@{ Title = 'Movie'; TargetRatingKey = 1001 }
+            )
+
+            & $script:RemovePatWatchedPlaylistItem -WatchDiff $watchDiffs -PlaylistName 'Travel' `
+                -ServerUri 'http://plex:32400' -Token 'test-token'
+
+            Should -Invoke -CommandName Remove-PatPlaylistItem -ModuleName PlexAutomationToolkit -ParameterFilter {
+                $ServerUri -eq 'http://plex:32400' -and $Token -eq 'test-token'
+            }
+        }
     }
 
     Context 'Episode handling' {

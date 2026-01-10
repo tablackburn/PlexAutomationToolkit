@@ -98,8 +98,13 @@ function Get-PatMediaSubtitle {
             return
         }
 
-        # Check if media has parts with streams
-        if (-not $mediaInformation.Media -or -not $mediaInformation.Media[0].Part) {
+        # Check if media has parts with streams (with explicit bounds checks)
+        if (-not $mediaInformation.Media -or $mediaInformation.Media.Count -eq 0) {
+            Write-Verbose "No media found for RatingKey $RatingKey"
+            return
+        }
+
+        if (-not $mediaInformation.Media[0].Part -or $mediaInformation.Media[0].Part.Count -eq 0) {
             Write-Verbose "No media parts found for RatingKey $RatingKey"
             return
         }

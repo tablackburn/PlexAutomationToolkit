@@ -151,6 +151,96 @@ Describe 'Format-PatMediaItemName' {
         }
     }
 
+    Context 'Null property handling' {
+        It 'Handles null Title for movies' {
+            $movie = [PSCustomObject]@{
+                Type  = 'movie'
+                Title = $null
+                Year  = 2020
+            }
+
+            $result = & $script:FormatPatMediaItemName -Item $movie
+
+            $result | Should -Be 'Unknown (2020)'
+        }
+
+        It 'Handles null Year for movies' {
+            $movie = [PSCustomObject]@{
+                Type  = 'movie'
+                Title = 'Test Movie'
+                Year  = $null
+            }
+
+            $result = & $script:FormatPatMediaItemName -Item $movie
+
+            $result | Should -Be 'Test Movie (?)'
+        }
+
+        It 'Handles null GrandparentTitle for episodes' {
+            $episode = [PSCustomObject]@{
+                Type             = 'episode'
+                GrandparentTitle = $null
+                ParentIndex      = 1
+                Index            = 5
+            }
+
+            $result = & $script:FormatPatMediaItemName -Item $episode
+
+            $result | Should -Be 'Unknown Show - S01E05'
+        }
+
+        It 'Handles null ParentIndex for episodes' {
+            $episode = [PSCustomObject]@{
+                Type             = 'episode'
+                GrandparentTitle = 'Test Show'
+                ParentIndex      = $null
+                Index            = 5
+            }
+
+            $result = & $script:FormatPatMediaItemName -Item $episode
+
+            $result | Should -Be 'Test Show - S00E05'
+        }
+
+        It 'Handles null Index for episodes' {
+            $episode = [PSCustomObject]@{
+                Type             = 'episode'
+                GrandparentTitle = 'Test Show'
+                ParentIndex      = 1
+                Index            = $null
+            }
+
+            $result = & $script:FormatPatMediaItemName -Item $episode
+
+            $result | Should -Be 'Test Show - S01E00'
+        }
+
+        It 'Handles all null properties for movie' {
+            $movie = [PSCustomObject]@{
+                Type  = 'movie'
+                Title = $null
+                Year  = $null
+            }
+
+            $result = & $script:FormatPatMediaItemName -Item $movie
+
+            $result | Should -Be 'Unknown (?)'
+        }
+
+        It 'Handles all null properties for episode' {
+            $episode = [PSCustomObject]@{
+                Type             = 'episode'
+                GrandparentTitle = $null
+                ParentIndex      = $null
+                Index            = $null
+            }
+
+            $result = & $script:FormatPatMediaItemName -Item $episode
+
+            $result | Should -Be 'Unknown Show - S00E00'
+        }
+    }
+
     Context 'Pipeline support' {
         It 'Accepts pipeline input' {
             $movie = [PSCustomObject]@{

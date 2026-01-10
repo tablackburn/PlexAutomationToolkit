@@ -129,14 +129,14 @@ function Remove-PatWatchedPlaylistItem {
 
         # Find watched items that are in the playlist
         # Use TargetRatingKey which corresponds to the source (home) server's keys
-        $itemsToRemove = @()
+        $itemsToRemove = [System.Collections.Generic.List[hashtable]]::new()
         foreach ($diff in $WatchDiff) {
             $key = [string]$diff.TargetRatingKey
             if ($ratingKeyToItem.ContainsKey($key)) {
-                $itemsToRemove += @{
+                $itemsToRemove.Add(@{
                     PlaylistItem = $ratingKeyToItem[$key]
                     WatchDiff    = $diff
-                }
+                })
             }
         }
 
@@ -164,10 +164,22 @@ function Remove-PatWatchedPlaylistItem {
                 -Id 1
 
             try {
-                Remove-PatPlaylistItem -PlaylistId $playlist.PlaylistId `
-                    -PlaylistItemId $playlistItem.PlaylistItemId `
-                    -Confirm:$false `
-                    -ErrorAction Stop
+                $removeParams = @{
+                    PlaylistId     = $playlist.PlaylistId
+                    PlaylistItemId = $playlistItem.PlaylistItemId
+                    Confirm        = $false
+                    ErrorAction    = 'Stop'
+                }
+                if ($ServerName) {
+                    $removeParams['ServerName'] = $ServerName
+                }
+                elseif ($ServerUri) {
+                    $removeParams['ServerUri'] = $ServerUri
+                    if ($Token) {
+                        $removeParams['Token'] = $Token
+                    }
+                }
+                Remove-PatPlaylistItem @removeParams
 
                 $removedCount++
                 Write-Verbose "Removed '$itemDisplay' from playlist"

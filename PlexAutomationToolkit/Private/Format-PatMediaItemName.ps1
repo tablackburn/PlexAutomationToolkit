@@ -43,10 +43,15 @@ function Format-PatMediaItemName {
 
     process {
         if ($Item.Type -eq 'episode') {
-            "$($Item.GrandparentTitle) - S$($Item.ParentIndex.ToString('D2'))E$($Item.Index.ToString('D2'))"
+            $show = if ($Item.GrandparentTitle) { $Item.GrandparentTitle } else { 'Unknown Show' }
+            $season = if ($null -ne $Item.ParentIndex) { $Item.ParentIndex.ToString('D2') } else { '00' }
+            $episode = if ($null -ne $Item.Index) { $Item.Index.ToString('D2') } else { '00' }
+            "$show - S${season}E${episode}"
         }
         else {
-            "$($Item.Title) ($($Item.Year))"
+            $title = if ($Item.Title) { $Item.Title } else { 'Unknown' }
+            $year = if ($Item.Year) { $Item.Year } else { '?' }
+            "$title ($year)"
         }
     }
 }

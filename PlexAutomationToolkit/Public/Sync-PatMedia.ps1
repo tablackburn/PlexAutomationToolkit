@@ -357,7 +357,7 @@ function Sync-PatMedia {
                         # Remove watched items from playlist if requested
                         if ($RemoveWatched) {
                             $removeServerSplat = Build-PatServerSplat -WasExplicitUri $script:serverContext.WasExplicitUri `
-                                -ServerUri $ServerUri -Token $effectiveToken -ServerName $ServerName
+                                -ServerUri $ServerUri -Token $Token -ServerName $ServerName
                             $removeParams = @{
                                 WatchDiff = $watchDiffs
                             } + $removeServerSplat
