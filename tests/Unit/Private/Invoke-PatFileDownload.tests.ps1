@@ -180,10 +180,10 @@ Describe 'Invoke-PatFileDownload' {
             $largeContent = [byte[]](1, 2, 3, 4, 5, 6, 7, 8, 9, 10)  # 10 bytes
             [System.IO.File]::WriteAllBytes($outFile, $largeContent)
 
+            $capturedHeaders = $null
             Mock -ModuleName PlexAutomationToolkit Invoke-WebRequest {
                 param($Uri, $OutFile, $Headers, $UseBasicParsing, $ErrorAction)
-                # Should not have Range header when starting fresh
-                $Headers.ContainsKey('Range') | Should -Be $false
+                $script:capturedHeaders = $Headers
                 if ($OutFile) {
                     [System.IO.File]::WriteAllBytes($OutFile, [byte[]](1, 2, 3, 4, 5))
                 }
@@ -192,6 +192,8 @@ Describe 'Invoke-PatFileDownload' {
             $result = & $script:InvokePatFileDownload -Uri 'http://test/file' -OutFile $outFile -ExpectedSize 5 -Resume
 
             $result.Length | Should -Be 5
+            # Should not have Range header when starting fresh
+            $script:capturedHeaders.ContainsKey('Range') | Should -Be $false
         }
 
         It 'Starts fresh when resuming without expected size' {
@@ -199,10 +201,10 @@ Describe 'Invoke-PatFileDownload' {
             $existingContent = [byte[]](1, 2, 3)  # Some existing content
             [System.IO.File]::WriteAllBytes($outFile, $existingContent)
 
+            $capturedHeaders = $null
             Mock -ModuleName PlexAutomationToolkit Invoke-WebRequest {
                 param($Uri, $OutFile, $Headers, $UseBasicParsing, $ErrorAction)
-                # Should not have Range header when no expected size
-                $Headers.ContainsKey('Range') | Should -Be $false
+                $script:capturedHeaders = $Headers
                 if ($OutFile) {
                     [System.IO.File]::WriteAllBytes($OutFile, [byte[]](1, 2, 3, 4, 5))
                 }
@@ -212,6 +214,8 @@ Describe 'Invoke-PatFileDownload' {
             $result = & $script:InvokePatFileDownload -Uri 'http://test/file' -OutFile $outFile -Resume
 
             $result.Length | Should -Be 5
+            # Should not have Range header when no expected size
+            $script:capturedHeaders.ContainsKey('Range') | Should -Be $false
         }
 
         It 'Preserves partial file on error when resuming' {
@@ -344,15 +348,41 @@ Describe 'Invoke-PatFileDownload' {
     }
 
     Context 'Path security validation' {
-        It 'Throws on path traversal with ..' {
-            $outFile = Join-Path -Path $script:TestDir -ChildPath '..\..\..\etc\passwd'
+        It 'Throws on path traversal with backslash ..' {
+            # Use raw string to avoid Join-Path normalizing the path
+            $outFile = "$($script:TestDir)\..\..\..\etc\passwd"
 
             { & $script:InvokePatFileDownload -Uri 'http://test/file' -OutFile $outFile } |
                 Should -Throw "*invalid path traversal*"
         }
 
-        It 'Throws on path with control characters' {
-            $outFile = Join-Path -Path $script:TestDir -ChildPath "file`0name.txt"
+        It 'Throws on path traversal with forward slash ..' {
+            # Test forward slash variant to ensure regex catches both separators
+            $outFile = "$($script:TestDir)/../../../etc/passwd"
+
+            { & $script:InvokePatFileDownload -Uri 'http://test/file' -OutFile $outFile } |
+                Should -Throw "*invalid path traversal*"
+        }
+
+        It 'Throws on path with null character' {
+            # Use explicit char casting to ensure actual null byte
+            $outFile = Join-Path -Path $script:TestDir -ChildPath "file$([char]0)name.txt"
+
+            { & $script:InvokePatFileDownload -Uri 'http://test/file' -OutFile $outFile } |
+                Should -Throw "*invalid path traversal*"
+        }
+
+        It 'Throws on path with tab character' {
+            # Test tab (0x09) from the blocked control character range
+            $outFile = Join-Path -Path $script:TestDir -ChildPath "file$([char]9)name.txt"
+
+            { & $script:InvokePatFileDownload -Uri 'http://test/file' -OutFile $outFile } |
+                Should -Throw "*invalid path traversal*"
+        }
+
+        It 'Throws on path with newline character' {
+            # Test newline (0x0A) from the blocked control character range
+            $outFile = Join-Path -Path $script:TestDir -ChildPath "file$([char]10)name.txt"
 
             { & $script:InvokePatFileDownload -Uri 'http://test/file' -OutFile $outFile } |
                 Should -Throw "*invalid path traversal*"
@@ -368,7 +398,7 @@ Describe 'Invoke-PatFileDownload' {
             }
 
             { & $script:InvokePatFileDownload -Uri 'http://test/file' -OutFile $outFile } |
-                Should -Throw "*invalid*"
+                Should -Throw "*invalid filename*"
         }
     }
 
