@@ -172,17 +172,12 @@ function Sync-PatMedia {
     process {
         try {
             # Get the sync plan - build parameters based on server context
+            $serverSplat = Build-PatServerSplat -WasExplicitUri $script:serverContext.WasExplicitUri `
+                -ServerUri $ServerUri -Token $Token -ServerName $ServerName
             $syncPlanParameters = @{
                 Destination = $Destination
                 ErrorAction = 'Stop'
-            }
-            if ($script:serverContext.WasExplicitUri) {
-                $syncPlanParameters['ServerUri'] = $ServerUri
-                if ($Token) { $syncPlanParameters['Token'] = $Token }
-            }
-            elseif ($ServerName) {
-                $syncPlanParameters['ServerName'] = $ServerName
-            }
+            } + $serverSplat
             if ($PlaylistId) {
                 $syncPlanParameters['PlaylistId'] = $PlaylistId
             }
@@ -222,13 +217,6 @@ function Sync-PatMedia {
             if (-not $SkipRemoval -and $syncPlan.RemoveOperations.Count -gt 0) {
                 Write-Verbose "Removing $($syncPlan.RemoveOperations.Count) items..."
 
-                # Resolve destination to absolute path for validation
-                $resolvedDestination = [System.IO.Path]::GetFullPath($Destination)
-                # Ensure destination path ends with separator for proper prefix matching
-                if (-not $resolvedDestination.EndsWith([System.IO.Path]::DirectorySeparatorChar)) {
-                    $resolvedDestination += [System.IO.Path]::DirectorySeparatorChar
-                }
-
                 $removeCount = 0
                 foreach ($removeOp in $syncPlan.RemoveOperations) {
                     $removeCount++
@@ -240,41 +228,7 @@ function Sync-PatMedia {
                         -CurrentOperation $removeOp.Path `
                         -Id 1
 
-                    # Security: Validate file is within destination directory before deletion
-                    $resolvedRemovePath = [System.IO.Path]::GetFullPath($removeOp.Path)
-                    if (-not $resolvedRemovePath.StartsWith($resolvedDestination, [System.StringComparison]::OrdinalIgnoreCase)) {
-                        Write-Warning "Skipping removal of '$($removeOp.Path)' - path is outside destination directory"
-                        continue
-                    }
-
-                    Write-Verbose "Removing: $($removeOp.Path)"
-                    Remove-Item -Path $resolvedRemovePath -Force -ErrorAction SilentlyContinue
-
-                    # Try to remove empty parent directories (but stay within destination)
-                    $parent = Split-Path -Path $resolvedRemovePath -Parent
-                    $maxIterations = 100  # Prevent infinite loop
-                    $iterations = 0
-                    while ($parent -and (Test-Path -Path $parent) -and $iterations -lt $maxIterations) {
-                        $iterations++
-                        # Stop if we've reached the destination root
-                        $resolvedParent = [System.IO.Path]::GetFullPath($parent)
-                        if (-not $resolvedParent.StartsWith($resolvedDestination, [System.StringComparison]::OrdinalIgnoreCase)) {
-                            break
-                        }
-                        $items = Get-ChildItem -Path $parent -Force -ErrorAction SilentlyContinue
-                        if (-not $items) {
-                            Remove-Item -Path $parent -Force -ErrorAction SilentlyContinue
-                            $newParent = Split-Path -Path $parent -Parent
-                            # Ensure we're actually moving up
-                            if ($newParent -eq $parent) {
-                                break
-                            }
-                            $parent = $newParent
-                        }
-                        else {
-                            break
-                        }
-                    }
+                    Remove-PatSyncedFile -FilePath $removeOp.Path -Destination $Destination
                 }
 
                 Write-Progress -Activity "Removing old files" -Completed -Id 1
@@ -306,12 +260,7 @@ function Sync-PatMedia {
                     $downloadCount++
                     $overallPercent = [int](($downloadedBytes / $totalBytes) * 100)
 
-                    $itemDisplay = if ($addOp.Type -eq 'episode') {
-                        "$($addOp.GrandparentTitle) - S$($addOp.ParentIndex.ToString('D2'))E$($addOp.Index.ToString('D2'))"
-                    }
-                    else {
-                        "$($addOp.Title) ($($addOp.Year))"
-                    }
+                    $itemDisplay = Format-PatMediaItemName -Item $addOp
 
                     Write-Progress -Activity "Syncing media" `
                         -Status "Downloading $downloadCount of $($syncPlan.AddOperations.Count): $itemDisplay" `
@@ -341,53 +290,19 @@ function Sync-PatMedia {
 
                         # Download subtitles if requested
                         if (-not $SkipSubtitles -and $addOp.SubtitleCount -gt 0) {
-                            # Get full media info to get subtitle streams
-                            $mediaInformationParameters = @{
-                                RatingKey   = $addOp.RatingKey
-                                ErrorAction = 'Stop'
+                            $subtitleParameters = @{
+                                RatingKey            = $addOp.RatingKey
+                                MediaDestinationPath = $addOp.DestinationPath
+                                ServerUri            = $effectiveUri
+                                ItemDisplayName      = $itemDisplay
                             }
-                            if ($script:serverContext.WasExplicitUri) {
-                                $mediaInformationParameters['ServerUri'] = $ServerUri
-                                if ($effectiveToken) { $mediaInformationParameters['Token'] = $effectiveToken }
+                            if ($effectiveToken) {
+                                $subtitleParameters['Token'] = $effectiveToken
                             }
-                            elseif ($ServerName) {
-                                $mediaInformationParameters['ServerName'] = $ServerName
+                            if ($ServerName) {
+                                $subtitleParameters['ServerName'] = $ServerName
                             }
-
-                            $mediaInformation = Get-PatMediaInfo @mediaInformationParameters
-
-                            if ($mediaInformation.Media -and $mediaInformation.Media[0].Part) {
-                                $subtitleStreams = $mediaInformation.Media[0].Part[0].Streams |
-                                    Where-Object { $_.StreamType -eq 3 -and $_.External -and $_.Key }
-
-                                foreach ($sub in $subtitleStreams) {
-                                    $lang = if ($sub.LanguageCode) { $sub.LanguageCode } else { 'und' }
-                                    $format = if ($sub.Format) { $sub.Format } else { 'srt' }
-
-                                    $basePath = [System.IO.Path]::ChangeExtension($addOp.DestinationPath, $null).TrimEnd('.')
-                                    $subPath = "$basePath.$lang.$format"
-
-                                    # Token passed via header, not URL for security
-                                    $subUrl = "$effectiveUri$($sub.Key)?download=1"
-
-                                    Write-Verbose "Downloading subtitle: $subPath"
-
-                                    try {
-                                        $subtitleDownloadParameters = @{
-                                            Uri         = $subUrl
-                                            OutFile     = $subPath
-                                            ErrorAction = 'Stop'
-                                        }
-                                        if ($effectiveToken) {
-                                            $subtitleDownloadParameters['Token'] = $effectiveToken
-                                        }
-                                        Invoke-PatFileDownload @subtitleDownloadParameters | Out-Null
-                                    }
-                                    catch {
-                                        Write-Warning "Failed to download subtitle for '$itemDisplay': $($_.Exception.Message)"
-                                    }
-                                }
-                            }
+                            Get-PatMediaSubtitle @subtitleParameters
                         }
 
                         $downloadedBytes += $addOp.MediaSize
@@ -441,91 +356,19 @@ function Sync-PatMedia {
 
                         # Remove watched items from playlist if requested
                         if ($RemoveWatched) {
-                            # Get playlist with items to map RatingKey to PlaylistItemId
-                            $getPlaylistParameters = @{
-                                IncludeItems = $true
-                                ErrorAction  = 'Stop'
-                            }
+                            $removeServerSplat = Build-PatServerSplat -WasExplicitUri $script:serverContext.WasExplicitUri `
+                                -ServerUri $ServerUri -Token $Token -ServerName $ServerName
+                            $removeParams = @{
+                                WatchDiff = $watchDiffs
+                            } + $removeServerSplat
                             if ($PlaylistId) {
-                                $getPlaylistParameters['PlaylistId'] = $PlaylistId
+                                $removeParams['PlaylistId'] = $PlaylistId
                             }
                             else {
-                                $getPlaylistParameters['PlaylistName'] = $PlaylistName
-                            }
-                            if ($script:serverContext.WasExplicitUri) {
-                                $getPlaylistParameters['ServerUri'] = $ServerUri
-                                if ($effectiveToken) { $getPlaylistParameters['Token'] = $effectiveToken }
-                            }
-                            elseif ($ServerName) {
-                                $getPlaylistParameters['ServerName'] = $ServerName
+                                $removeParams['PlaylistName'] = $PlaylistName
                             }
 
-                            $playlist = Get-PatPlaylist @getPlaylistParameters
-
-                            # Build lookup from RatingKey to PlaylistItem
-                            $ratingKeyToItem = @{}
-                            foreach ($item in $playlist.Items) {
-                                $ratingKeyToItem[[string]$item.RatingKey] = $item
-                            }
-
-                            # Find watched items that are in the playlist
-                            # Use TargetRatingKey which corresponds to the source (home) server's keys
-                            $itemsToRemove = @()
-                            foreach ($diff in $watchDiffs) {
-                                $key = [string]$diff.TargetRatingKey
-                                if ($ratingKeyToItem.ContainsKey($key)) {
-                                    $itemsToRemove += @{
-                                        PlaylistItem = $ratingKeyToItem[$key]
-                                        WatchDiff    = $diff
-                                    }
-                                }
-                            }
-
-                            if ($itemsToRemove.Count -gt 0) {
-                                $removeDescription = "$($itemsToRemove.Count) watched items from playlist '$($playlist.Title)'"
-
-                                if ($PSCmdlet.ShouldProcess($removeDescription, 'Remove')) {
-                                    $removedCount = 0
-                                    $totalToRemove = $itemsToRemove.Count
-                                    $currentItem = 0
-
-                                    foreach ($itemToRemove in $itemsToRemove) {
-                                        $currentItem++
-                                        $playlistItem = $itemToRemove.PlaylistItem
-                                        $itemDisplay = if ($playlistItem.Type -eq 'episode') {
-                                            "$($playlistItem.GrandparentTitle) - S$($playlistItem.ParentIndex.ToString('D2'))E$($playlistItem.Index.ToString('D2'))"
-                                        }
-                                        else {
-                                            "$($playlistItem.Title) ($($playlistItem.Year))"
-                                        }
-
-                                        $percentComplete = [int](($currentItem / $totalToRemove) * 100)
-                                        Write-Progress -Activity "Removing watched items from playlist" `
-                                            -Status "Removing $currentItem of $totalToRemove`: $itemDisplay" `
-                                            -PercentComplete $percentComplete `
-                                            -Id 1
-
-                                        try {
-                                            Remove-PatPlaylistItem -PlaylistId $playlist.PlaylistId `
-                                                -PlaylistItemId $playlistItem.PlaylistItemId `
-                                                -Confirm:$false `
-                                                -ErrorAction Stop
-
-                                            $removedCount++
-                                            Write-Verbose "Removed '$itemDisplay' from playlist"
-                                        }
-                                        catch {
-                                            Write-Warning "Failed to remove '$itemDisplay': $($_.Exception.Message)"
-                                        }
-                                    }
-
-                                    Write-Progress -Activity "Removing watched items from playlist" -Completed -Id 1
-                                    Write-Verbose "Removed $removedCount watched items from playlist"
-                                }
-                            }
-                            else {
-                                Write-Verbose "No watched items found in playlist to remove"
-                            }
+                            Remove-PatWatchedPlaylistItem @removeParams | Out-Null
                         }
                     }
                     else {
