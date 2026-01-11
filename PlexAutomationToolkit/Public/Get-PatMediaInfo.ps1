@@ -215,9 +215,17 @@ function Get-PatMediaInfo {
                 DurationFormatted = Format-PatDuration -Milliseconds $metadata.duration
                 ContentRating     = $metadata.contentRating
                 Rating            = if ($metadata.rating) {
-                    # Rating can be a simple value or an object/hashtable with a value property (TMDb format)
+                    # Rating can be: simple value, object/hashtable with value property, or array
                     $ratingValue = $metadata.rating
-                    if ($ratingValue -is [hashtable] -or $ratingValue -is [PSCustomObject]) {
+                    if ($ratingValue -is [array]) {
+                        # Array of rating objects - try to get value from first item
+                        $firstRating = $ratingValue | Select-Object -First 1
+                        if ($null -ne $firstRating.value) {
+                            [decimal]$firstRating.value
+                        } else {
+                            $null
+                        }
+                    } elseif ($ratingValue -is [hashtable] -or $ratingValue -is [PSCustomObject]) {
                         if ($null -ne $ratingValue.value) {
                             [decimal]$ratingValue.value
                         } else {

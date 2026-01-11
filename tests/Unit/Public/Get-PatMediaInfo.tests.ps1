@@ -523,6 +523,42 @@ Describe 'Get-PatMediaInfo' {
         }
     }
 
+    Context 'Rating as array of objects' {
+        BeforeAll {
+            Mock -ModuleName PlexAutomationToolkit Invoke-PatApi {
+                return @{
+                    Metadata = @(
+                        @{
+                            ratingKey = '11111'
+                            title     = 'Media With Array Rating'
+                            type      = 'movie'
+                            # Rating as array of objects
+                            rating    = @(
+                                @{
+                                    image = 'themoviedb://image.rating'
+                                    value = 8.5
+                                    type  = 'audience'
+                                },
+                                @{
+                                    image = 'rottentomatoes://image.rating.ripe'
+                                    value = 92
+                                    type  = 'critic'
+                                }
+                            )
+                            Media     = @()
+                        }
+                    )
+                }
+            }
+        }
+
+        It 'Extracts rating value from first array element' {
+            $result = Get-PatMediaInfo -RatingKey 11111
+
+            $result.Rating | Should -Be 8.5
+        }
+    }
+
     Context 'PSTypeName assignment' {
         BeforeAll {
             Mock -ModuleName PlexAutomationToolkit Invoke-PatApi {
