@@ -509,4 +509,50 @@ Describe 'Invoke-PatFileDownload' {
             $progressActivityParam.DefaultValue.Value | Should -Be 'Downloading file'
         }
     }
+
+    Context 'Streaming download threshold logic' {
+        # These tests verify the streaming threshold decision logic
+        # The actual HttpClient streaming is tested via integration tests
+
+        AfterEach {
+            Get-ChildItem -Path $script:TestDir -File | Remove-Item -Force -ErrorAction SilentlyContinue
+        }
+
+        It 'Does not use streaming for files smaller than threshold' {
+            # For files under 1MB, should use Invoke-WebRequest path (already mocked)
+            Mock -ModuleName PlexAutomationToolkit Invoke-WebRequest {
+                param($Uri, $OutFile, $Headers, $UseBasicParsing, $ErrorAction)
+                if ($OutFile) {
+                    $content = [byte[]](1, 2, 3, 4, 5)
+                    [System.IO.File]::WriteAllBytes($OutFile, $content)
+                }
+            }
+
+            $outFile = Join-Path -Path $script:TestDir -ChildPath 'small-file.bin'
+
+            # ExpectedSize of 500KB should NOT trigger streaming (threshold is 1MB)
+            $result = & $script:InvokePatFileDownload -Uri 'http://test/file' -OutFile $outFile -ExpectedSize 500KB
+
+            $result | Should -Not -BeNullOrEmpty
+            Should -Invoke -CommandName Invoke-WebRequest -ModuleName PlexAutomationToolkit -Times 1
+        }
+
+        It 'Uses Invoke-WebRequest when no ExpectedSize provided' {
+            Mock -ModuleName PlexAutomationToolkit Invoke-WebRequest {
+                param($Uri, $OutFile, $Headers, $UseBasicParsing, $ErrorAction)
+                if ($OutFile) {
+                    $content = [byte[]](1, 2, 3, 4, 5)
+                    [System.IO.File]::WriteAllBytes($OutFile, $content)
+                }
+            }
+
+            $outFile = Join-Path -Path $script:TestDir -ChildPath 'no-size.bin'
+
+            # No ExpectedSize means ExpectedSize = 0, which is < 1MB, so no streaming
+            $result = & $script:InvokePatFileDownload -Uri 'http://test/file' -OutFile $outFile
+
+            $result | Should -Not -BeNullOrEmpty
+            Should -Invoke -CommandName Invoke-WebRequest -ModuleName PlexAutomationToolkit -Times 1
+        }
+    }
 }

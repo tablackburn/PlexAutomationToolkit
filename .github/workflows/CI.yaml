@@ -93,12 +93,50 @@ jobs:
           path: out/
           retention-days: 30
 
+  unit-tests-ps51:
+    name: Unit Tests (Windows PowerShell 5.1)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Cache PowerShell modules
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/Documents/WindowsPowerShell/Modules
+          key: ${{ runner.os }}-psmodules-ps51-${{ hashFiles('build.depend.psd1') }}
+          restore-keys: |
+            ${{ runner.os }}-psmodules-ps51-
+
+      - name: Build and Test
+        shell: powershell
+        run: |
+          New-Item -Path out -ItemType Directory -Force | Out-Null
+          ./build.ps1 -Task Build,Test -Bootstrap
+
+      - name: Upload Coverage to Codecov
+        uses: codecov/codecov-action@v5
+        if: success()
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: out/codeCoverage.xml
+          flags: windows-ps51
+          fail_ci_if_error: false
+
+      - name: Upload Test Results
+        uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: test-results-windows-ps51
+          path: out/
+          retention-days: 30
+
   integration-tests:
     name: Integration Tests (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     # Only run for pushes to main or PRs from the same repo (has access to secrets)
     if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
-    needs: unit-tests
+    needs: [unit-tests, unit-tests-ps51]
     strategy:
       fail-fast: false
       matrix:
