@@ -214,7 +214,19 @@ function Get-PatMediaInfo {
                 Duration          = if ($metadata.duration) { [long]$metadata.duration } else { 0 }
                 DurationFormatted = Format-PatDuration -Milliseconds $metadata.duration
                 ContentRating     = $metadata.contentRating
-                Rating            = if ($metadata.rating) { [decimal]$metadata.rating } else { $null }
+                Rating            = if ($metadata.rating) {
+                    # Rating can be a simple value or an object/hashtable with a value property (TMDb format)
+                    $ratingValue = $metadata.rating
+                    if ($ratingValue -is [hashtable] -or $ratingValue -is [PSCustomObject]) {
+                        if ($null -ne $ratingValue.value) {
+                            [decimal]$ratingValue.value
+                        } else {
+                            $null
+                        }
+                    } else {
+                        [decimal]$ratingValue
+                    }
+                } else { $null }
                 Summary           = $metadata.summary
                 ViewCount         = if ($metadata.viewCount) { [int]$metadata.viewCount } else { 0 }
                 LastViewedAt      = if ($metadata.lastViewedAt) {

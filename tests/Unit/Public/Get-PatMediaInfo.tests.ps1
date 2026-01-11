@@ -494,6 +494,35 @@ Describe 'Get-PatMediaInfo' {
         }
     }
 
+    Context 'Rating as complex object' {
+        BeforeAll {
+            Mock -ModuleName PlexAutomationToolkit Invoke-PatApi {
+                return @{
+                    Metadata = @(
+                        @{
+                            ratingKey = '99999'
+                            title     = 'Media With Complex Rating'
+                            type      = 'movie'
+                            # Rating as complex object (TMDb style)
+                            rating    = @{
+                                image = 'themoviedb://image.rating'
+                                value = 7.9
+                                type  = 'audience'
+                            }
+                            Media     = @()
+                        }
+                    )
+                }
+            }
+        }
+
+        It 'Extracts rating value from complex object' {
+            $result = Get-PatMediaInfo -RatingKey 99999
+
+            $result.Rating | Should -Be 7.9
+        }
+    }
+
     Context 'PSTypeName assignment' {
         BeforeAll {
             Mock -ModuleName PlexAutomationToolkit Invoke-PatApi {
