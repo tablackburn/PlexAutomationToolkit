@@ -56,9 +56,15 @@ function Get-PatMediaInfo {
         - ParentIndex: Season number (episodes)
         - Index: Episode number (episodes)
         - Duration: Duration in milliseconds
+        - DurationFormatted: Human-readable duration (e.g., "2h 16m")
+        - ContentRating: Age rating (e.g., "PG-13", "R", "TV-MA")
+        - Rating: Critic/Plex rating (0-10)
         - ViewCount: Number of times watched
         - LastViewedAt: Last watched timestamp
         - Media: Array of media versions with file info
+          - MediaVersion includes BitrateFormatted (e.g., "25.5 Mbps")
+          - MediaPart includes SizeFormatted (e.g., "4.50 GB")
+          - MediaStream includes StreamTypeName (Video, Audio, Subtitle)
         - ServerUri: The Plex server URI
     #>
     [CmdletBinding()]
@@ -128,53 +134,63 @@ function Get-PatMediaInfo {
                             $streams = @()
                             if ($part.Stream) {
                                 foreach ($stream in $part.Stream) {
+                                    # Map stream type ID to human-readable name
+                                    $streamTypeName = switch ([int]$stream.streamType) {
+                                        1 { 'Video' }
+                                        2 { 'Audio' }
+                                        3 { 'Subtitle' }
+                                        default { 'Unknown' }
+                                    }
+
                                     $streamObj = [PSCustomObject]@{
-                                        PSTypeName   = 'PlexAutomationToolkit.MediaStream'
-                                        StreamId     = [int]$stream.id
-                                        StreamType   = [int]$stream.streamType
-                                        StreamTypeId = [int]$stream.streamType
-                                        Codec        = $stream.codec
-                                        Language     = $stream.language
-                                        LanguageCode = $stream.languageCode
-                                        LanguageTag  = $stream.languageTag
-                                        Title        = $stream.title
-                                        DisplayTitle = $stream.displayTitle
-                                        Key          = $stream.key  # For external subtitles
-                                        External     = ($stream.streamType -eq 3 -and $null -ne $stream.key)
-                                        Default      = ($stream.default -eq 1 -or $stream.default -eq '1')
-                                        Forced       = ($stream.forced -eq 1 -or $stream.forced -eq '1')
-                                        Format       = $stream.format
+                                        PSTypeName     = 'PlexAutomationToolkit.MediaStream'
+                                        StreamId       = [int]$stream.id
+                                        StreamType     = [int]$stream.streamType
+                                        StreamTypeName = $streamTypeName
+                                        Codec          = $stream.codec
+                                        Language       = $stream.language
+                                        LanguageCode   = $stream.languageCode
+                                        LanguageTag    = $stream.languageTag
+                                        Title          = $stream.title
+                                        DisplayTitle   = $stream.displayTitle
+                                        Key            = $stream.key  # For external subtitles
+                                        External       = ($stream.streamType -eq 3 -and $null -ne $stream.key)
+                                        Default        = ($stream.default -eq 1 -or $stream.default -eq '1')
+                                        Forced         = ($stream.forced -eq 1 -or $stream.forced -eq '1')
+                                        Format         = $stream.format
                                     }
                                     $streams += $streamObj
                                 }
                             }
 
                             $partObj = [PSCustomObject]@{
-                                PSTypeName = 'PlexAutomationToolkit.MediaPart'
-                                PartId     = [int]$part.id
-                                Key        = $part.key  # Download path: /library/parts/{id}/...
-                                File       = $part.file  # Original file path on server
-                                Size       = [long]$part.size
-                                Container  = $part.container
-                                Duration   = [long]$part.duration
-                                Streams    = $streams
+                                PSTypeName    = 'PlexAutomationToolkit.MediaPart'
+                                PartId        = [int]$part.id
+                                Key           = $part.key  # Download path: /library/parts/{id}/...
+                                File          = $part.file  # Original file path on server
+                                Size          = [long]$part.size
+                                SizeFormatted = Format-ByteSize -Bytes ([long]$part.size)
+                                Container     = $part.container
+                                Duration      = [long]$part.duration
+                                Streams       = $streams
                             }
                             $parts += $partObj
                         }
                     }
 
                     $mediaObj = [PSCustomObject]@{
-                        PSTypeName  = 'PlexAutomationToolkit.MediaVersion'
-                        MediaId     = [int]$media.id
-                        Container   = $media.container
-                        VideoCodec  = $media.videoCodec
-                        AudioCodec  = $media.audioCodec
-                        Width       = [int]$media.width
-                        Height      = [int]$media.height
-                        Bitrate     = [long]$media.bitrate
-                        VideoResolution = $media.videoResolution
-                        AspectRatio = $media.aspectRatio
-                        Part        = $parts
+                        PSTypeName       = 'PlexAutomationToolkit.MediaVersion'
+                        MediaId          = [int]$media.id
+                        Container        = $media.container
+                        VideoCodec       = $media.videoCodec
+                        AudioCodec       = $media.audioCodec
+                        Width            = [int]$media.width
+                        Height           = [int]$media.height
+                        Bitrate          = [long]$media.bitrate
+                        BitrateFormatted = Format-PatBitrate -Kbps $media.bitrate
+                        VideoResolution  = $media.videoResolution
+                        AspectRatio      = $media.aspectRatio
+                        Part             = $parts
                     }
                     $mediaVersions += $mediaObj
                 }
@@ -182,33 +198,36 @@ function Get-PatMediaInfo {
 
             # Build the final MediaInfo object
             $mediaInformation = [PSCustomObject]@{
-                PSTypeName       = 'PlexAutomationToolkit.MediaInfo'
-                RatingKey        = [int]$metadata.ratingKey
-                Key              = $metadata.key
-                Guid             = $metadata.guid
-                Title            = $metadata.title
-                OriginalTitle    = $metadata.originalTitle
-                Type             = $metadata.type
-                Year             = if ($metadata.year) { [int]$metadata.year } else { $null }
-                GrandparentTitle = $metadata.grandparentTitle  # Show name for episodes
-                GrandparentKey   = $metadata.grandparentKey
-                ParentTitle      = $metadata.parentTitle  # Season title for episodes
-                ParentIndex      = if ($metadata.parentIndex) { [int]$metadata.parentIndex } else { $null }  # Season number
-                Index            = if ($metadata.index) { [int]$metadata.index } else { $null }  # Episode number
-                Duration         = if ($metadata.duration) { [long]$metadata.duration } else { 0 }
-                Summary          = $metadata.summary
-                ViewCount        = if ($metadata.viewCount) { [int]$metadata.viewCount } else { 0 }
-                LastViewedAt     = if ($metadata.lastViewedAt) {
+                PSTypeName        = 'PlexAutomationToolkit.MediaInfo'
+                RatingKey         = [int]$metadata.ratingKey
+                Key               = $metadata.key
+                Guid              = $metadata.guid
+                Title             = $metadata.title
+                OriginalTitle     = $metadata.originalTitle
+                Type              = $metadata.type
+                Year              = if ($metadata.year) { [int]$metadata.year } else { $null }
+                GrandparentTitle  = $metadata.grandparentTitle  # Show name for episodes
+                GrandparentKey    = $metadata.grandparentKey
+                ParentTitle       = $metadata.parentTitle  # Season title for episodes
+                ParentIndex       = if ($metadata.parentIndex) { [int]$metadata.parentIndex } else { $null }  # Season number
+                Index             = if ($metadata.index) { [int]$metadata.index } else { $null }  # Episode number
+                Duration          = if ($metadata.duration) { [long]$metadata.duration } else { 0 }
+                DurationFormatted = Format-PatDuration -Milliseconds $metadata.duration
+                ContentRating     = $metadata.contentRating
+                Rating            = if ($metadata.rating) { [decimal]$metadata.rating } else { $null }
+                Summary           = $metadata.summary
+                ViewCount         = if ($metadata.viewCount) { [int]$metadata.viewCount } else { 0 }
+                LastViewedAt      = if ($metadata.lastViewedAt) {
                     [DateTimeOffset]::FromUnixTimeSeconds([long]$metadata.lastViewedAt).LocalDateTime
                 } else { $null }
-                AddedAt          = if ($metadata.addedAt) {
+                AddedAt           = if ($metadata.addedAt) {
                     [DateTimeOffset]::FromUnixTimeSeconds([long]$metadata.addedAt).LocalDateTime
                 } else { $null }
-                UpdatedAt        = if ($metadata.updatedAt) {
+                UpdatedAt         = if ($metadata.updatedAt) {
                     [DateTimeOffset]::FromUnixTimeSeconds([long]$metadata.updatedAt).LocalDateTime
                 } else { $null }
-                Media            = $mediaVersions
-                ServerUri        = $effectiveUri
+                Media             = $mediaVersions
+                ServerUri         = $effectiveUri
             }
 
             $mediaInformation

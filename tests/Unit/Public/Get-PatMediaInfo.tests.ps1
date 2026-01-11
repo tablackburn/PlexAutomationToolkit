@@ -32,19 +32,21 @@ Describe 'Get-PatMediaInfo' {
                 return @{
                     Metadata = @(
                         @{
-                            ratingKey    = '12345'
-                            key          = '/library/metadata/12345'
-                            guid         = 'plex://movie/abc123'
-                            title        = 'The Matrix'
-                            type         = 'movie'
-                            year         = 1999
-                            duration     = 8160000
-                            summary      = 'A computer hacker learns about the true nature of reality.'
-                            viewCount    = 5
-                            lastViewedAt = 1703548800
-                            addedAt      = 1700000000
-                            updatedAt    = 1700100000
-                            Media        = @(
+                            ratingKey     = '12345'
+                            key           = '/library/metadata/12345'
+                            guid          = 'plex://movie/abc123'
+                            title         = 'The Matrix'
+                            type          = 'movie'
+                            year          = 1999
+                            duration      = 8160000
+                            contentRating = 'R'
+                            rating        = 7.7
+                            summary       = 'A computer hacker learns about the true nature of reality.'
+                            viewCount     = 5
+                            lastViewedAt  = 1703548800
+                            addedAt       = 1700000000
+                            updatedAt     = 1700100000
+                            Media         = @(
                                 @{
                                     id              = '5001'
                                     container       = 'mkv'
@@ -166,6 +168,52 @@ Describe 'Get-PatMediaInfo' {
             $result = Get-PatMediaInfo -RatingKey 12345
 
             $result.ServerUri | Should -Be 'http://plex.test:32400'
+        }
+
+        It 'Returns formatted duration' {
+            $result = Get-PatMediaInfo -RatingKey 12345
+
+            $result.Duration | Should -Be 8160000
+            $result.DurationFormatted | Should -Be '2h 16m'
+        }
+
+        It 'Returns content rating and rating' {
+            $result = Get-PatMediaInfo -RatingKey 12345
+
+            $result.ContentRating | Should -Be 'R'
+            $result.Rating | Should -Be 7.7
+        }
+
+        It 'Returns formatted bitrate on MediaVersion' {
+            $result = Get-PatMediaInfo -RatingKey 12345
+
+            $result.Media[0].Bitrate | Should -Be 8000
+            $result.Media[0].BitrateFormatted | Should -Be '8.0 Mbps'
+        }
+
+        It 'Returns formatted size on MediaPart' {
+            $result = Get-PatMediaInfo -RatingKey 12345
+
+            $result.Media[0].Part[0].Size | Should -Be 4521234567
+            $result.Media[0].Part[0].SizeFormatted | Should -Be '4.21 GB'
+        }
+
+        It 'Returns stream type name on MediaStream' {
+            $result = Get-PatMediaInfo -RatingKey 12345
+
+            $streams = $result.Media[0].Part[0].Streams
+
+            # Video stream
+            $videoStream = $streams | Where-Object { $_.StreamType -eq 1 }
+            $videoStream.StreamTypeName | Should -Be 'Video'
+
+            # Audio stream
+            $audioStream = $streams | Where-Object { $_.StreamType -eq 2 }
+            $audioStream.StreamTypeName | Should -Be 'Audio'
+
+            # Subtitle stream
+            $subtitleStream = $streams | Where-Object { $_.StreamType -eq 3 }
+            $subtitleStream.StreamTypeName | Should -Be 'Subtitle'
         }
     }
 
@@ -373,6 +421,76 @@ Describe 'Get-PatMediaInfo' {
             }
 
             { Get-PatMediaInfo -RatingKey 12345 } | Should -Throw "*Failed to get media info*"
+        }
+    }
+
+    Context 'Null handling for optional fields' {
+        BeforeAll {
+            Mock -ModuleName PlexAutomationToolkit Invoke-PatApi {
+                return @{
+                    Metadata = @(
+                        @{
+                            ratingKey = '88888'
+                            title     = 'Media Without Optional Fields'
+                            type      = 'movie'
+                            # No duration, contentRating, rating
+                            Media     = @(
+                                @{
+                                    id   = '8001'
+                                    # No bitrate
+                                    Part = @(
+                                        @{
+                                            id     = '9001'
+                                            size   = 0
+                                            Stream = @(
+                                                @{
+                                                    id         = '10001'
+                                                    streamType = 99  # Unknown type
+                                                }
+                                            )
+                                        }
+                                    )
+                                }
+                            )
+                        }
+                    )
+                }
+            }
+        }
+
+        It 'Returns null for missing DurationFormatted' {
+            $result = Get-PatMediaInfo -RatingKey 88888
+
+            $result.Duration | Should -Be 0
+            $result.DurationFormatted | Should -BeNullOrEmpty
+        }
+
+        It 'Returns null for missing ContentRating and Rating' {
+            $result = Get-PatMediaInfo -RatingKey 88888
+
+            $result.ContentRating | Should -BeNullOrEmpty
+            $result.Rating | Should -BeNullOrEmpty
+        }
+
+        It 'Returns null for missing BitrateFormatted' {
+            $result = Get-PatMediaInfo -RatingKey 88888
+
+            $result.Media[0].Bitrate | Should -Be 0
+            $result.Media[0].BitrateFormatted | Should -BeNullOrEmpty
+        }
+
+        It 'Handles zero size with SizeFormatted' {
+            $result = Get-PatMediaInfo -RatingKey 88888
+
+            $result.Media[0].Part[0].Size | Should -Be 0
+            $result.Media[0].Part[0].SizeFormatted | Should -Be '0 bytes'
+        }
+
+        It 'Returns Unknown for unrecognized stream type' {
+            $result = Get-PatMediaInfo -RatingKey 88888
+
+            $result.Media[0].Part[0].Streams[0].StreamType | Should -Be 99
+            $result.Media[0].Part[0].Streams[0].StreamTypeName | Should -Be 'Unknown'
         }
     }
 
