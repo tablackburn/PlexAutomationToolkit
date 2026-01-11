@@ -148,30 +148,22 @@ function Compare-PatWatchStatus {
                     }
                 }
                 elseif ($section.type -eq 'show') {
-                    # For TV shows, we need to get episodes
                     foreach ($show in $items) {
-                        $showRatingKey = $show.ratingKey
                         $showTitle = $show.title
+                        $episodes = Get-PatShowEpisodes -Server $targetServer -ShowRatingKey ([int]$show.ratingKey)
 
-                        # Get all episodes for this show
-                        $episodesUri = Join-PatUri -BaseUri $targetServer.uri -Endpoint "/library/metadata/$showRatingKey/allLeaves"
-                        $headers = Get-PatAuthenticationHeader -Server $targetServer
-                        $episodesResult = Invoke-PatApi -Uri $episodesUri -Headers $headers -ErrorAction SilentlyContinue
+                        foreach ($ep in $episodes) {
+                            $matchKey = Get-WatchStatusMatchKey -Type 'episode' -ShowName $showTitle `
+                                -Season $ep.parentIndex -Episode $ep.index
 
-                        if ($episodesResult.Metadata) {
-                            foreach ($ep in $episodesResult.Metadata) {
-                                $matchKey = Get-WatchStatusMatchKey -Type 'episode' -ShowName $showTitle `
-                                    -Season $ep.parentIndex -Episode $ep.index
-
-                                $targetItems[$matchKey] = @{
-                                    RatingKey = [int]$ep.ratingKey
-                                    Title     = $ep.title
-                                    ShowName  = $showTitle
-                                    Season    = [int]$ep.parentIndex
-                                    Episode   = [int]$ep.index
-                                    ViewCount = if ($ep.viewCount) { [int]$ep.viewCount } else { 0 }
-                                    Watched   = ($ep.viewCount -gt 0)
-                                }
+                            $targetItems[$matchKey] = @{
+                                RatingKey = [int]$ep.ratingKey
+                                Title     = $ep.title
+                                ShowName  = $showTitle
+                                Season    = [int]$ep.parentIndex
+                                Episode   = [int]$ep.index
+                                ViewCount = if ($ep.viewCount) { [int]$ep.viewCount } else { 0 }
+                                Watched   = ($ep.viewCount -gt 0)
                             }
                         }
                     }
@@ -208,71 +200,45 @@ function Compare-PatWatchStatus {
                                     continue
                                 }
 
-                                $differences += [PSCustomObject]@{
-                                    PSTypeName       = 'PlexAutomationToolkit.WatchStatusDiff'
-                                    Title            = $item.title
-                                    Type             = 'movie'
-                                    Year             = $item.year
-                                    ShowName         = $null
-                                    Season           = $null
-                                    Episode          = $null
-                                    SourceWatched    = $sourceWatched
-                                    TargetWatched    = $target.Watched
-                                    SourceViewCount  = $sourceViewCount
-                                    TargetViewCount  = $target.ViewCount
-                                    SourceRatingKey  = [int]$item.ratingKey
-                                    TargetRatingKey  = $target.RatingKey
-                                }
+                                $differences += ConvertTo-PatWatchStatusDiff -Type 'movie' `
+                                    -Title $item.title -Year $item.year `
+                                    -SourceWatched $sourceWatched -TargetWatched $target.Watched `
+                                    -SourceViewCount $sourceViewCount -TargetViewCount $target.ViewCount `
+                                    -SourceRatingKey ([int]$item.ratingKey) -TargetRatingKey $target.RatingKey
                             }
                         }
                     }
                 }
                 elseif ($section.type -eq 'show') {
                     foreach ($show in $items) {
-                        $showRatingKey = $show.ratingKey
                         $showTitle = $show.title
+                        $episodes = Get-PatShowEpisodes -Server $sourceServer -ShowRatingKey ([int]$show.ratingKey)
 
-                        # Get all episodes for this show
-                        $episodesUri = Join-PatUri -BaseUri $sourceServer.uri -Endpoint "/library/metadata/$showRatingKey/allLeaves"
-                        $headers = Get-PatAuthenticationHeader -Server $sourceServer
-                        $episodesResult = Invoke-PatApi -Uri $episodesUri -Headers $headers -ErrorAction SilentlyContinue
+                        foreach ($ep in $episodes) {
+                            $matchKey = Get-WatchStatusMatchKey -Type 'episode' -ShowName $showTitle `
+                                -Season $ep.parentIndex -Episode $ep.index
 
-                        if ($episodesResult.Metadata) {
-                            foreach ($ep in $episodesResult.Metadata) {
-                                $matchKey = Get-WatchStatusMatchKey -Type 'episode' -ShowName $showTitle `
-                                    -Season $ep.parentIndex -Episode $ep.index
+                            $sourceWatched = ($ep.viewCount -gt 0)
+                            $sourceViewCount = if ($ep.viewCount) { [int]$ep.viewCount } else { 0 }
 
-                                $sourceWatched = ($ep.viewCount -gt 0)
-                                $sourceViewCount = if ($ep.viewCount) { [int]$ep.viewCount } else { 0 }
+                            if ($targetItems.ContainsKey($matchKey)) {
+                                $target = $targetItems[$matchKey]
 
-                                if ($targetItems.ContainsKey($matchKey)) {
-                                    $target = $targetItems[$matchKey]
-
-                                    if ($sourceWatched -ne $target.Watched) {
-                                        # Apply filters
-                                        if ($WatchedOnSourceOnly -and -not ($sourceWatched -and -not $target.Watched)) {
-                                            continue
-                                        }
-                                        if ($WatchedOnTargetOnly -and -not (-not $sourceWatched -and $target.Watched)) {
-                                            continue
-                                        }
-
-                                        $differences += [PSCustomObject]@{
-                                            PSTypeName       = 'PlexAutomationToolkit.WatchStatusDiff'
-                                            Title            = $ep.title
-                                            Type             = 'episode'
-                                            Year             = $null
-                                            ShowName         = $showTitle
-                                            Season           = [int]$ep.parentIndex
-                                            Episode          = [int]$ep.index
-                                            SourceWatched    = $sourceWatched
-                                            TargetWatched    = $target.Watched
-                                            SourceViewCount  = $sourceViewCount
-                                            TargetViewCount  = $target.ViewCount
-                                            SourceRatingKey  = [int]$ep.ratingKey
-                                            TargetRatingKey  = $target.RatingKey
-                                        }
+                                if ($sourceWatched -ne $target.Watched) {
+                                    # Apply filters
+                                    if ($WatchedOnSourceOnly -and -not ($sourceWatched -and -not $target.Watched)) {
+                                        continue
                                     }
+                                    if ($WatchedOnTargetOnly -and -not (-not $sourceWatched -and $target.Watched)) {
+                                        continue
+                                    }
+
+                                    $differences += ConvertTo-PatWatchStatusDiff -Type 'episode' `
+                                        -Title $ep.title -ShowName $showTitle `
+                                        -Season ([int]$ep.parentIndex) -Episode ([int]$ep.index) `
+                                        -SourceWatched $sourceWatched -TargetWatched $target.Watched `
+                                        -SourceViewCount $sourceViewCount -TargetViewCount $target.ViewCount `
+                                        -SourceRatingKey ([int]$ep.ratingKey) -TargetRatingKey $target.RatingKey
                                 }
                             }
                         }
@@ -284,8 +250,8 @@ function Compare-PatWatchStatus {
 
             if ($differences.Count -eq 0) {
                 $filterMessage = if ($WatchedOnSourceOnly) { " (filtered: watched on source only)" }
-                             elseif ($WatchedOnTargetOnly) { " (filtered: watched on target only)" }
-                             else { "" }
+                elseif ($WatchedOnTargetOnly) { " (filtered: watched on target only)" }
+                else { "" }
                 Write-Information "Watch status is in sync between '$SourceServerName' and '$TargetServerName'$filterMessage" -InformationAction Continue
             }
             else {
@@ -298,33 +264,4 @@ function Compare-PatWatchStatus {
             throw "Failed to compare watch status: $($_.Exception.Message)"
         }
     }
-}
-
-# Private helper function for generating match keys
-function Get-WatchStatusMatchKey {
-    param (
-        [string]$Type,
-        [string]$Title,
-        [int]$Year,
-        [string]$ShowName,
-        [int]$Season,
-        [int]$Episode
-    )
-
-    # Normalize title for comparison
-    $normalizedTitle = if ($Title) {
-        $Title.ToLowerInvariant().Trim() -replace '[^\w\s]', ''
-    } else { '' }
-
-    if ($Type -eq 'movie') {
-        return "movie|$normalizedTitle|$Year"
-    }
-    elseif ($Type -eq 'episode') {
-        $normalizedShow = if ($ShowName) {
-            $ShowName.ToLowerInvariant().Trim() -replace '[^\w\s]', ''
-        } else { '' }
-        return "episode|$normalizedShow|S${Season}E${Episode}"
-    }
-
-    return "unknown|$normalizedTitle"
 }
