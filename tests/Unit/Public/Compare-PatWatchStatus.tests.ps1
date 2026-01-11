@@ -461,12 +461,12 @@ Describe 'Compare-PatWatchStatus' {
             }
         }
 
-        It 'Returns unknown type fallback for unrecognized type' {
-            InModuleScope PlexAutomationToolkit {
-                $key = Get-WatchStatusMatchKey -Type 'music' -Title 'Some Song'
-
-                $key | Should -Be 'unknown|some song'
-            }
+        It 'Throws for unrecognized type' {
+            {
+                InModuleScope PlexAutomationToolkit {
+                    Get-WatchStatusMatchKey -Type 'music' -Title 'Some Song'
+                }
+            } | Should -Throw
         }
 
         It 'Normalizes title by removing special characters' {
