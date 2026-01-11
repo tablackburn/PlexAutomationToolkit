@@ -172,67 +172,22 @@ function Get-PatCollection {
                 $libName = $null
                 $libId = [int]$apiResult.librarySectionID
                 if (-not $script:libraryCache) {
-                    $libraryParameters = @{ ErrorAction = 'SilentlyContinue' }
-                    if ($script:serverContext.WasExplicitUri) {
-                        $libraryParameters['ServerUri'] = $effectiveUri
-                        if ($script:serverContext.Token) { $libraryParameters['Token'] = $script:serverContext.Token }
-                    }
-                    $script:libraryCache = Get-PatLibrary @libraryParameters
+                    $serverSplat = Build-PatServerSplat -WasExplicitUri $script:serverContext.WasExplicitUri `
+                        -ServerUri $effectiveUri -Token $script:serverContext.Token
+                    $script:libraryCache = Get-PatLibrary @serverSplat -ErrorAction SilentlyContinue
                 }
                 if ($script:libraryCache -and $script:libraryCache.Directory) {
                     $lib = $script:libraryCache.Directory | Where-Object { [int]$_.key -eq $libId }
                     if ($lib) { $libName = $lib.title }
                 }
 
-                $collectionObj = [PSCustomObject]@{
-                    PSTypeName   = 'PlexAutomationToolkit.Collection'
-                    CollectionId = [int]$result.ratingKey
-                    Title        = $result.title
-                    LibraryId    = $libId
-                    LibraryName  = $libName
-                    ItemCount    = [int]$result.childCount
-                    Thumb        = $result.thumb
-                    AddedAt      = if ($result.addedAt) {
-                        [DateTimeOffset]::FromUnixTimeSeconds([long]$result.addedAt).LocalDateTime
-                    } else { $null }
-                    UpdatedAt    = if ($result.updatedAt) {
-                        [DateTimeOffset]::FromUnixTimeSeconds([long]$result.updatedAt).LocalDateTime
-                    } else { $null }
-                    ServerUri    = $effectiveUri
-                }
+                $collectionObj = ConvertTo-PatCollectionObject -CollectionData $result `
+                    -LibraryId $libId -LibraryName $libName -ServerUri $effectiveUri
 
                 if ($IncludeItems) {
-                    $itemsEndpoint = "/library/collections/$($result.ratingKey)/children"
-                    $itemsUri = Join-PatUri -BaseUri $effectiveUri -Endpoint $itemsEndpoint
-
-                    try {
-                        $itemsResult = Invoke-PatApi -Uri $itemsUri -Headers $headers -ErrorAction 'Stop'
-
-                        $items = @()
-                        if ($itemsResult -and $itemsResult.Metadata) {
-                            $items = foreach ($item in $itemsResult.Metadata) {
-                                [PSCustomObject]@{
-                                    PSTypeName   = 'PlexAutomationToolkit.CollectionItem'
-                                    RatingKey    = [int]$item.ratingKey
-                                    Title        = $item.title
-                                    Type         = $item.type
-                                    Year         = if ($item.year) { [int]$item.year } else { $null }
-                                    Thumb        = $item.thumb
-                                    AddedAt      = if ($item.addedAt) {
-                                        [DateTimeOffset]::FromUnixTimeSeconds([long]$item.addedAt).LocalDateTime
-                                    } else { $null }
-                                    CollectionId = [int]$result.ratingKey
-                                    ServerUri    = $effectiveUri
-                                }
-                            }
-                        }
-
-                        Add-Member -InputObject $collectionObj -MemberType NoteProperty -Name 'Items' -Value $items
-                    }
-                    catch {
-                        Write-Warning "Failed to retrieve items for collection '$($result.title)': $($_.Exception.Message)"
-                        Add-Member -InputObject $collectionObj -MemberType NoteProperty -Name 'Items' -Value @()
-                    }
+                    $items = Get-PatCollectionItem -CollectionId ([int]$result.ratingKey) `
+                        -CollectionTitle $result.title -ServerUri $effectiveUri -Headers $headers
+                    Add-Member -InputObject $collectionObj -MemberType NoteProperty -Name 'Items' -Value $items
                 }
 
                 return $collectionObj
@@ -244,12 +199,9 @@ function Get-PatCollection {
 
             if ($LibraryName -or $LibraryId) {
                 if (-not $script:libraryCache) {
-                    $libraryParameters = @{ ErrorAction = 'Stop' }
-                    if ($script:serverContext.WasExplicitUri) {
-                        $libraryParameters['ServerUri'] = $effectiveUri
-                        if ($script:serverContext.Token) { $libraryParameters['Token'] = $script:serverContext.Token }
-                    }
-                    $script:libraryCache = Get-PatLibrary @libraryParameters
+                    $serverSplat = Build-PatServerSplat -WasExplicitUri $script:serverContext.WasExplicitUri `
+                        -ServerUri $effectiveUri -Token $script:serverContext.Token
+                    $script:libraryCache = Get-PatLibrary @serverSplat -ErrorAction Stop
                 }
 
                 if ($LibraryName) {
@@ -271,12 +223,9 @@ function Get-PatCollection {
             else {
                 # No library specified - get all libraries
                 if (-not $script:libraryCache) {
-                    $libraryParameters = @{ ErrorAction = 'Stop' }
-                    if ($script:serverContext.WasExplicitUri) {
-                        $libraryParameters['ServerUri'] = $effectiveUri
-                        if ($script:serverContext.Token) { $libraryParameters['Token'] = $script:serverContext.Token }
-                    }
-                    $script:libraryCache = Get-PatLibrary @libraryParameters
+                    $serverSplat = Build-PatServerSplat -WasExplicitUri $script:serverContext.WasExplicitUri `
+                        -ServerUri $effectiveUri -Token $script:serverContext.Token
+                    $script:libraryCache = Get-PatLibrary @serverSplat -ErrorAction Stop
                 }
 
                 if ($script:libraryCache -and $script:libraryCache.Directory) {
@@ -319,55 +268,13 @@ function Get-PatCollection {
                 }
 
                 foreach ($collection in $collectionData) {
-                    $collectionObj = [PSCustomObject]@{
-                        PSTypeName   = 'PlexAutomationToolkit.Collection'
-                        CollectionId = [int]$collection.ratingKey
-                        Title        = $collection.title
-                        LibraryId    = $libId
-                        LibraryName  = $libName
-                        ItemCount    = [int]$collection.childCount
-                        Thumb        = $collection.thumb
-                        AddedAt      = if ($collection.addedAt) {
-                            [DateTimeOffset]::FromUnixTimeSeconds([long]$collection.addedAt).LocalDateTime
-                        } else { $null }
-                        UpdatedAt    = if ($collection.updatedAt) {
-                            [DateTimeOffset]::FromUnixTimeSeconds([long]$collection.updatedAt).LocalDateTime
-                        } else { $null }
-                        ServerUri    = $effectiveUri
-                    }
+                    $collectionObj = ConvertTo-PatCollectionObject -CollectionData $collection `
+                        -LibraryId $libId -LibraryName $libName -ServerUri $effectiveUri
 
                     if ($IncludeItems) {
-                        $itemsEndpoint = "/library/collections/$($collection.ratingKey)/children"
-                        $itemsUri = Join-PatUri -BaseUri $effectiveUri -Endpoint $itemsEndpoint
-
-                        try {
-                            $itemsResult = Invoke-PatApi -Uri $itemsUri -Headers $headers -ErrorAction 'Stop'
-
-                            $items = @()
-                            if ($itemsResult -and $itemsResult.Metadata) {
-                                $items = foreach ($item in $itemsResult.Metadata) {
-                                    [PSCustomObject]@{
-                                        PSTypeName   = 'PlexAutomationToolkit.CollectionItem'
-                                        RatingKey    = [int]$item.ratingKey
-                                        Title        = $item.title
-                                        Type         = $item.type
-                                        Year         = if ($item.year) { [int]$item.year } else { $null }
-                                        Thumb        = $item.thumb
-                                        AddedAt      = if ($item.addedAt) {
-                                            [DateTimeOffset]::FromUnixTimeSeconds([long]$item.addedAt).LocalDateTime
-                                        } else { $null }
-                                        CollectionId = [int]$collection.ratingKey
-                                        ServerUri    = $effectiveUri
-                                    }
-                                }
-                            }
-
-                            Add-Member -InputObject $collectionObj -MemberType NoteProperty -Name 'Items' -Value $items
-                        }
-                        catch {
-                            Write-Warning "Failed to retrieve items for collection '$($collection.title)': $($_.Exception.Message)"
-                            Add-Member -InputObject $collectionObj -MemberType NoteProperty -Name 'Items' -Value @()
-                        }
+                        $items = Get-PatCollectionItem -CollectionId ([int]$collection.ratingKey) `
+                            -CollectionTitle $collection.title -ServerUri $effectiveUri -Headers $headers
+                        Add-Member -InputObject $collectionObj -MemberType NoteProperty -Name 'Items' -Value $items
                     }
 
                     $collectionObj
