@@ -31,7 +31,6 @@ function Get-WatchStatusMatchKey {
         A normalized match key in the format:
         - Movies: "movie|<normalized_title>|<year>"
         - Episodes: "episode|<normalized_show>|S<season>E<episode>"
-        - Unknown: "unknown|<normalized_title>"
 
     .EXAMPLE
         Get-WatchStatusMatchKey -Type 'movie' -Title 'The Matrix' -Year 1999
@@ -82,14 +81,13 @@ function Get-WatchStatusMatchKey {
         if ($Type -eq 'movie') {
             return "movie|$normalizedTitle|$Year"
         }
-        elseif ($Type -eq 'episode') {
+        else {
+            # Type is 'episode' (guaranteed by ValidateSet)
             $normalizedShow = if ($ShowName) {
                 $ShowName.ToLowerInvariant().Trim() -replace '[^\w\s]', ''
             }
             else { '' }
             return "episode|$normalizedShow|S${Season}E${Episode}"
         }
-
-        return "unknown|$normalizedTitle"
     }
 }
