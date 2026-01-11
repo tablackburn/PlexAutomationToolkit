@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [0.10.2] - 2026-01-11
+
+### Added
+
+- Extended `Search-PatMedia` output with 11 new properties (zero performance impact):
+  - `Duration` / `DurationFormatted` - media length in milliseconds and human-readable format
+  - `ContentRating` - age rating (PG-13, R, TV-MA, etc.)
+  - `Rating` / `AudienceRating` - critic and audience scores
+  - `Studio` - production company
+  - `ViewCount` - watch count
+  - `OriginallyAvailableAt` - release date
+  - `ShowName`, `Season`, `Episode` - TV episode details
+- New `Format-PatDuration` private helper for human-readable duration formatting
+
+### Changed
+
+- Refactor `Compare-PatWatchStatus` to extract helper functions for better testability:
+  - `Get-WatchStatusMatchKey` - generates normalized match keys
+  - `Get-PatShowEpisodes` - fetches episodes for a TV show
+  - `ConvertTo-PatWatchStatusDiff` - creates standardized diff objects
+
 ## [0.10.1] - 2026-01-10
 
 ### Fixed
