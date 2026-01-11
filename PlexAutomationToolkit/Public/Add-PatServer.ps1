@@ -153,73 +153,10 @@ function Add-PatServer {
 
         # Check if HTTPS is available when HTTP is specified
         if ($ServerUri -match '^http://' -and -not $SkipValidation) {
-            $httpsUri = $ServerUri -replace '^http://', 'https://'
-            Write-Verbose "Checking if HTTPS is available at $httpsUri"
-
-            $httpsAvailable = $false
-            $certValidationCallback = $null
-            $certCallbackChanged = $false
-            $certMutex = $null
-            try {
-                $testUri = Join-PatUri -BaseUri $httpsUri -Endpoint '/'
-                # Build request params - handle certificate skip for PS version compatibility
-                $requestParams = @{
-                    Uri         = $testUri
-                    TimeoutSec  = 5
-                    ErrorAction = 'Stop'
-                }
-
-                # Skip certificate validation for self-signed certs (common with Plex)
-                if ($PSVersionTable.PSVersion.Major -ge 6) {
-                    # PowerShell 6.0+ supports SkipCertificateCheck parameter
-                    $requestParams['SkipCertificateCheck'] = $true
-                }
-                else {
-                    # PowerShell 5.1 requires ServerCertificateValidationCallback
-                    # Use a named mutex to prevent race conditions when multiple calls modify the global callback
-                    $certMutex = [System.Threading.Mutex]::new($false, 'Global\PlexAutomationToolkit_CertCallback')
-                    $mutexAcquired = $certMutex.WaitOne(10000) # 10 second timeout
-                    if (-not $mutexAcquired) {
-                        # Could not acquire mutex - skip HTTPS check rather than risk race condition
-                        Write-Verbose "Could not acquire certificate callback mutex, skipping HTTPS availability check"
-                        $certMutex.Dispose()
-                        $certMutex = $null
-                    }
-                    else {
-                        $certValidationCallback = [System.Net.ServicePointManager]::ServerCertificateValidationCallback
-                        [System.Net.ServicePointManager]::ServerCertificateValidationCallback = { $true }
-                        $certCallbackChanged = $true
-                    }
-                }
-
-                # Only proceed with HTTPS check if we either have PS6+ or successfully acquired mutex
-                if ($PSVersionTable.PSVersion.Major -ge 6 -or $certCallbackChanged) {
-                    $null = Invoke-RestMethod @requestParams
-                    $httpsAvailable = $true
-                }
-            }
-            catch {
-                # 401/403 means HTTPS works, just needs auth - that's fine
-                if ($_.Exception.Response.StatusCode.value__ -in @(401, 403)) {
-                    $httpsAvailable = $true
-                }
-                else {
-                    Write-Verbose "HTTPS not available: $($_.Exception.Message)"
-                }
-            }
-            finally {
-                # Restore original certificate validation callback if we changed it
-                if ($certCallbackChanged) {
-                    [System.Net.ServicePointManager]::ServerCertificateValidationCallback = $certValidationCallback
-                }
-                # Release mutex if acquired
-                if ($certMutex) {
-                    $certMutex.ReleaseMutex()
-                    $certMutex.Dispose()
-                }
-            }
+            $httpsAvailable = Test-PatHttpsAvailability -HttpUri $ServerUri
 
             if ($httpsAvailable) {
+                $httpsUri = $ServerUri -replace '^http://', 'https://'
                 # HTTPS is available - use it if -Force or user confirms
                 if ($Force -or $PSCmdlet.ShouldContinue(
                     "Server supports HTTPS. Use $httpsUri instead?",
@@ -275,50 +212,15 @@ function Add-PatServer {
 
         # Auto-detect local URI from Plex.tv API if requested
         if ($DetectLocalUri -and -not $SkipValidation) {
-            $detectionToken = $Token
-            if (-not $detectionToken) {
+            if (-not $Token) {
                 Write-Warning "DetectLocalUri requires a valid authentication token. Skipping local URI detection."
             }
             else {
-                Write-Verbose "Attempting to detect local URI from Plex.tv API"
-                try {
-                    # First, get the server's machine identifier
-                    $serverIdentity = Get-PatServerIdentity -ServerUri $effectiveUri -Token $detectionToken -ErrorAction Stop
-                    Write-Verbose "Server machineIdentifier: $($serverIdentity.MachineIdentifier)"
-
-                    # Query Plex.tv for all connections to this server
-                    $connections = Get-PatServerConnection -MachineIdentifier $serverIdentity.MachineIdentifier -Token $detectionToken -ErrorAction Stop
-
-                    if ($connections -and $connections.Count -gt 0) {
-                        # Find a local, non-relay connection (prefer HTTPS if available)
-                        $localConnections = $connections | Where-Object { $_.Local -eq $true -and $_.Relay -ne $true }
-
-                        if ($localConnections) {
-                            # Prefer HTTPS local connection, fall back to HTTP
-                            $preferredLocal = $localConnections | Where-Object { $_.Protocol -eq 'https' } | Select-Object -First 1
-                            if (-not $preferredLocal) {
-                                $preferredLocal = $localConnections | Select-Object -First 1
-                            }
-
-                            if ($preferredLocal -and $preferredLocal.Uri -ne $effectiveUri) {
-                                $effectiveLocalUri = $preferredLocal.Uri
-                                $effectivePreferLocal = $true
-                                Write-Information "Detected local URI: $effectiveLocalUri" -InformationAction Continue
-                            }
-                            else {
-                                Write-Verbose "No distinct local URI found (may already be using local connection)"
-                            }
-                        }
-                        else {
-                            Write-Verbose "No local (non-relay) connections found for this server"
-                        }
-                    }
-                    else {
-                        Write-Verbose "No connections found in Plex.tv API response"
-                    }
-                }
-                catch {
-                    Write-Warning "Failed to detect local URI: $($_.Exception.Message). Continuing without local URI."
+                $detectedUri = Get-PatDetectedLocalUri -ServerUri $effectiveUri -Token $Token
+                if ($detectedUri) {
+                    $effectiveLocalUri = $detectedUri
+                    $effectivePreferLocal = $true
+                    Write-Information "Detected local URI: $effectiveLocalUri" -InformationAction Continue
                 }
             }
         }
