@@ -114,19 +114,12 @@ function Get-PatSyncPlan {
             Write-Verbose "Resolved destination path: $resolvedDestination"
 
             # Get the playlist - build parameters based on server context
+            $serverSplat = Build-PatServerSplat -WasExplicitUri $script:serverContext.WasExplicitUri `
+                -ServerUri $ServerUri -Token $Token -ServerName $ServerName
             $playlistParameters = @{
                 IncludeItems = $true
                 ErrorAction  = 'Stop'
-            }
-            if ($script:serverContext.WasExplicitUri) {
-                $playlistParameters['ServerUri'] = $ServerUri
-                if ($Token) {
-                    $playlistParameters['Token'] = $Token
-                }
-            }
-            elseif ($ServerName) {
-                $playlistParameters['ServerName'] = $ServerName
-            }
+            } + $serverSplat
 
             if ($PlaylistId) {
                 $playlistParameters['PlaylistId'] = $PlaylistId
@@ -145,7 +138,7 @@ function Get-PatSyncPlan {
             Write-Verbose "Playlist '$($playlist.Title)' has $($playlist.ItemCount) items"
 
             # Get media info for each playlist item (cache results to avoid redundant API calls)
-            $addOperations = @()
+            $addOperations = [System.Collections.Generic.List[PSCustomObject]]::new()
             $totalBytesToDownload = 0
             $mediaInformationCache = @{}
 
@@ -158,87 +151,30 @@ function Get-PatSyncPlan {
                     $mediaInformationParameters = @{
                         RatingKey   = $item.RatingKey
                         ErrorAction = 'Stop'
-                    }
-                    if ($script:serverContext.WasExplicitUri) {
-                        $mediaInformationParameters['ServerUri'] = $ServerUri
-                        if ($Token) { $mediaInformationParameters['Token'] = $Token }
-                    }
-                    elseif ($ServerName) {
-                        $mediaInformationParameters['ServerName'] = $ServerName
-                    }
+                    } + $serverSplat
 
                     $mediaInformation = Get-PatMediaInfo @mediaInformationParameters
 
                     # Cache media info for reuse when building expected paths
                     $mediaInformationCache[$item.RatingKey] = $mediaInformation
 
-                    if (-not $mediaInformation.Media -or $mediaInformation.Media.Count -eq 0) {
+                    # Check if this item needs to be downloaded
+                    $addOperation = Get-PatSyncAddOperation -MediaInfo $mediaInformation -BasePath $resolvedDestination
+
+                    if ($addOperation) {
+                        $addOperations.Add($addOperation)
+                        $totalBytesToDownload += $addOperation.MediaSize
+                    }
+                    elseif (-not $mediaInformation.Media -or $mediaInformation.Media.Count -eq 0) {
                         Write-Warning "No media files found for '$($item.Title)'"
-                        continue
                     }
-
-                    # Use the first media version (default behavior)
-                    $media = $mediaInformation.Media[0]
-                    if (-not $media.Part -or $media.Part.Count -eq 0) {
+                    elseif (-not $mediaInformation.Media[0].Part -or $mediaInformation.Media[0].Part.Count -eq 0) {
                         Write-Warning "No media parts found for '$($item.Title)'"
-                        continue
-                    }
-
-                    $part = $media.Part[0]
-
-                    # Determine destination path
-                    $extension = if ($part.Container) { $part.Container } else { 'mkv' }
-                    $destPath = Get-PatMediaPath -MediaInfo $mediaInformation -BasePath $resolvedDestination -Extension $extension
-
-                    # Check if file already exists with correct size
-                    $needsDownload = $true
-                    if (Test-Path -Path $destPath) {
-                        $existingFile = Get-Item -Path $destPath
-                        if ($existingFile.Length -eq $part.Size) {
-                            $needsDownload = $false
-                            Write-Verbose "File already exists with correct size: $destPath"
-                        }
-                        else {
-                            Write-Verbose "File exists but size mismatch: $destPath"
-                        }
-                    }
-
-                    if ($needsDownload) {
-                        # Count external subtitles
-                        $subtitleCount = 0
-                        if ($part.Streams) {
-                            $subtitleCount = ($part.Streams | Where-Object { $_.StreamType -eq 3 -and $_.External }).Count
-                        }
-
-                        $addOperations += [PSCustomObject]@{
-                            PSTypeName      = 'PlexAutomationToolkit.SyncAddOperation'
-                            RatingKey       = $mediaInformation.RatingKey
-                            Title           = $mediaInformation.Title
-                            Type            = $mediaInformation.Type
-                            Year            = $mediaInformation.Year
-                            GrandparentTitle = $mediaInformation.GrandparentTitle
-                            ParentIndex     = $mediaInformation.ParentIndex
-                            Index           = $mediaInformation.Index
-                            DestinationPath = $destPath
-                            MediaSize       = $part.Size
-                            SubtitleCount   = $subtitleCount
-                            PartKey         = $part.Key
-                            Container       = $part.Container
-                        }
-
-                        $totalBytesToDownload += $part.Size
                     }
                 }
             }
 
-            # Scan destination for files to remove (items not in playlist)
-            $removeOperations = @()
-            $totalBytesToRemove = 0
-
-            $moviesPath = [System.IO.Path]::Combine($resolvedDestination, 'Movies')
-            $tvPath = [System.IO.Path]::Combine($resolvedDestination, 'TV Shows')
-
-            # Get all expected paths from playlist
+            # Build expected paths from playlist items
             $expectedPaths = @{}
             foreach ($op in $addOperations) {
                 $expectedPaths[$op.DestinationPath] = $true
@@ -260,64 +196,24 @@ function Get-PatSyncPlan {
                 }
             }
 
-            # Find files to remove in Movies folder
-            if (Test-Path -Path $moviesPath) {
-                $movieFiles = Get-ChildItem -Path $moviesPath -Recurse -File -ErrorAction SilentlyContinue |
-                    Where-Object { $_.Extension -match '\.(mkv|mp4|avi|m4v|mov|ts|wmv)$' }
+            # Scan destination for files to remove (items not in playlist)
+            $moviesPath = [System.IO.Path]::Combine($resolvedDestination, 'Movies')
+            $tvPath = [System.IO.Path]::Combine($resolvedDestination, 'TV Shows')
 
-                foreach ($file in $movieFiles) {
-                    if (-not $expectedPaths.ContainsKey($file.FullName)) {
-                        $removeOperations += [PSCustomObject]@{
-                            PSTypeName = 'PlexAutomationToolkit.SyncRemoveOperation'
-                            Path       = $file.FullName
-                            Size       = $file.Length
-                            Type       = 'movie'
-                        }
-                        $totalBytesToRemove += $file.Length
-                    }
-                }
+            $movieRemoveResult = Get-PatSyncRemoveOperation -FolderPath $moviesPath -ExpectedPaths $expectedPaths -MediaType 'movie'
+            $tvRemoveResult = Get-PatSyncRemoveOperation -FolderPath $tvPath -ExpectedPaths $expectedPaths -MediaType 'episode'
+
+            $removeOperations = [System.Collections.Generic.List[PSCustomObject]]::new()
+            if ($movieRemoveResult.Operations) {
+                $movieRemoveResult.Operations | ForEach-Object { $removeOperations.Add($_) }
             }
-
-            # Find files to remove in TV Shows folder
-            if (Test-Path -Path $tvPath) {
-                $tvFiles = Get-ChildItem -Path $tvPath -Recurse -File -ErrorAction SilentlyContinue |
-                    Where-Object { $_.Extension -match '\.(mkv|mp4|avi|m4v|mov|ts|wmv)$' }
-
-                foreach ($file in $tvFiles) {
-                    if (-not $expectedPaths.ContainsKey($file.FullName)) {
-                        $removeOperations += [PSCustomObject]@{
-                            PSTypeName = 'PlexAutomationToolkit.SyncRemoveOperation'
-                            Path       = $file.FullName
-                            Size       = $file.Length
-                            Type       = 'episode'
-                        }
-                        $totalBytesToRemove += $file.Length
-                    }
-                }
+            if ($tvRemoveResult.Operations) {
+                $tvRemoveResult.Operations | ForEach-Object { $removeOperations.Add($_) }
             }
+            $totalBytesToRemove = $movieRemoveResult.TotalBytes + $tvRemoveResult.TotalBytes
 
             # Get destination drive info
-            $destinationFree = 0
-            try {
-                # Handle both drive letters and UNC paths
-                if ($resolvedDestination -match '^([A-Z]):') {
-                    $driveLetter = $Matches[1]
-                    $drive = Get-PSDrive -Name $driveLetter -ErrorAction Stop
-                    $destinationFree = $drive.Free
-                }
-                else {
-                    # For UNC paths or when drive info isn't available, try filesystem info
-                    $driveInformation = [System.IO.DriveInfo]::GetDrives() |
-                        Where-Object { $resolvedDestination.StartsWith($_.Name, [StringComparison]::OrdinalIgnoreCase) } |
-                        Select-Object -First 1
-                    if ($driveInformation) {
-                        $destinationFree = $driveInformation.AvailableFreeSpace
-                    }
-                }
-            }
-            catch {
-                Write-Warning "Could not determine free space at destination: $($_.Exception.Message)"
-            }
+            $destinationFree = Get-PatDestinationFreeSpace -Path $resolvedDestination
 
             # Calculate projected space
             $spaceNeeded = $totalBytesToDownload - $totalBytesToRemove
