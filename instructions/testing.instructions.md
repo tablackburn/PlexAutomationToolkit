@@ -7,6 +7,17 @@ description: 'Test writing best practices and conventions'
 
 Language-agnostic guidelines for writing effective tests.
 
+## Discovering Existing Test Tooling
+
+Before creating scripts for test-related tasks (running tests, gathering coverage, generating reports):
+
+1. **Check for build systems** - Look for `Makefile`, `build.ps1`, `package.json` scripts, `tox.ini`,
+   `pyproject.toml`, or similar build configuration files
+2. **Search README and CI configs** - Existing commands are often documented or visible in CI workflows
+3. **Ask the user** - If unsure whether tooling exists, ask before creating anything new
+
+**Never create new scripts when existing build tooling already handles the task.**
+
 ## Test Structure
 
 ### Arrange-Act-Assert (AAA)
@@ -245,9 +256,9 @@ adminUser = createTestUser({ role: "admin" })
 Prioritize testing:
 
 1. Business-critical functionality
-1. Error handling and edge cases
-1. Security-sensitive code
-1. Complex algorithms
+2. Error handling and edge cases
+3. Security-sensitive code
+4. Complex algorithms
 
 ### Coverage Goals
 

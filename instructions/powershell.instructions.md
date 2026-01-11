@@ -7,16 +7,50 @@ description: 'PowerShell coding standards and best practices'
 
 Style rules for PowerShell code based on Microsoft guidelines and community standards.
 
+## Common Mistakes to Avoid
+
+**IMPORTANT**: These are frequent violations that MUST be avoided:
+
+1. **Plural nouns in function names** - ALWAYS use singular nouns regardless of how many items the
+   function returns. Use `Get-User` not `Get-Users`, `Get-Item` not `Get-Items`.
+
 ## Function Structure
 
 1. Always start functions with `[CmdletBinding()]` attribute
-1. Always include explicit `param()` block
-1. Use `process {}` block when accepting pipeline input
-1. For system-modifying cmdlets, use `[CmdletBinding(SupportsShouldProcess)]`
-1. Document output types with `[OutputType([TypeName])]` attribute
-1. Include comment-based help for all functions
+2. Always include explicit `param()` block
+3. Use `process {}` block when accepting pipeline input
+4. For system-modifying cmdlets, use `[CmdletBinding(SupportsShouldProcess)]`
+5. Document output types with `[OutputType([TypeName])]` attribute
+6. Include comment-based help for all functions
+7. Do not define nested functions inside other functions; define helper functions at module or
+   script scope
 
 ```powershell
+# Bad - nested function
+function Get-Data {
+    [CmdletBinding()]
+    param()
+
+    function Format-Result {
+        param($Value)
+        # Helper logic
+    }
+
+    $result = Get-RawData
+    Format-Result -Value $result
+}
+
+# Good - separate functions at module/script scope
+function Format-Result {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        $Value
+    )
+    # Helper logic
+}
+
+
 function Get-Data {
     [CmdletBinding()]
     [OutputType([hashtable])]
@@ -81,11 +115,11 @@ function Get-Setting {
 ## Naming Conventions
 
 1. Use approved PowerShell verbs only (verify with `Get-Verb`)
-1. Use singular nouns for function names (`Get-Item` not `Get-Items`)
-1. Use PascalCase for function names and parameters
-1. Use camelCase for local variables (`$userName`, `$itemCount`)
-1. Use descriptive variable names that indicate purpose
-1. Use full cmdlet names, never aliases (`Get-Process` not `gps`)
+2. Use singular nouns for function names (`Get-Item` not `Get-Items`)
+3. Use PascalCase for function names and parameters
+4. Use camelCase for local variables (`$userName`, `$itemCount`)
+5. Use descriptive variable names that indicate purpose
+6. Use full cmdlet names, never aliases (`Get-Process` not `gps`)
 
 ```powershell
 # Good - descriptive variable names
@@ -100,9 +134,19 @@ $users = Get-ADUser -Filter { Enabled -eq $true }
 ## Parameters
 
 1. Use full parameter names in scripts and functions
-1. Always use quotes around string parameter values
-1. Include validation on every parameter
-1. Place each component on its own line
+2. Always use quotes around string parameter values
+3. Include validation on every parameter
+4. Place each component on its own line
+
+```powershell
+# Good - string parameter values are quoted
+Get-Process -Name 'powershell'
+Get-ChildItem -Path 'C:\Program Files' -Filter '*.txt'
+
+# Bad - bare string parameter values
+Get-Process -Name powershell
+Get-ChildItem -Path C:\Program Files -Filter *.txt
+```
 
 ```powershell
 function Get-UserData {
@@ -129,11 +173,11 @@ function Get-UserData {
 ## Formatting
 
 1. Opening brace `{` at end of line, closing brace `}` on new line
-1. Use 4 spaces per indentation level
-1. Maximum line length: 115 characters
-1. Use splatting for long parameter lists
-1. Two blank lines before function definitions
-1. One blank line at end of file
+2. Use 4 spaces per indentation level
+3. Maximum line length: 115 characters
+4. Use splatting for long parameter lists
+5. Two blank lines before function definitions
+6. One blank line at end of file
 
 ```powershell
 function Test-Code {
@@ -169,8 +213,8 @@ Invoke-RestMethod @parameters
 ## Paths and File System
 
 1. Use `$PSScriptRoot` for script-relative paths
-1. Use `$Env:UserProfile` or `$HOME` instead of `~`
-1. Use `Join-Path` to construct paths
+2. Use `$Env:UserProfile` or `$HOME` instead of `~`
+3. Use `Join-Path` to construct paths
 
 ```powershell
 # Good
@@ -185,7 +229,7 @@ $userPath = '~\Documents'
 ## Error Handling
 
 1. Use `-ErrorAction 'Stop'` for cmdlets within try/catch
-1. Immediately copy `$_` in catch blocks before other commands
+2. Immediately copy `$_` in catch blocks before other commands
 
 ```powershell
 try {
@@ -200,8 +244,8 @@ catch {
 ## Credential Handling
 
 1. Use `[PSCredential]` for credential parameters, never `[string]` for passwords
-1. Make credentials optional when the function can run without them
-1. Use `[System.Management.Automation.Credential()]` attribute for flexibility
+2. Make credentials optional when the function can run without them
+3. Use `[System.Management.Automation.Credential()]` attribute for flexibility
 
 ```powershell
 function Connect-Service {
@@ -231,8 +275,8 @@ function Connect-Service {
 ## Output
 
 1. Write objects to pipeline immediately, don't batch into arrays
-1. Use `Write-Verbose` for detailed operation information
-1. Use `Write-Warning` for potential issues
+2. Use `Write-Verbose` for detailed operation information
+3. Use `Write-Warning` for potential issues
 
 ```powershell
 # Good - immediate output
@@ -289,8 +333,8 @@ function Get-UserData {
 ## Quotes
 
 1. Use single quotes for string literals
-1. Use double quotes only when variable expansion is needed
-1. Quote hashtable keys only when necessary (hyphens, spaces)
+2. Use double quotes only when variable expansion is needed
+3. Quote hashtable keys only when necessary (hyphens, spaces)
 
 ```powershell
 # Good
@@ -306,14 +350,14 @@ $title = 'Static string'
 ## Spacing
 
 1. Spaces around all operators: `$x = 1 + 2`
-1. Spaces around comparison operators: `$value -eq 10`
-1. Space after commas and semicolons
-1. No trailing spaces
+2. Spaces around comparison operators: `$value -eq 10`
+3. Space after commas and semicolons
+4. No trailing spaces
 
 ## Semicolons
 
 1. Do not use semicolons as line terminators
-1. Place each hashtable element on its own line
+2. Place each hashtable element on its own line
 
 ```powershell
 # Good
