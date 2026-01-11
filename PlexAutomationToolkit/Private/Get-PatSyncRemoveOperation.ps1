@@ -19,8 +19,8 @@ function Get-PatSyncRemoveOperation {
         The type of media being scanned ('movie' or 'episode').
 
     .OUTPUTS
-        PlexAutomationToolkit.SyncRemoveOperation[]
-        Returns an array of remove operation objects.
+        System.Collections.Hashtable
+        Returns a hashtable with Operations (array of SyncRemoveOperation objects) and TotalBytes (total size of files to remove).
 
     .EXAMPLE
         $expected = @{ 'E:\Movies\Movie.mkv' = $true }
@@ -29,7 +29,7 @@ function Get-PatSyncRemoveOperation {
         Returns remove operations for any movie files not in the expected paths.
     #>
     [CmdletBinding()]
-    [OutputType([PSCustomObject[]])]
+    [OutputType([hashtable])]
     param (
         [Parameter(Mandatory = $true)]
         [ValidateNotNullOrEmpty()]

@@ -35,11 +35,11 @@ function Get-PatDestinationFreeSpace {
     )
 
     process {
-        $destinationFree = 0
+        [long]$destinationFree = 0
 
         try {
-            # Handle drive letters (e.g., C:\, E:\path\to\folder)
-            if ($Path -match '^([A-Z]):') {
+            # Handle drive letters (e.g., C:\, E:\path\to\folder) - case-insensitive match
+            if ($Path -match '^([A-Za-z]):') {
                 $driveLetter = $Matches[1]
                 $drive = Get-PSDrive -Name $driveLetter -ErrorAction Stop
                 $destinationFree = $drive.Free

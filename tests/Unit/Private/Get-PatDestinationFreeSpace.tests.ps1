@@ -95,8 +95,8 @@ Describe 'Get-PatDestinationFreeSpace' {
                 # Since we can't easily mock static .NET methods, we verify behavior
                 $result = Get-PatDestinationFreeSpace -Path '\\server\share\folder'
 
-                # Result will be 0 unless the path matches a mounted drive
-                # The return type is int when 0 is returned directly, or long for actual free space
+                # Result will be 0 (as a [long]) unless the path matches a mounted drive
+                # The function consistently returns a [long] value for both 0 and actual free space
                 $result | Should -Be 0
             }
         }
