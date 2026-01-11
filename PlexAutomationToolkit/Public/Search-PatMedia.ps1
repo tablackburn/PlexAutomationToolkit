@@ -73,6 +73,17 @@ function Search-PatMedia {
         - LibraryId: ID of the library section containing this item
         - LibraryName: Name of the library section
         - ServerUri: URI of the Plex server
+        - Duration: Duration in milliseconds (if applicable)
+        - DurationFormatted: Human-readable duration (e.g., "2h 16m")
+        - ContentRating: Age rating (e.g., "PG-13", "R", "TV-MA")
+        - Rating: Critic/Plex rating (0-10)
+        - AudienceRating: Audience rating (0-10)
+        - Studio: Production company/studio
+        - ViewCount: Number of times watched
+        - OriginallyAvailableAt: Original release date
+        - ShowName: TV show name (for episodes only)
+        - Season: Season number (for episodes only)
+        - Episode: Episode number (for episodes only)
     #>
     [CmdletBinding(DefaultParameterSetName = 'All')]
     [OutputType([PSCustomObject[]])]
@@ -193,16 +204,27 @@ function Search-PatMedia {
                         $itemLibraryName = if ($item.librarySectionTitle) { $item.librarySectionTitle } elseif ($resolvedSectionName) { $resolvedSectionName } else { $null }
 
                         [PSCustomObject]@{
-                            PSTypeName  = 'PlexAutomationToolkit.SearchResult'
-                            Type        = $hub.type
-                            RatingKey   = if ($item.ratingKey) { [int]$item.ratingKey } else { $null }
-                            Title       = $item.title
-                            Year        = if ($item.year) { [int]$item.year } else { $null }
-                            Summary     = $item.summary
-                            Thumb       = $item.thumb
-                            LibraryId   = $itemLibraryId
-                            LibraryName = $itemLibraryName
-                            ServerUri   = $effectiveUri
+                            PSTypeName            = 'PlexAutomationToolkit.SearchResult'
+                            Type                  = $hub.type
+                            RatingKey             = if ($item.ratingKey) { [int]$item.ratingKey } else { $null }
+                            Title                 = $item.title
+                            Year                  = if ($item.year) { [int]$item.year } else { $null }
+                            Summary               = $item.summary
+                            Thumb                 = $item.thumb
+                            LibraryId             = $itemLibraryId
+                            LibraryName           = $itemLibraryName
+                            ServerUri             = $effectiveUri
+                            Duration              = if ($item.duration) { [long]$item.duration } else { $null }
+                            DurationFormatted     = Format-PatDuration -Milliseconds $item.duration
+                            ContentRating         = $item.contentRating
+                            Rating                = if ($item.rating) { [decimal]$item.rating } else { $null }
+                            AudienceRating        = if ($item.audienceRating) { [decimal]$item.audienceRating } else { $null }
+                            Studio                = $item.studio
+                            ViewCount             = if ($item.viewCount) { [int]$item.viewCount } else { 0 }
+                            OriginallyAvailableAt = if ($item.originallyAvailableAt) { [datetime]$item.originallyAvailableAt } else { $null }
+                            ShowName              = $item.grandparentTitle
+                            Season                = if ($item.parentIndex) { [int]$item.parentIndex } else { $null }
+                            Episode               = if ($item.index) { [int]$item.index } else { $null }
                         }
                     }
                 }

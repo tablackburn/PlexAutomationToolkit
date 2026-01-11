@@ -16,53 +16,69 @@ Describe 'Search-PatMedia' {
             size = 2
             Hub  = @(
                 @{
-                    hubKey      = 'movie'
-                    type        = 'movie'
+                    hubKey        = 'movie'
+                    type          = 'movie'
                     hubIdentifier = 'movie'
-                    size        = 2
-                    title       = 'Movies'
-                    Metadata    = @(
+                    size          = 2
+                    title         = 'Movies'
+                    Metadata      = @(
                         @{
-                            ratingKey           = '12345'
-                            key                 = '/library/metadata/12345'
-                            type                = 'movie'
-                            title               = 'The Matrix'
-                            summary             = 'A computer hacker learns about the true nature of reality.'
-                            year                = 1999
-                            thumb               = '/library/metadata/12345/thumb/1234567890'
-                            librarySectionID    = 2
-                            librarySectionTitle = 'Movies'
+                            ratingKey             = '12345'
+                            key                   = '/library/metadata/12345'
+                            type                  = 'movie'
+                            title                 = 'The Matrix'
+                            summary               = 'A computer hacker learns about the true nature of reality.'
+                            year                  = 1999
+                            thumb                 = '/library/metadata/12345/thumb/1234567890'
+                            librarySectionID      = 2
+                            librarySectionTitle   = 'Movies'
+                            duration              = 8160000
+                            contentRating         = 'R'
+                            rating                = 7.7
+                            audienceRating        = 8.5
+                            studio                = 'Warner Bros.'
+                            viewCount             = 3
+                            originallyAvailableAt = '1999-03-31'
                         }
                         @{
-                            ratingKey           = '12346'
-                            key                 = '/library/metadata/12346'
-                            type                = 'movie'
-                            title               = 'The Matrix Reloaded'
-                            summary             = 'Neo and the rebels continue their fight.'
-                            year                = 2003
-                            thumb               = '/library/metadata/12346/thumb/1234567891'
-                            librarySectionID    = 2
-                            librarySectionTitle = 'Movies'
+                            ratingKey             = '12346'
+                            key                   = '/library/metadata/12346'
+                            type                  = 'movie'
+                            title                 = 'The Matrix Reloaded'
+                            summary               = 'Neo and the rebels continue their fight.'
+                            year                  = 2003
+                            thumb                 = '/library/metadata/12346/thumb/1234567891'
+                            librarySectionID      = 2
+                            librarySectionTitle   = 'Movies'
+                            duration              = 8280000
+                            contentRating         = 'R'
+                            rating                = 7.2
+                            audienceRating        = 7.8
+                            studio                = 'Warner Bros.'
+                            viewCount             = 2
+                            originallyAvailableAt = '2003-05-15'
                         }
                     )
                 }
                 @{
-                    hubKey      = 'show'
-                    type        = 'show'
+                    hubKey        = 'show'
+                    type          = 'show'
                     hubIdentifier = 'show'
-                    size        = 1
-                    title       = 'TV Shows'
-                    Metadata    = @(
+                    size          = 1
+                    title         = 'TV Shows'
+                    Metadata      = @(
                         @{
-                            ratingKey           = '22345'
-                            key                 = '/library/metadata/22345'
-                            type                = 'show'
-                            title               = 'Matrix Documentary'
-                            summary             = 'Behind the scenes of The Matrix.'
-                            year                = 2020
-                            thumb               = '/library/metadata/22345/thumb/1234567892'
-                            librarySectionID    = 3
-                            librarySectionTitle = 'TV Shows'
+                            ratingKey             = '22345'
+                            key                   = '/library/metadata/22345'
+                            type                  = 'show'
+                            title                 = 'Matrix Documentary'
+                            summary               = 'Behind the scenes of The Matrix.'
+                            year                  = 2020
+                            thumb                 = '/library/metadata/22345/thumb/1234567892'
+                            librarySectionID      = 3
+                            librarySectionTitle   = 'TV Shows'
+                            contentRating         = 'TV-14'
+                            rating                = 8.0
                         }
                     )
                 }
@@ -146,6 +162,18 @@ Describe 'Search-PatMedia' {
             $result[0].Year | Should -Be 1999
             $result[0].RatingKey | Should -Be 12345
             $result[0].LibraryName | Should -Be 'Movies'
+        }
+
+        It 'Returns new media detail properties' {
+            $result = Search-PatMedia -Query 'matrix'
+            $result[0].Duration | Should -Be 8160000
+            $result[0].DurationFormatted | Should -Be '2h 16m'
+            $result[0].ContentRating | Should -Be 'R'
+            $result[0].Rating | Should -Be 7.7
+            $result[0].AudienceRating | Should -Be 8.5
+            $result[0].Studio | Should -Be 'Warner Bros.'
+            $result[0].ViewCount | Should -Be 3
+            $result[0].OriginallyAvailableAt | Should -Be ([datetime]'1999-03-31')
         }
 
         It 'Includes results from all hub types' {
@@ -677,6 +705,132 @@ Describe 'Search-PatMedia' {
             Should -Invoke -ModuleName PlexAutomationToolkit Resolve-PatServerContext -ParameterFilter {
                 $Token -eq 'my-token'
             }
+        }
+    }
+
+    Context 'When searching returns episode results' {
+        BeforeAll {
+            $script:mockEpisodeSearchResponse = @{
+                size = 1
+                Hub  = @(
+                    @{
+                        hubKey        = 'episode'
+                        type          = 'episode'
+                        hubIdentifier = 'episode'
+                        size          = 2
+                        title         = 'Episodes'
+                        Metadata      = @(
+                            @{
+                                ratingKey             = '33001'
+                                key                   = '/library/metadata/33001'
+                                type                  = 'episode'
+                                title                 = 'Pilot'
+                                summary               = 'Walter White begins his journey.'
+                                year                  = 2008
+                                thumb                 = '/library/metadata/33001/thumb/1234567893'
+                                librarySectionID      = 3
+                                librarySectionTitle   = 'TV Shows'
+                                duration              = 3480000
+                                contentRating         = 'TV-MA'
+                                rating                = 9.0
+                                grandparentTitle      = 'Breaking Bad'
+                                parentIndex           = 1
+                                index                 = 1
+                                originallyAvailableAt = '2008-01-20'
+                            }
+                            @{
+                                ratingKey             = '33002'
+                                key                   = '/library/metadata/33002'
+                                type                  = 'episode'
+                                title                 = "Cat's in the Bag..."
+                                summary               = 'Walt and Jesse deal with consequences.'
+                                year                  = 2008
+                                thumb                 = '/library/metadata/33002/thumb/1234567894'
+                                librarySectionID      = 3
+                                librarySectionTitle   = 'TV Shows'
+                                duration              = 2880000
+                                contentRating         = 'TV-MA'
+                                grandparentTitle      = 'Breaking Bad'
+                                parentIndex           = 1
+                                index                 = 2
+                                originallyAvailableAt = '2008-01-27'
+                            }
+                        )
+                    }
+                )
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Resolve-PatServerContext {
+                return [PSCustomObject]$script:mockServerContext
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Invoke-PatApi {
+                return $script:mockEpisodeSearchResponse
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Join-PatUri {
+                param($BaseUri, $Endpoint, $QueryString)
+                return "$BaseUri$Endpoint`?$QueryString"
+            }
+        }
+
+        It 'Returns episode-specific ShowName property' {
+            $result = Search-PatMedia -Query 'breaking'
+            $result[0].ShowName | Should -Be 'Breaking Bad'
+        }
+
+        It 'Returns episode-specific Season property' {
+            $result = Search-PatMedia -Query 'breaking'
+            $result[0].Season | Should -Be 1
+        }
+
+        It 'Returns episode-specific Episode property' {
+            $result = Search-PatMedia -Query 'breaking'
+            $result[0].Episode | Should -Be 1
+            $result[1].Episode | Should -Be 2
+        }
+
+        It 'Returns formatted duration for episodes' {
+            $result = Search-PatMedia -Query 'breaking'
+            $result[0].Duration | Should -Be 3480000
+            $result[0].DurationFormatted | Should -Be '58m'
+        }
+
+        It 'Returns content rating for episodes' {
+            $result = Search-PatMedia -Query 'breaking'
+            $result[0].ContentRating | Should -Be 'TV-MA'
+        }
+    }
+
+    Context 'When movie results have null episode fields' {
+        BeforeAll {
+            Mock -ModuleName PlexAutomationToolkit Resolve-PatServerContext {
+                return [PSCustomObject]$script:mockServerContext
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Invoke-PatApi {
+                return $script:mockSearchResponse
+            }
+
+            Mock -ModuleName PlexAutomationToolkit Join-PatUri {
+                param($BaseUri, $Endpoint, $QueryString)
+                return "$BaseUri$Endpoint`?$QueryString"
+            }
+        }
+
+        It 'Returns null ShowName for movies' {
+            $result = Search-PatMedia -Query 'matrix' -Type 'movie'
+            $result[0].ShowName | Should -BeNullOrEmpty
+        }
+
+        It 'Returns null Season for movies' {
+            $result = Search-PatMedia -Query 'matrix' -Type 'movie'
+            $result[0].Season | Should -BeNullOrEmpty
+        }
+
+        It 'Returns null Episode for movies' {
+            $result = Search-PatMedia -Query 'matrix' -Type 'movie'
+            $result[0].Episode | Should -BeNullOrEmpty
         }
     }
 }
