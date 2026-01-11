@@ -1,10 +1,10 @@
 BeforeAll {
-    # Import the module from the source directory for unit testing
-    $modulePath = Join-Path -Path $PSScriptRoot -ChildPath '..\..\..\PlexAutomationToolkit\PlexAutomationToolkit.psm1'
-    Import-Module $modulePath -Force
+    $ProjectRoot = Split-Path -Parent (Split-Path -Parent (Split-Path -Parent $PSScriptRoot))
+    $ModuleRoot = Join-Path $ProjectRoot 'PlexAutomationToolkit'
+    $moduleManifestPath = Join-Path $ModuleRoot 'PlexAutomationToolkit.psd1'
 
-    # Get the private function using module scope
-    $script:GetPatMediaSubtitle = & (Get-Module PlexAutomationToolkit) { Get-Command Get-PatMediaSubtitle }
+    Get-Module PlexAutomationToolkit | Remove-Module -Force -ErrorAction 'Ignore'
+    Import-Module -Name $moduleManifestPath -Verbose:$false -ErrorAction 'Stop'
 
     # Create temp directory for test files
     $script:TestDir = Join-Path -Path ([System.IO.Path]::GetTempPath()) -ChildPath "PatMediaSubtitleTests_$([Guid]::NewGuid().ToString('N'))"
@@ -65,8 +65,10 @@ Describe 'Get-PatMediaSubtitle' {
         It 'Downloads subtitle file' {
             $mediaPath = Join-Path -Path $script:TestDir -ChildPath 'Movie (2020).mkv'
 
-            & $script:GetPatMediaSubtitle -RatingKey 1001 -MediaDestinationPath $mediaPath `
-                -ServerUri 'http://plex:32400' -Token 'test-token'
+            InModuleScope PlexAutomationToolkit -Parameters @{ mediaPath = $mediaPath } {
+                Get-PatMediaSubtitle -RatingKey 1001 -MediaDestinationPath $mediaPath `
+                    -ServerUri 'http://plex:32400' -Token 'test-token'
+            }
 
             $expectedSubPath = Join-Path -Path $script:TestDir -ChildPath 'Movie (2020).eng.srt'
             Test-Path -Path $expectedSubPath | Should -Be $true
@@ -75,8 +77,10 @@ Describe 'Get-PatMediaSubtitle' {
         It 'Calls Get-PatMediaInfo with correct RatingKey' {
             $mediaPath = Join-Path -Path $script:TestDir -ChildPath 'Movie.mkv'
 
-            & $script:GetPatMediaSubtitle -RatingKey 1001 -MediaDestinationPath $mediaPath `
-                -ServerUri 'http://plex:32400' -Token 'test-token'
+            InModuleScope PlexAutomationToolkit -Parameters @{ mediaPath = $mediaPath } {
+                Get-PatMediaSubtitle -RatingKey 1001 -MediaDestinationPath $mediaPath `
+                    -ServerUri 'http://plex:32400' -Token 'test-token'
+            }
 
             Should -Invoke -CommandName Get-PatMediaInfo -ModuleName PlexAutomationToolkit -ParameterFilter {
                 $RatingKey -eq 1001
@@ -86,8 +90,10 @@ Describe 'Get-PatMediaSubtitle' {
         It 'Calls Invoke-PatFileDownload with correct URL' {
             $mediaPath = Join-Path -Path $script:TestDir -ChildPath 'Movie.mkv'
 
-            & $script:GetPatMediaSubtitle -RatingKey 1001 -MediaDestinationPath $mediaPath `
-                -ServerUri 'http://plex:32400' -Token 'test-token'
+            InModuleScope PlexAutomationToolkit -Parameters @{ mediaPath = $mediaPath } {
+                Get-PatMediaSubtitle -RatingKey 1001 -MediaDestinationPath $mediaPath `
+                    -ServerUri 'http://plex:32400' -Token 'test-token'
+            }
 
             Should -Invoke -CommandName Invoke-PatFileDownload -ModuleName PlexAutomationToolkit -ParameterFilter {
                 $Uri -eq 'http://plex:32400/library/streams/5001?download=1'
@@ -97,8 +103,10 @@ Describe 'Get-PatMediaSubtitle' {
         It 'Passes token to Invoke-PatFileDownload' {
             $mediaPath = Join-Path -Path $script:TestDir -ChildPath 'Movie.mkv'
 
-            & $script:GetPatMediaSubtitle -RatingKey 1001 -MediaDestinationPath $mediaPath `
-                -ServerUri 'http://plex:32400' -Token 'my-secret-token'
+            InModuleScope PlexAutomationToolkit -Parameters @{ mediaPath = $mediaPath } {
+                Get-PatMediaSubtitle -RatingKey 1001 -MediaDestinationPath $mediaPath `
+                    -ServerUri 'http://plex:32400' -Token 'my-secret-token'
+            }
 
             Should -Invoke -CommandName Invoke-PatFileDownload -ModuleName PlexAutomationToolkit -ParameterFilter {
                 $Token -eq 'my-secret-token'
@@ -159,8 +167,10 @@ Describe 'Get-PatMediaSubtitle' {
         It 'Downloads all external subtitles' {
             $mediaPath = Join-Path -Path $script:TestDir -ChildPath 'Movie.mkv'
 
-            & $script:GetPatMediaSubtitle -RatingKey 1001 -MediaDestinationPath $mediaPath `
-                -ServerUri 'http://plex:32400' -Token 'test-token'
+            InModuleScope PlexAutomationToolkit -Parameters @{ mediaPath = $mediaPath } {
+                Get-PatMediaSubtitle -RatingKey 1001 -MediaDestinationPath $mediaPath `
+                    -ServerUri 'http://plex:32400' -Token 'test-token'
+            }
 
             Should -Invoke -CommandName Invoke-PatFileDownload -ModuleName PlexAutomationToolkit -Times 3
         }
@@ -168,8 +178,10 @@ Describe 'Get-PatMediaSubtitle' {
         It 'Creates correct file names for each language' {
             $mediaPath = Join-Path -Path $script:TestDir -ChildPath 'Movie.mkv'
 
-            & $script:GetPatMediaSubtitle -RatingKey 1001 -MediaDestinationPath $mediaPath `
-                -ServerUri 'http://plex:32400' -Token 'test-token'
+            InModuleScope PlexAutomationToolkit -Parameters @{ mediaPath = $mediaPath } {
+                Get-PatMediaSubtitle -RatingKey 1001 -MediaDestinationPath $mediaPath `
+                    -ServerUri 'http://plex:32400' -Token 'test-token'
+            }
 
             Test-Path (Join-Path $script:TestDir 'Movie.eng.srt') | Should -Be $true
             Test-Path (Join-Path $script:TestDir 'Movie.spa.srt') | Should -Be $true
@@ -239,8 +251,10 @@ Describe 'Get-PatMediaSubtitle' {
         It 'Only downloads external subtitles with keys' {
             $mediaPath = Join-Path -Path $script:TestDir -ChildPath 'Movie.mkv'
 
-            & $script:GetPatMediaSubtitle -RatingKey 1001 -MediaDestinationPath $mediaPath `
-                -ServerUri 'http://plex:32400' -Token 'test-token'
+            InModuleScope PlexAutomationToolkit -Parameters @{ mediaPath = $mediaPath } {
+                Get-PatMediaSubtitle -RatingKey 1001 -MediaDestinationPath $mediaPath `
+                    -ServerUri 'http://plex:32400' -Token 'test-token'
+            }
 
             # Should only call once for the valid Japanese subtitle
             Should -Invoke -CommandName Invoke-PatFileDownload -ModuleName PlexAutomationToolkit -Times 1
@@ -249,8 +263,10 @@ Describe 'Get-PatMediaSubtitle' {
         It 'Downloads only the valid subtitle' {
             $mediaPath = Join-Path -Path $script:TestDir -ChildPath 'Movie.mkv'
 
-            & $script:GetPatMediaSubtitle -RatingKey 1001 -MediaDestinationPath $mediaPath `
-                -ServerUri 'http://plex:32400' -Token 'test-token'
+            InModuleScope PlexAutomationToolkit -Parameters @{ mediaPath = $mediaPath } {
+                Get-PatMediaSubtitle -RatingKey 1001 -MediaDestinationPath $mediaPath `
+                    -ServerUri 'http://plex:32400' -Token 'test-token'
+            }
 
             Test-Path (Join-Path $script:TestDir 'Movie.jpn.srt') | Should -Be $true
         }
@@ -294,8 +310,10 @@ Describe 'Get-PatMediaSubtitle' {
         It 'Uses "und" for missing language code' {
             $mediaPath = Join-Path -Path $script:TestDir -ChildPath 'Movie.mkv'
 
-            & $script:GetPatMediaSubtitle -RatingKey 1001 -MediaDestinationPath $mediaPath `
-                -ServerUri 'http://plex:32400'
+            InModuleScope PlexAutomationToolkit -Parameters @{ mediaPath = $mediaPath } {
+                Get-PatMediaSubtitle -RatingKey 1001 -MediaDestinationPath $mediaPath `
+                    -ServerUri 'http://plex:32400'
+            }
 
             Test-Path (Join-Path $script:TestDir 'Movie.und.srt') | Should -Be $true
         }
@@ -303,8 +321,10 @@ Describe 'Get-PatMediaSubtitle' {
         It 'Uses "srt" for missing format' {
             $mediaPath = Join-Path -Path $script:TestDir -ChildPath 'Movie.mkv'
 
-            & $script:GetPatMediaSubtitle -RatingKey 1001 -MediaDestinationPath $mediaPath `
-                -ServerUri 'http://plex:32400'
+            InModuleScope PlexAutomationToolkit -Parameters @{ mediaPath = $mediaPath } {
+                Get-PatMediaSubtitle -RatingKey 1001 -MediaDestinationPath $mediaPath `
+                    -ServerUri 'http://plex:32400'
+            }
 
             $subPath = Join-Path $script:TestDir 'Movie.und.srt'
             Test-Path $subPath | Should -Be $true
@@ -334,8 +354,12 @@ Describe 'Get-PatMediaSubtitle' {
 
             $mediaPath = Join-Path -Path $script:TestDir -ChildPath 'Movie.mkv'
 
-            { & $script:GetPatMediaSubtitle -RatingKey 1001 -MediaDestinationPath $mediaPath `
-                -ServerUri 'http://plex:32400' } | Should -Not -Throw
+            {
+                InModuleScope PlexAutomationToolkit -Parameters @{ mediaPath = $mediaPath } {
+                    Get-PatMediaSubtitle -RatingKey 1001 -MediaDestinationPath $mediaPath `
+                        -ServerUri 'http://plex:32400'
+                }
+            } | Should -Not -Throw
 
             Should -Invoke -CommandName Invoke-PatFileDownload -ModuleName PlexAutomationToolkit -Times 0
         }
@@ -354,8 +378,12 @@ Describe 'Get-PatMediaSubtitle' {
 
             $mediaPath = Join-Path -Path $script:TestDir -ChildPath 'Movie.mkv'
 
-            { & $script:GetPatMediaSubtitle -RatingKey 1001 -MediaDestinationPath $mediaPath `
-                -ServerUri 'http://plex:32400' } | Should -Not -Throw
+            {
+                InModuleScope PlexAutomationToolkit -Parameters @{ mediaPath = $mediaPath } {
+                    Get-PatMediaSubtitle -RatingKey 1001 -MediaDestinationPath $mediaPath `
+                        -ServerUri 'http://plex:32400'
+                }
+            } | Should -Not -Throw
 
             Should -Invoke -CommandName Invoke-PatFileDownload -ModuleName PlexAutomationToolkit -Times 0
         }
@@ -370,8 +398,12 @@ Describe 'Get-PatMediaSubtitle' {
 
             $mediaPath = Join-Path -Path $script:TestDir -ChildPath 'Movie.mkv'
 
-            { & $script:GetPatMediaSubtitle -RatingKey 1001 -MediaDestinationPath $mediaPath `
-                -ServerUri 'http://plex:32400' } | Should -Not -Throw
+            {
+                InModuleScope PlexAutomationToolkit -Parameters @{ mediaPath = $mediaPath } {
+                    Get-PatMediaSubtitle -RatingKey 1001 -MediaDestinationPath $mediaPath `
+                        -ServerUri 'http://plex:32400'
+                }
+            } | Should -Not -Throw
 
             Should -Invoke -CommandName Invoke-PatFileDownload -ModuleName PlexAutomationToolkit -Times 0
         }
@@ -386,8 +418,12 @@ Describe 'Get-PatMediaSubtitle' {
 
             $mediaPath = Join-Path -Path $script:TestDir -ChildPath 'Movie.mkv'
 
-            { & $script:GetPatMediaSubtitle -RatingKey 1001 -MediaDestinationPath $mediaPath `
-                -ServerUri 'http://plex:32400' } | Should -Not -Throw
+            {
+                InModuleScope PlexAutomationToolkit -Parameters @{ mediaPath = $mediaPath } {
+                    Get-PatMediaSubtitle -RatingKey 1001 -MediaDestinationPath $mediaPath `
+                        -ServerUri 'http://plex:32400'
+                }
+            } | Should -Not -Throw
 
             Should -Invoke -CommandName Invoke-PatFileDownload -ModuleName PlexAutomationToolkit -Times 0
         }
@@ -406,8 +442,12 @@ Describe 'Get-PatMediaSubtitle' {
 
             $mediaPath = Join-Path -Path $script:TestDir -ChildPath 'Movie.mkv'
 
-            { & $script:GetPatMediaSubtitle -RatingKey 1001 -MediaDestinationPath $mediaPath `
-                -ServerUri 'http://plex:32400' } | Should -Not -Throw
+            {
+                InModuleScope PlexAutomationToolkit -Parameters @{ mediaPath = $mediaPath } {
+                    Get-PatMediaSubtitle -RatingKey 1001 -MediaDestinationPath $mediaPath `
+                        -ServerUri 'http://plex:32400'
+                }
+            } | Should -Not -Throw
 
             Should -Invoke -CommandName Invoke-PatFileDownload -ModuleName PlexAutomationToolkit -Times 0
         }
@@ -421,8 +461,10 @@ Describe 'Get-PatMediaSubtitle' {
 
             $mediaPath = Join-Path -Path $script:TestDir -ChildPath 'Movie.mkv'
 
-            $warnings = & $script:GetPatMediaSubtitle -RatingKey 1001 -MediaDestinationPath $mediaPath `
-                -ServerUri 'http://plex:32400' 3>&1
+            $warnings = InModuleScope PlexAutomationToolkit -Parameters @{ mediaPath = $mediaPath } {
+                Get-PatMediaSubtitle -RatingKey 1001 -MediaDestinationPath $mediaPath `
+                    -ServerUri 'http://plex:32400' 3>&1
+            }
 
             $warnings | Should -Match 'Failed to get media info'
         }
@@ -457,8 +499,10 @@ Describe 'Get-PatMediaSubtitle' {
 
             $mediaPath = Join-Path -Path $script:TestDir -ChildPath 'Movie.mkv'
 
-            $warnings = & $script:GetPatMediaSubtitle -RatingKey 1001 -MediaDestinationPath $mediaPath `
-                -ServerUri 'http://plex:32400' -ItemDisplayName 'Test Movie (2020)' 3>&1
+            $warnings = InModuleScope PlexAutomationToolkit -Parameters @{ mediaPath = $mediaPath } {
+                Get-PatMediaSubtitle -RatingKey 1001 -MediaDestinationPath $mediaPath `
+                    -ServerUri 'http://plex:32400' -ItemDisplayName 'Test Movie (2020)' 3>&1
+            }
 
             $warnings | Should -Match 'Failed to download subtitle'
             $warnings | Should -Match 'Test Movie \(2020\)'
@@ -512,8 +556,10 @@ Describe 'Get-PatMediaSubtitle' {
             $mediaPath = Join-Path -Path $script:TestDir -ChildPath 'Movie.mkv'
             $script:downloadCount = 0
 
-            & $script:GetPatMediaSubtitle -RatingKey 1001 -MediaDestinationPath $mediaPath `
-                -ServerUri 'http://plex:32400' 3>&1 | Out-Null
+            InModuleScope PlexAutomationToolkit -Parameters @{ mediaPath = $mediaPath } {
+                Get-PatMediaSubtitle -RatingKey 1001 -MediaDestinationPath $mediaPath `
+                    -ServerUri 'http://plex:32400' 3>&1 | Out-Null
+            }
 
             # Both downloads should be attempted
             Should -Invoke -CommandName Invoke-PatFileDownload -ModuleName PlexAutomationToolkit -Times 2
@@ -558,8 +604,10 @@ Describe 'Get-PatMediaSubtitle' {
         It 'Passes ServerName to Get-PatMediaInfo' {
             $mediaPath = Join-Path -Path $script:TestDir -ChildPath 'Movie.mkv'
 
-            & $script:GetPatMediaSubtitle -RatingKey 1001 -MediaDestinationPath $mediaPath `
-                -ServerUri 'http://plex:32400' -ServerName 'HomeServer'
+            InModuleScope PlexAutomationToolkit -Parameters @{ mediaPath = $mediaPath } {
+                Get-PatMediaSubtitle -RatingKey 1001 -MediaDestinationPath $mediaPath `
+                    -ServerUri 'http://plex:32400' -ServerName 'HomeServer'
+            }
 
             Should -Invoke -CommandName Get-PatMediaInfo -ModuleName PlexAutomationToolkit -ParameterFilter {
                 $ServerName -eq 'HomeServer'
@@ -569,8 +617,10 @@ Describe 'Get-PatMediaSubtitle' {
         It 'Prefers ServerName over ServerUri for Get-PatMediaInfo' {
             $mediaPath = Join-Path -Path $script:TestDir -ChildPath 'Movie.mkv'
 
-            & $script:GetPatMediaSubtitle -RatingKey 1001 -MediaDestinationPath $mediaPath `
-                -ServerUri 'http://plex:32400' -ServerName 'HomeServer' -Token 'test-token'
+            InModuleScope PlexAutomationToolkit -Parameters @{ mediaPath = $mediaPath } {
+                Get-PatMediaSubtitle -RatingKey 1001 -MediaDestinationPath $mediaPath `
+                    -ServerUri 'http://plex:32400' -ServerName 'HomeServer' -Token 'test-token'
+            }
 
             Should -Invoke -CommandName Get-PatMediaInfo -ModuleName PlexAutomationToolkit -ParameterFilter {
                 $ServerName -eq 'HomeServer' -and -not $ServerUri
@@ -616,8 +666,10 @@ Describe 'Get-PatMediaSubtitle' {
         It 'Handles media path with multiple extensions correctly' {
             $mediaPath = Join-Path -Path $script:TestDir -ChildPath 'Movie.2020.1080p.mkv'
 
-            & $script:GetPatMediaSubtitle -RatingKey 1001 -MediaDestinationPath $mediaPath `
-                -ServerUri 'http://plex:32400'
+            InModuleScope PlexAutomationToolkit -Parameters @{ mediaPath = $mediaPath } {
+                Get-PatMediaSubtitle -RatingKey 1001 -MediaDestinationPath $mediaPath `
+                    -ServerUri 'http://plex:32400'
+            }
 
             # Should only remove the last extension
             Test-Path (Join-Path $script:TestDir 'Movie.2020.1080p.eng.srt') | Should -Be $true
@@ -628,8 +680,10 @@ Describe 'Get-PatMediaSubtitle' {
             New-Item -Path $movieDir -ItemType Directory -Force | Out-Null
             $mediaPath = Join-Path -Path $movieDir -ChildPath 'Test Movie (2020).mkv'
 
-            & $script:GetPatMediaSubtitle -RatingKey 1001 -MediaDestinationPath $mediaPath `
-                -ServerUri 'http://plex:32400'
+            InModuleScope PlexAutomationToolkit -Parameters @{ mediaPath = $mediaPath } {
+                Get-PatMediaSubtitle -RatingKey 1001 -MediaDestinationPath $mediaPath `
+                    -ServerUri 'http://plex:32400'
+            }
 
             Test-Path (Join-Path $movieDir 'Test Movie (2020).eng.srt') | Should -Be $true
         }
@@ -637,43 +691,53 @@ Describe 'Get-PatMediaSubtitle' {
 
     Context 'Parameter validation' {
         It 'Has mandatory RatingKey parameter' {
-            $command = & (Get-Module PlexAutomationToolkit) { Get-Command Get-PatMediaSubtitle }
-            $parameter = $command.Parameters['RatingKey']
+            InModuleScope PlexAutomationToolkit {
+                $command = Get-Command Get-PatMediaSubtitle
+                $parameter = $command.Parameters['RatingKey']
 
-            $parameter | Should -Not -BeNullOrEmpty
-            $parameter.Attributes.Mandatory | Should -Contain $true
+                $parameter | Should -Not -BeNullOrEmpty
+                $parameter.Attributes.Mandatory | Should -Contain $true
+            }
         }
 
         It 'Has mandatory MediaDestinationPath parameter' {
-            $command = & (Get-Module PlexAutomationToolkit) { Get-Command Get-PatMediaSubtitle }
-            $parameter = $command.Parameters['MediaDestinationPath']
+            InModuleScope PlexAutomationToolkit {
+                $command = Get-Command Get-PatMediaSubtitle
+                $parameter = $command.Parameters['MediaDestinationPath']
 
-            $parameter | Should -Not -BeNullOrEmpty
-            $parameter.Attributes.Mandatory | Should -Contain $true
+                $parameter | Should -Not -BeNullOrEmpty
+                $parameter.Attributes.Mandatory | Should -Contain $true
+            }
         }
 
         It 'Has mandatory ServerUri parameter' {
-            $command = & (Get-Module PlexAutomationToolkit) { Get-Command Get-PatMediaSubtitle }
-            $parameter = $command.Parameters['ServerUri']
+            InModuleScope PlexAutomationToolkit {
+                $command = Get-Command Get-PatMediaSubtitle
+                $parameter = $command.Parameters['ServerUri']
 
-            $parameter | Should -Not -BeNullOrEmpty
-            $parameter.Attributes.Mandatory | Should -Contain $true
+                $parameter | Should -Not -BeNullOrEmpty
+                $parameter.Attributes.Mandatory | Should -Contain $true
+            }
         }
 
         It 'Has optional Token parameter' {
-            $command = & (Get-Module PlexAutomationToolkit) { Get-Command Get-PatMediaSubtitle }
-            $parameter = $command.Parameters['Token']
+            InModuleScope PlexAutomationToolkit {
+                $command = Get-Command Get-PatMediaSubtitle
+                $parameter = $command.Parameters['Token']
 
-            $parameter | Should -Not -BeNullOrEmpty
-            $parameter.Attributes.Mandatory | Should -Not -Contain $true
+                $parameter | Should -Not -BeNullOrEmpty
+                $parameter.Attributes.Mandatory | Should -Not -Contain $true
+            }
         }
 
         It 'Has optional ServerName parameter' {
-            $command = & (Get-Module PlexAutomationToolkit) { Get-Command Get-PatMediaSubtitle }
-            $parameter = $command.Parameters['ServerName']
+            InModuleScope PlexAutomationToolkit {
+                $command = Get-Command Get-PatMediaSubtitle
+                $parameter = $command.Parameters['ServerName']
 
-            $parameter | Should -Not -BeNullOrEmpty
-            $parameter.Attributes.Mandatory | Should -Not -Contain $true
+                $parameter | Should -Not -BeNullOrEmpty
+                $parameter.Attributes.Mandatory | Should -Not -Contain $true
+            }
         }
     }
 }

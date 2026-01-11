@@ -1,10 +1,10 @@
 BeforeAll {
-    # Import the module from the source directory for unit testing
-    $modulePath = Join-Path -Path $PSScriptRoot -ChildPath '..\..\..\PlexAutomationToolkit\PlexAutomationToolkit.psm1'
-    Import-Module $modulePath -Force
+    $ProjectRoot = Split-Path -Parent (Split-Path -Parent (Split-Path -Parent $PSScriptRoot))
+    $ModuleRoot = Join-Path $ProjectRoot 'PlexAutomationToolkit'
+    $moduleManifestPath = Join-Path $ModuleRoot 'PlexAutomationToolkit.psd1'
 
-    # Get the private function using module scope
-    $script:FormatPatMediaItemName = & (Get-Module PlexAutomationToolkit) { Get-Command Format-PatMediaItemName }
+    Get-Module PlexAutomationToolkit | Remove-Module -Force -ErrorAction 'Ignore'
+    Import-Module -Name $moduleManifestPath -Verbose:$false -ErrorAction 'Stop'
 }
 
 Describe 'Format-PatMediaItemName' {
@@ -16,7 +16,9 @@ Describe 'Format-PatMediaItemName' {
                 Year  = 2010
             }
 
-            $result = & $script:FormatPatMediaItemName -Item $movie
+            $result = InModuleScope PlexAutomationToolkit -Parameters @{ movie = $movie } {
+                Format-PatMediaItemName -Item $movie
+            }
 
             $result | Should -Be 'Inception (2010)'
         }
@@ -28,7 +30,9 @@ Describe 'Format-PatMediaItemName' {
                 Year  = 2010
             }
 
-            $result = & $script:FormatPatMediaItemName -Item $movie
+            $result = InModuleScope PlexAutomationToolkit -Parameters @{ movie = $movie } {
+                Format-PatMediaItemName -Item $movie
+            }
 
             $result | Should -Be 'Scott Pilgrim vs. the World (2010)'
         }
@@ -40,7 +44,9 @@ Describe 'Format-PatMediaItemName' {
                 Year  = 1977
             }
 
-            $result = & $script:FormatPatMediaItemName -Item $movie
+            $result = InModuleScope PlexAutomationToolkit -Parameters @{ movie = $movie } {
+                Format-PatMediaItemName -Item $movie
+            }
 
             $result | Should -Be 'Star Wars: Episode IV - A New Hope (1977)'
         }
@@ -52,7 +58,9 @@ Describe 'Format-PatMediaItemName' {
                 Year  = 1942
             }
 
-            $result = & $script:FormatPatMediaItemName -Item $movie
+            $result = InModuleScope PlexAutomationToolkit -Parameters @{ movie = $movie } {
+                Format-PatMediaItemName -Item $movie
+            }
 
             $result | Should -Be 'Casablanca (1942)'
         }
@@ -67,7 +75,9 @@ Describe 'Format-PatMediaItemName' {
                 Index            = 5
             }
 
-            $result = & $script:FormatPatMediaItemName -Item $episode
+            $result = InModuleScope PlexAutomationToolkit -Parameters @{ episode = $episode } {
+                Format-PatMediaItemName -Item $episode
+            }
 
             $result | Should -Be 'Breaking Bad - S01E05'
         }
@@ -80,7 +90,9 @@ Describe 'Format-PatMediaItemName' {
                 Index            = 7
             }
 
-            $result = & $script:FormatPatMediaItemName -Item $episode
+            $result = InModuleScope PlexAutomationToolkit -Parameters @{ episode = $episode } {
+                Format-PatMediaItemName -Item $episode
+            }
 
             $result | Should -Be 'The Office - S03E07'
         }
@@ -93,7 +105,9 @@ Describe 'Format-PatMediaItemName' {
                 Index            = 1
             }
 
-            $result = & $script:FormatPatMediaItemName -Item $episode
+            $result = InModuleScope PlexAutomationToolkit -Parameters @{ episode = $episode } {
+                Format-PatMediaItemName -Item $episode
+            }
 
             $result | Should -Be 'Friends - S10E01'
         }
@@ -106,7 +120,9 @@ Describe 'Format-PatMediaItemName' {
                 Index            = 22
             }
 
-            $result = & $script:FormatPatMediaItemName -Item $episode
+            $result = InModuleScope PlexAutomationToolkit -Parameters @{ episode = $episode } {
+                Format-PatMediaItemName -Item $episode
+            }
 
             $result | Should -Be 'The Simpsons - S35E22'
         }
@@ -119,7 +135,9 @@ Describe 'Format-PatMediaItemName' {
                 Index            = 10
             }
 
-            $result = & $script:FormatPatMediaItemName -Item $episode
+            $result = InModuleScope PlexAutomationToolkit -Parameters @{ episode = $episode } {
+                Format-PatMediaItemName -Item $episode
+            }
 
             $result | Should -Be "Grey's Anatomy - S05E10"
         }
@@ -133,7 +151,9 @@ Describe 'Format-PatMediaItemName' {
                 Year  = 2020
             }
 
-            $result = & $script:FormatPatMediaItemName -Item $item
+            $result = InModuleScope PlexAutomationToolkit -Parameters @{ item = $item } {
+                Format-PatMediaItemName -Item $item
+            }
 
             $result | Should -Be 'Some Song (2020)'
         }
@@ -145,7 +165,9 @@ Describe 'Format-PatMediaItemName' {
                 Year  = 2023
             }
 
-            $result = & $script:FormatPatMediaItemName -Item $item
+            $result = InModuleScope PlexAutomationToolkit -Parameters @{ item = $item } {
+                Format-PatMediaItemName -Item $item
+            }
 
             $result | Should -Be 'Unknown Item (2023)'
         }
@@ -159,7 +181,9 @@ Describe 'Format-PatMediaItemName' {
                 Year  = 2020
             }
 
-            $result = & $script:FormatPatMediaItemName -Item $movie
+            $result = InModuleScope PlexAutomationToolkit -Parameters @{ movie = $movie } {
+                Format-PatMediaItemName -Item $movie
+            }
 
             $result | Should -Be 'Unknown (2020)'
         }
@@ -171,7 +195,9 @@ Describe 'Format-PatMediaItemName' {
                 Year  = $null
             }
 
-            $result = & $script:FormatPatMediaItemName -Item $movie
+            $result = InModuleScope PlexAutomationToolkit -Parameters @{ movie = $movie } {
+                Format-PatMediaItemName -Item $movie
+            }
 
             $result | Should -Be 'Test Movie (?)'
         }
@@ -184,7 +210,9 @@ Describe 'Format-PatMediaItemName' {
                 Index            = 5
             }
 
-            $result = & $script:FormatPatMediaItemName -Item $episode
+            $result = InModuleScope PlexAutomationToolkit -Parameters @{ episode = $episode } {
+                Format-PatMediaItemName -Item $episode
+            }
 
             $result | Should -Be 'Unknown Show - S01E05'
         }
@@ -197,7 +225,9 @@ Describe 'Format-PatMediaItemName' {
                 Index            = 5
             }
 
-            $result = & $script:FormatPatMediaItemName -Item $episode
+            $result = InModuleScope PlexAutomationToolkit -Parameters @{ episode = $episode } {
+                Format-PatMediaItemName -Item $episode
+            }
 
             $result | Should -Be 'Test Show - S00E05'
         }
@@ -210,7 +240,9 @@ Describe 'Format-PatMediaItemName' {
                 Index            = $null
             }
 
-            $result = & $script:FormatPatMediaItemName -Item $episode
+            $result = InModuleScope PlexAutomationToolkit -Parameters @{ episode = $episode } {
+                Format-PatMediaItemName -Item $episode
+            }
 
             $result | Should -Be 'Test Show - S01E00'
         }
@@ -222,7 +254,9 @@ Describe 'Format-PatMediaItemName' {
                 Year  = $null
             }
 
-            $result = & $script:FormatPatMediaItemName -Item $movie
+            $result = InModuleScope PlexAutomationToolkit -Parameters @{ movie = $movie } {
+                Format-PatMediaItemName -Item $movie
+            }
 
             $result | Should -Be 'Unknown (?)'
         }
@@ -235,7 +269,9 @@ Describe 'Format-PatMediaItemName' {
                 Index            = $null
             }
 
-            $result = & $script:FormatPatMediaItemName -Item $episode
+            $result = InModuleScope PlexAutomationToolkit -Parameters @{ episode = $episode } {
+                Format-PatMediaItemName -Item $episode
+            }
 
             $result | Should -Be 'Unknown Show - S00E00'
         }
@@ -249,7 +285,9 @@ Describe 'Format-PatMediaItemName' {
                 Year  = 1999
             }
 
-            $result = $movie | & $script:FormatPatMediaItemName
+            $result = InModuleScope PlexAutomationToolkit -Parameters @{ movie = $movie } {
+                $movie | Format-PatMediaItemName
+            }
 
             $result | Should -Be 'The Matrix (1999)'
         }
@@ -261,7 +299,9 @@ Describe 'Format-PatMediaItemName' {
                 [PSCustomObject]@{ Type = 'movie'; Title = 'Movie Two'; Year = 2021 }
             )
 
-            $results = $items | & $script:FormatPatMediaItemName
+            $results = InModuleScope PlexAutomationToolkit -Parameters @{ items = $items } {
+                $items | Format-PatMediaItemName
+            }
 
             $results | Should -HaveCount 3
             $results[0] | Should -Be 'Movie One (2020)'
@@ -272,7 +312,9 @@ Describe 'Format-PatMediaItemName' {
 
     Context 'Parameter validation' {
         It 'Has mandatory Item parameter' {
-            $command = & (Get-Module PlexAutomationToolkit) { Get-Command Format-PatMediaItemName }
+            $command = InModuleScope PlexAutomationToolkit {
+                Get-Command Format-PatMediaItemName
+            }
             $parameter = $command.Parameters['Item']
 
             $parameter | Should -Not -BeNullOrEmpty
@@ -280,7 +322,9 @@ Describe 'Format-PatMediaItemName' {
         }
 
         It 'Accepts ValueFromPipeline' {
-            $command = & (Get-Module PlexAutomationToolkit) { Get-Command Format-PatMediaItemName }
+            $command = InModuleScope PlexAutomationToolkit {
+                Get-Command Format-PatMediaItemName
+            }
             $parameter = $command.Parameters['Item']
 
             $parameter.Attributes.ValueFromPipeline | Should -Contain $true
@@ -305,7 +349,9 @@ Describe 'Format-PatMediaItemName' {
                 Container        = 'mkv'
             }
 
-            $result = & $script:FormatPatMediaItemName -Item $addOp
+            $result = InModuleScope PlexAutomationToolkit -Parameters @{ addOp = $addOp } {
+                Format-PatMediaItemName -Item $addOp
+            }
 
             $result | Should -Be 'Dune: Part Two (2024)'
         }
@@ -327,7 +373,9 @@ Describe 'Format-PatMediaItemName' {
                 Container        = 'mkv'
             }
 
-            $result = & $script:FormatPatMediaItemName -Item $addOp
+            $result = InModuleScope PlexAutomationToolkit -Parameters @{ addOp = $addOp } {
+                Format-PatMediaItemName -Item $addOp
+            }
 
             $result | Should -Be 'Breaking Bad - S05E14'
         }
@@ -345,7 +393,9 @@ Describe 'Format-PatMediaItemName' {
                 Index            = 1
             }
 
-            $result = & $script:FormatPatMediaItemName -Item $playlistItem
+            $result = InModuleScope PlexAutomationToolkit -Parameters @{ playlistItem = $playlistItem } {
+                Format-PatMediaItemName -Item $playlistItem
+            }
 
             $result | Should -Be 'Breaking Bad - S01E01'
         }

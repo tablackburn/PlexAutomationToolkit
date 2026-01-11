@@ -1,10 +1,10 @@
 BeforeAll {
-    # Import the module from the source directory for unit testing
-    $modulePath = Join-Path -Path $PSScriptRoot -ChildPath '..\..\..\PlexAutomationToolkit\PlexAutomationToolkit.psm1'
-    Import-Module $modulePath -Force
+    $ProjectRoot = Split-Path -Parent (Split-Path -Parent (Split-Path -Parent $PSScriptRoot))
+    $ModuleRoot = Join-Path $ProjectRoot 'PlexAutomationToolkit'
+    $moduleManifestPath = Join-Path $ModuleRoot 'PlexAutomationToolkit.psd1'
 
-    # Get the private function using module scope
-    $script:RemovePatSyncedFile = & (Get-Module PlexAutomationToolkit) { Get-Command Remove-PatSyncedFile }
+    Get-Module PlexAutomationToolkit | Remove-Module -Force -ErrorAction 'Ignore'
+    Import-Module -Name $moduleManifestPath -Verbose:$false -ErrorAction 'Stop'
 
     # Create temp directory for test files (cross-platform)
     $script:TestDir = Join-Path -Path ([System.IO.Path]::GetTempPath()) -ChildPath "PatRemoveSyncedFileTests_$([Guid]::NewGuid().ToString('N'))"
@@ -34,7 +34,10 @@ Describe 'Remove-PatSyncedFile' {
             [System.IO.File]::WriteAllBytes($filePath, [byte[]](1, 2, 3))
 
             # Act
-            & $script:RemovePatSyncedFile -FilePath $filePath -Destination $script:TestDir
+            $testDir = $script:TestDir
+            InModuleScope PlexAutomationToolkit -Parameters @{ filePath = $filePath; testDir = $testDir } {
+                Remove-PatSyncedFile -FilePath $filePath -Destination $testDir
+            }
 
             # Assert
             Test-Path -Path $filePath | Should -Be $false
@@ -42,9 +45,13 @@ Describe 'Remove-PatSyncedFile' {
 
         It 'Does not throw when file does not exist' {
             $nonExistentPath = Join-Path -Path $script:TestDir -ChildPath 'Movies\NonExistent.mkv'
+            $testDir = $script:TestDir
 
-            { & $script:RemovePatSyncedFile -FilePath $nonExistentPath -Destination $script:TestDir } |
-                Should -Not -Throw
+            {
+                InModuleScope PlexAutomationToolkit -Parameters @{ nonExistentPath = $nonExistentPath; testDir = $testDir } {
+                    Remove-PatSyncedFile -FilePath $nonExistentPath -Destination $testDir
+                }
+            } | Should -Not -Throw
         }
 
         It 'Handles files in root of destination' {
@@ -53,7 +60,10 @@ Describe 'Remove-PatSyncedFile' {
             [System.IO.File]::WriteAllBytes($filePath, [byte[]](1, 2, 3))
 
             # Act
-            & $script:RemovePatSyncedFile -FilePath $filePath -Destination $script:TestDir
+            $testDir = $script:TestDir
+            InModuleScope PlexAutomationToolkit -Parameters @{ filePath = $filePath; testDir = $testDir } {
+                Remove-PatSyncedFile -FilePath $filePath -Destination $testDir
+            }
 
             # Assert
             Test-Path -Path $filePath | Should -Be $false
@@ -69,7 +79,10 @@ Describe 'Remove-PatSyncedFile' {
             [System.IO.File]::WriteAllBytes($filePath, [byte[]](1, 2, 3))
 
             # Act
-            & $script:RemovePatSyncedFile -FilePath $filePath -Destination $script:TestDir
+            $testDir = $script:TestDir
+            InModuleScope PlexAutomationToolkit -Parameters @{ filePath = $filePath; testDir = $testDir } {
+                Remove-PatSyncedFile -FilePath $filePath -Destination $testDir
+            }
 
             # Assert
             Test-Path -Path $filePath | Should -Be $false
@@ -84,7 +97,10 @@ Describe 'Remove-PatSyncedFile' {
             [System.IO.File]::WriteAllBytes($filePath, [byte[]](1, 2, 3))
 
             # Act
-            & $script:RemovePatSyncedFile -FilePath $filePath -Destination $script:TestDir
+            $testDir = $script:TestDir
+            InModuleScope PlexAutomationToolkit -Parameters @{ filePath = $filePath; testDir = $testDir } {
+                Remove-PatSyncedFile -FilePath $filePath -Destination $testDir
+            }
 
             # Assert
             Test-Path -Path $filePath | Should -Be $false
@@ -108,7 +124,10 @@ Describe 'Remove-PatSyncedFile' {
             [System.IO.File]::WriteAllBytes($file2, [byte[]](1, 2, 3))
 
             # Act - remove only one movie
-            & $script:RemovePatSyncedFile -FilePath $file1 -Destination $script:TestDir
+            $testDir = $script:TestDir
+            InModuleScope PlexAutomationToolkit -Parameters @{ file1 = $file1; testDir = $testDir } {
+                Remove-PatSyncedFile -FilePath $file1 -Destination $testDir
+            }
 
             # Assert
             Test-Path -Path $file1 | Should -Be $false
@@ -124,7 +143,10 @@ Describe 'Remove-PatSyncedFile' {
             [System.IO.File]::WriteAllBytes($filePath, [byte[]](1, 2, 3))
 
             # Act
-            & $script:RemovePatSyncedFile -FilePath $filePath -Destination $script:TestDir
+            $testDir = $script:TestDir
+            InModuleScope PlexAutomationToolkit -Parameters @{ filePath = $filePath; testDir = $testDir } {
+                Remove-PatSyncedFile -FilePath $filePath -Destination $testDir
+            }
 
             # Assert - file removed but destination still exists
             Test-Path -Path $filePath | Should -Be $false
@@ -147,7 +169,10 @@ Describe 'Remove-PatSyncedFile' {
             }
 
             # Act - remove visible file
-            & $script:RemovePatSyncedFile -FilePath $visibleFile -Destination $script:TestDir
+            $testDir = $script:TestDir
+            InModuleScope PlexAutomationToolkit -Parameters @{ visibleFile = $visibleFile; testDir = $testDir } {
+                Remove-PatSyncedFile -FilePath $visibleFile -Destination $testDir
+            }
 
             # Assert - directory not removed because hidden file still exists
             Test-Path -Path $visibleFile | Should -Be $false
@@ -163,7 +188,10 @@ Describe 'Remove-PatSyncedFile' {
 
             try {
                 # Act & Assert
-                $warnings = & $script:RemovePatSyncedFile -FilePath $outsidePath -Destination $script:TestDir 3>&1
+                $testDir = $script:TestDir
+                $warnings = InModuleScope PlexAutomationToolkit -Parameters @{ outsidePath = $outsidePath; testDir = $testDir } {
+                    Remove-PatSyncedFile -FilePath $outsidePath -Destination $testDir 3>&1
+                }
 
                 # File should NOT be removed
                 Test-Path -Path $outsidePath | Should -Be $true
@@ -187,9 +215,12 @@ Describe 'Remove-PatSyncedFile' {
             try {
                 # Attempt traversal attack
                 $traversalPath = Join-Path -Path $legitimateDir -ChildPath '..\..\traversal_test.txt'
+                $testDir = $script:TestDir
 
                 # Act
-                $warnings = & $script:RemovePatSyncedFile -FilePath $traversalPath -Destination $script:TestDir 3>&1
+                $warnings = InModuleScope PlexAutomationToolkit -Parameters @{ traversalPath = $traversalPath; testDir = $testDir } {
+                    Remove-PatSyncedFile -FilePath $traversalPath -Destination $testDir 3>&1
+                }
 
                 # Assert - file should NOT be removed
                 Test-Path -Path $outsideFile | Should -Be $true
@@ -209,9 +240,12 @@ Describe 'Remove-PatSyncedFile' {
 
             # Path with relative component that still resolves to same file
             $relativePath = Join-Path -Path $script:TestDir -ChildPath 'Movies\Other\..\Test\movie.mkv'
+            $testDir = $script:TestDir
 
             # Act
-            & $script:RemovePatSyncedFile -FilePath $relativePath -Destination $script:TestDir
+            InModuleScope PlexAutomationToolkit -Parameters @{ relativePath = $relativePath; testDir = $testDir } {
+                Remove-PatSyncedFile -FilePath $relativePath -Destination $testDir
+            }
 
             # Assert - file should be removed (it's legitimately inside destination)
             Test-Path -Path $filePath | Should -Be $false
@@ -228,7 +262,9 @@ Describe 'Remove-PatSyncedFile' {
             $upperDestination = $script:TestDir.ToUpper()
 
             # Act
-            & $script:RemovePatSyncedFile -FilePath $filePath -Destination $upperDestination
+            InModuleScope PlexAutomationToolkit -Parameters @{ filePath = $filePath; upperDestination = $upperDestination } {
+                Remove-PatSyncedFile -FilePath $filePath -Destination $upperDestination
+            }
 
             # Assert - should work regardless of case
             Test-Path -Path $filePath | Should -Be $false
@@ -247,7 +283,9 @@ Describe 'Remove-PatSyncedFile' {
             $destinationWithSep = $script:TestDir + [System.IO.Path]::DirectorySeparatorChar
 
             # Act
-            & $script:RemovePatSyncedFile -FilePath $filePath -Destination $destinationWithSep
+            InModuleScope PlexAutomationToolkit -Parameters @{ filePath = $filePath; destinationWithSep = $destinationWithSep } {
+                Remove-PatSyncedFile -FilePath $filePath -Destination $destinationWithSep
+            }
 
             # Assert
             Test-Path -Path $filePath | Should -Be $false
@@ -264,7 +302,9 @@ Describe 'Remove-PatSyncedFile' {
             $destinationNoSep = $script:TestDir.TrimEnd([System.IO.Path]::DirectorySeparatorChar)
 
             # Act
-            & $script:RemovePatSyncedFile -FilePath $filePath -Destination $destinationNoSep
+            InModuleScope PlexAutomationToolkit -Parameters @{ filePath = $filePath; destinationNoSep = $destinationNoSep } {
+                Remove-PatSyncedFile -FilePath $filePath -Destination $destinationNoSep
+            }
 
             # Assert
             Test-Path -Path $filePath | Should -Be $false
@@ -278,7 +318,10 @@ Describe 'Remove-PatSyncedFile' {
             [System.IO.File]::WriteAllBytes($filePath, [byte[]](1, 2, 3))
 
             # Act
-            & $script:RemovePatSyncedFile -FilePath $filePath -Destination $script:TestDir
+            $testDir = $script:TestDir
+            InModuleScope PlexAutomationToolkit -Parameters @{ filePath = $filePath; testDir = $testDir } {
+                Remove-PatSyncedFile -FilePath $filePath -Destination $testDir
+            }
 
             # Assert
             Test-Path -Path $filePath | Should -Be $false
@@ -297,7 +340,10 @@ Describe 'Remove-PatSyncedFile' {
                 [System.IO.File]::WriteAllBytes($filePath, [byte[]](1, 2, 3))
 
                 # Act
-                & $script:RemovePatSyncedFile -FilePath $filePath -Destination $script:TestDir
+                $testDir = $script:TestDir
+                InModuleScope PlexAutomationToolkit -Parameters @{ filePath = $filePath; testDir = $testDir } {
+                    Remove-PatSyncedFile -FilePath $filePath -Destination $testDir
+                }
 
                 # Assert
                 Test-Path -Path $filePath | Should -Be $false
@@ -311,29 +357,40 @@ Describe 'Remove-PatSyncedFile' {
 
     Context 'Parameter validation' {
         It 'Has mandatory FilePath parameter' {
-            $command = & (Get-Module PlexAutomationToolkit) { Get-Command Remove-PatSyncedFile }
-            $parameter = $command.Parameters['FilePath']
+            InModuleScope PlexAutomationToolkit {
+                $command = Get-Command Remove-PatSyncedFile
+                $parameter = $command.Parameters['FilePath']
 
-            $parameter | Should -Not -BeNullOrEmpty
-            $parameter.Attributes.Mandatory | Should -Contain $true
+                $parameter | Should -Not -BeNullOrEmpty
+                $parameter.Attributes.Mandatory | Should -Contain $true
+            }
         }
 
         It 'Has mandatory Destination parameter' {
-            $command = & (Get-Module PlexAutomationToolkit) { Get-Command Remove-PatSyncedFile }
-            $parameter = $command.Parameters['Destination']
+            InModuleScope PlexAutomationToolkit {
+                $command = Get-Command Remove-PatSyncedFile
+                $parameter = $command.Parameters['Destination']
 
-            $parameter | Should -Not -BeNullOrEmpty
-            $parameter.Attributes.Mandatory | Should -Contain $true
+                $parameter | Should -Not -BeNullOrEmpty
+                $parameter.Attributes.Mandatory | Should -Contain $true
+            }
         }
 
         It 'Validates FilePath is not null or empty' {
-            { & $script:RemovePatSyncedFile -FilePath '' -Destination $script:TestDir } |
-                Should -Throw
+            $testDir = $script:TestDir
+            {
+                InModuleScope PlexAutomationToolkit -Parameters @{ testDir = $testDir } {
+                    Remove-PatSyncedFile -FilePath '' -Destination $testDir
+                }
+            } | Should -Throw
         }
 
         It 'Validates Destination is not null or empty' {
-            { & $script:RemovePatSyncedFile -FilePath 'C:\test.txt' -Destination '' } |
-                Should -Throw
+            {
+                InModuleScope PlexAutomationToolkit {
+                    Remove-PatSyncedFile -FilePath 'C:\test.txt' -Destination ''
+                }
+            } | Should -Throw
         }
     }
 
@@ -349,7 +406,10 @@ Describe 'Remove-PatSyncedFile' {
             [System.IO.File]::WriteAllBytes($subtitleFile, [byte[]](1, 2, 3))
 
             # Act - remove movie file (subtitle remains)
-            & $script:RemovePatSyncedFile -FilePath $movieFile -Destination $script:TestDir
+            $testDir = $script:TestDir
+            InModuleScope PlexAutomationToolkit -Parameters @{ movieFile = $movieFile; testDir = $testDir } {
+                Remove-PatSyncedFile -FilePath $movieFile -Destination $testDir
+            }
 
             # Assert - movie removed, subtitle and directory remain
             Test-Path -Path $movieFile | Should -Be $false
@@ -367,7 +427,10 @@ Describe 'Remove-PatSyncedFile' {
             [System.IO.File]::WriteAllBytes($episodeFile, [byte[]](1, 2, 3))
 
             # Act
-            & $script:RemovePatSyncedFile -FilePath $episodeFile -Destination $script:TestDir
+            $testDir = $script:TestDir
+            InModuleScope PlexAutomationToolkit -Parameters @{ episodeFile = $episodeFile; testDir = $testDir } {
+                Remove-PatSyncedFile -FilePath $episodeFile -Destination $testDir
+            }
 
             # Assert - entire structure cleaned up
             Test-Path -Path $episodeFile | Should -Be $false

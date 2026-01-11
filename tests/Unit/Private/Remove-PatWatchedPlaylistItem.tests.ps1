@@ -1,10 +1,10 @@
 BeforeAll {
-    # Import the module from the source directory for unit testing
-    $modulePath = Join-Path -Path $PSScriptRoot -ChildPath '..\..\..\PlexAutomationToolkit\PlexAutomationToolkit.psm1'
-    Import-Module $modulePath -Force
+    $ProjectRoot = Split-Path -Parent (Split-Path -Parent (Split-Path -Parent $PSScriptRoot))
+    $ModuleRoot = Join-Path $ProjectRoot 'PlexAutomationToolkit'
+    $moduleManifestPath = Join-Path $ModuleRoot 'PlexAutomationToolkit.psd1'
 
-    # Get the private function using module scope
-    $script:RemovePatWatchedPlaylistItem = & (Get-Module PlexAutomationToolkit) { Get-Command Remove-PatWatchedPlaylistItem }
+    Get-Module PlexAutomationToolkit | Remove-Module -Force -ErrorAction 'Ignore'
+    Import-Module -Name $moduleManifestPath -Verbose:$false -ErrorAction 'Stop'
 }
 
 Describe 'Remove-PatWatchedPlaylistItem' {
@@ -44,7 +44,9 @@ Describe 'Remove-PatWatchedPlaylistItem' {
                 }
             )
 
-            $result = & $script:RemovePatWatchedPlaylistItem -WatchDiff $watchDiffs -PlaylistName 'Travel'
+            $result = InModuleScope PlexAutomationToolkit -Parameters @{ watchDiffs = $watchDiffs } {
+                Remove-PatWatchedPlaylistItem -WatchDiff $watchDiffs -PlaylistName 'Travel'
+            }
 
             Should -Invoke -CommandName Remove-PatPlaylistItem -ModuleName PlexAutomationToolkit -Times 1
         }
@@ -57,7 +59,9 @@ Describe 'Remove-PatWatchedPlaylistItem' {
                 }
             )
 
-            $result = & $script:RemovePatWatchedPlaylistItem -WatchDiff $watchDiffs -PlaylistName 'Travel'
+            $result = InModuleScope PlexAutomationToolkit -Parameters @{ watchDiffs = $watchDiffs } {
+                Remove-PatWatchedPlaylistItem -WatchDiff $watchDiffs -PlaylistName 'Travel'
+            }
 
             $result | Should -Be 1
         }
@@ -70,7 +74,9 @@ Describe 'Remove-PatWatchedPlaylistItem' {
                 }
             )
 
-            & $script:RemovePatWatchedPlaylistItem -WatchDiff $watchDiffs -PlaylistName 'Travel'
+            InModuleScope PlexAutomationToolkit -Parameters @{ watchDiffs = $watchDiffs } {
+                Remove-PatWatchedPlaylistItem -WatchDiff $watchDiffs -PlaylistName 'Travel'
+            }
 
             Should -Invoke -CommandName Remove-PatPlaylistItem -ModuleName PlexAutomationToolkit -ParameterFilter {
                 $PlaylistId -eq 100 -and $PlaylistItemId -eq 5001
@@ -119,7 +125,9 @@ Describe 'Remove-PatWatchedPlaylistItem' {
                 [PSCustomObject]@{ Title = 'Movie Three'; TargetRatingKey = 1003 }
             )
 
-            $result = & $script:RemovePatWatchedPlaylistItem -WatchDiff $watchDiffs -PlaylistName 'Travel'
+            $result = InModuleScope PlexAutomationToolkit -Parameters @{ watchDiffs = $watchDiffs } {
+                Remove-PatWatchedPlaylistItem -WatchDiff $watchDiffs -PlaylistName 'Travel'
+            }
 
             Should -Invoke -CommandName Remove-PatPlaylistItem -ModuleName PlexAutomationToolkit -Times 2
             $result | Should -Be 2
@@ -131,7 +139,9 @@ Describe 'Remove-PatWatchedPlaylistItem' {
                 [PSCustomObject]@{ Title = 'Not In Playlist'; TargetRatingKey = 9999 }
             )
 
-            $result = & $script:RemovePatWatchedPlaylistItem -WatchDiff $watchDiffs -PlaylistName 'Travel'
+            $result = InModuleScope PlexAutomationToolkit -Parameters @{ watchDiffs = $watchDiffs } {
+                Remove-PatWatchedPlaylistItem -WatchDiff $watchDiffs -PlaylistName 'Travel'
+            }
 
             Should -Invoke -CommandName Remove-PatPlaylistItem -ModuleName PlexAutomationToolkit -Times 1
             $result | Should -Be 1
@@ -164,14 +174,18 @@ Describe 'Remove-PatWatchedPlaylistItem' {
                 [PSCustomObject]@{ Title = 'Different Movie'; TargetRatingKey = 9999 }
             )
 
-            $result = & $script:RemovePatWatchedPlaylistItem -WatchDiff $watchDiffs -PlaylistName 'Travel'
+            $result = InModuleScope PlexAutomationToolkit -Parameters @{ watchDiffs = $watchDiffs } {
+                Remove-PatWatchedPlaylistItem -WatchDiff $watchDiffs -PlaylistName 'Travel'
+            }
 
             $result | Should -Be 0
             Should -Invoke -CommandName Remove-PatPlaylistItem -ModuleName PlexAutomationToolkit -Times 0
         }
 
         It 'Returns 0 when watch diffs is empty' {
-            $result = & $script:RemovePatWatchedPlaylistItem -WatchDiff @() -PlaylistName 'Travel'
+            $result = InModuleScope PlexAutomationToolkit {
+                Remove-PatWatchedPlaylistItem -WatchDiff @() -PlaylistName 'Travel'
+            }
 
             $result | Should -Be 0
             Should -Invoke -CommandName Get-PatPlaylist -ModuleName PlexAutomationToolkit -Times 0
@@ -196,7 +210,9 @@ Describe 'Remove-PatWatchedPlaylistItem' {
                 [PSCustomObject]@{ Title = 'Movie'; TargetRatingKey = 1001 }
             )
 
-            $result = & $script:RemovePatWatchedPlaylistItem -WatchDiff $watchDiffs -PlaylistName 'Empty Playlist'
+            $result = InModuleScope PlexAutomationToolkit -Parameters @{ watchDiffs = $watchDiffs } {
+                Remove-PatWatchedPlaylistItem -WatchDiff $watchDiffs -PlaylistName 'Empty Playlist'
+            }
 
             $result | Should -Be 0
             Should -Invoke -CommandName Remove-PatPlaylistItem -ModuleName PlexAutomationToolkit -Times 0
@@ -244,7 +260,9 @@ Describe 'Remove-PatWatchedPlaylistItem' {
             )
 
             $script:callCount = 0
-            $result = & $script:RemovePatWatchedPlaylistItem -WatchDiff $watchDiffs -PlaylistName 'Travel' 3>&1
+            $result = InModuleScope PlexAutomationToolkit -Parameters @{ watchDiffs = $watchDiffs } {
+                Remove-PatWatchedPlaylistItem -WatchDiff $watchDiffs -PlaylistName 'Travel' 3>&1
+            }
 
             # Both removals should be attempted
             Should -Invoke -CommandName Remove-PatPlaylistItem -ModuleName PlexAutomationToolkit -Times 2
@@ -265,8 +283,10 @@ Describe 'Remove-PatWatchedPlaylistItem' {
             )
 
             $script:callCount = 0
-            $result = & $script:RemovePatWatchedPlaylistItem -WatchDiff $watchDiffs -PlaylistName 'Travel' 3>&1 |
-                Where-Object { $_ -is [int] }
+            $result = InModuleScope PlexAutomationToolkit -Parameters @{ watchDiffs = $watchDiffs } {
+                Remove-PatWatchedPlaylistItem -WatchDiff $watchDiffs -PlaylistName 'Travel' 3>&1 |
+                    Where-Object { $_ -is [int] }
+            }
 
             # Only second removal succeeded
             $result | Should -Be 1
@@ -281,7 +301,9 @@ Describe 'Remove-PatWatchedPlaylistItem' {
                 [PSCustomObject]@{ Title = 'Movie'; TargetRatingKey = 1001 }
             )
 
-            $output = & $script:RemovePatWatchedPlaylistItem -WatchDiff $watchDiffs -PlaylistName 'NotFound' 3>&1
+            $output = InModuleScope PlexAutomationToolkit -Parameters @{ watchDiffs = $watchDiffs } {
+                Remove-PatWatchedPlaylistItem -WatchDiff $watchDiffs -PlaylistName 'NotFound' 3>&1
+            }
             $warnings = $output | Where-Object { $_ -is [System.Management.Automation.WarningRecord] }
 
             $warnings | Should -Match 'Failed to get playlist'
@@ -296,8 +318,10 @@ Describe 'Remove-PatWatchedPlaylistItem' {
                 [PSCustomObject]@{ Title = 'Movie'; TargetRatingKey = 1001 }
             )
 
-            $result = & $script:RemovePatWatchedPlaylistItem -WatchDiff $watchDiffs -PlaylistName 'NotFound' 3>&1 |
-                Where-Object { $_ -is [int] }
+            $result = InModuleScope PlexAutomationToolkit -Parameters @{ watchDiffs = $watchDiffs } {
+                Remove-PatWatchedPlaylistItem -WatchDiff $watchDiffs -PlaylistName 'NotFound' 3>&1 |
+                    Where-Object { $_ -is [int] }
+            }
 
             $result | Should -Be 0
         }
@@ -329,7 +353,9 @@ Describe 'Remove-PatWatchedPlaylistItem' {
                 [PSCustomObject]@{ Title = 'Movie'; TargetRatingKey = 1001 }
             )
 
-            & $script:RemovePatWatchedPlaylistItem -WatchDiff $watchDiffs -PlaylistId 100
+            InModuleScope PlexAutomationToolkit -Parameters @{ watchDiffs = $watchDiffs } {
+                Remove-PatWatchedPlaylistItem -WatchDiff $watchDiffs -PlaylistId 100
+            }
 
             Should -Invoke -CommandName Get-PatPlaylist -ModuleName PlexAutomationToolkit -ParameterFilter {
                 $PlaylistId -eq 100
@@ -341,7 +367,9 @@ Describe 'Remove-PatWatchedPlaylistItem' {
                 [PSCustomObject]@{ Title = 'Movie'; TargetRatingKey = 1001 }
             )
 
-            & $script:RemovePatWatchedPlaylistItem -WatchDiff $watchDiffs -PlaylistName 'Travel'
+            InModuleScope PlexAutomationToolkit -Parameters @{ watchDiffs = $watchDiffs } {
+                Remove-PatWatchedPlaylistItem -WatchDiff $watchDiffs -PlaylistName 'Travel'
+            }
 
             Should -Invoke -CommandName Get-PatPlaylist -ModuleName PlexAutomationToolkit -ParameterFilter {
                 $PlaylistName -eq 'Travel'
@@ -353,7 +381,9 @@ Describe 'Remove-PatWatchedPlaylistItem' {
                 [PSCustomObject]@{ Title = 'Movie'; TargetRatingKey = 1001 }
             )
 
-            $output = & $script:RemovePatWatchedPlaylistItem -WatchDiff $watchDiffs 3>&1
+            $output = InModuleScope PlexAutomationToolkit -Parameters @{ watchDiffs = $watchDiffs } {
+                Remove-PatWatchedPlaylistItem -WatchDiff $watchDiffs 3>&1
+            }
             $warnings = $output | Where-Object { $_ -is [System.Management.Automation.WarningRecord] }
 
             $warnings | Should -Match 'PlaylistId or PlaylistName must be specified'
@@ -386,7 +416,9 @@ Describe 'Remove-PatWatchedPlaylistItem' {
                 [PSCustomObject]@{ Title = 'Movie'; TargetRatingKey = 1001 }
             )
 
-            & $script:RemovePatWatchedPlaylistItem -WatchDiff $watchDiffs -PlaylistName 'Travel' -ServerName 'HomeServer'
+            InModuleScope PlexAutomationToolkit -Parameters @{ watchDiffs = $watchDiffs } {
+                Remove-PatWatchedPlaylistItem -WatchDiff $watchDiffs -PlaylistName 'Travel' -ServerName 'HomeServer'
+            }
 
             Should -Invoke -CommandName Get-PatPlaylist -ModuleName PlexAutomationToolkit -ParameterFilter {
                 $ServerName -eq 'HomeServer'
@@ -398,8 +430,10 @@ Describe 'Remove-PatWatchedPlaylistItem' {
                 [PSCustomObject]@{ Title = 'Movie'; TargetRatingKey = 1001 }
             )
 
-            & $script:RemovePatWatchedPlaylistItem -WatchDiff $watchDiffs -PlaylistName 'Travel' `
-                -ServerUri 'http://plex:32400' -Token 'test-token'
+            InModuleScope PlexAutomationToolkit -Parameters @{ watchDiffs = $watchDiffs } {
+                Remove-PatWatchedPlaylistItem -WatchDiff $watchDiffs -PlaylistName 'Travel' `
+                    -ServerUri 'http://plex:32400' -Token 'test-token'
+            }
 
             Should -Invoke -CommandName Get-PatPlaylist -ModuleName PlexAutomationToolkit -ParameterFilter {
                 $ServerUri -eq 'http://plex:32400' -and $Token -eq 'test-token'
@@ -411,8 +445,10 @@ Describe 'Remove-PatWatchedPlaylistItem' {
                 [PSCustomObject]@{ Title = 'Movie'; TargetRatingKey = 1001 }
             )
 
-            & $script:RemovePatWatchedPlaylistItem -WatchDiff $watchDiffs -PlaylistName 'Travel' `
-                -ServerName 'HomeServer' -ServerUri 'http://plex:32400'
+            InModuleScope PlexAutomationToolkit -Parameters @{ watchDiffs = $watchDiffs } {
+                Remove-PatWatchedPlaylistItem -WatchDiff $watchDiffs -PlaylistName 'Travel' `
+                    -ServerName 'HomeServer' -ServerUri 'http://plex:32400'
+            }
 
             Should -Invoke -CommandName Get-PatPlaylist -ModuleName PlexAutomationToolkit -ParameterFilter {
                 $ServerName -eq 'HomeServer' -and -not $ServerUri
@@ -424,7 +460,9 @@ Describe 'Remove-PatWatchedPlaylistItem' {
                 [PSCustomObject]@{ Title = 'Movie'; TargetRatingKey = 1001 }
             )
 
-            & $script:RemovePatWatchedPlaylistItem -WatchDiff $watchDiffs -PlaylistName 'Travel' -ServerName 'HomeServer'
+            InModuleScope PlexAutomationToolkit -Parameters @{ watchDiffs = $watchDiffs } {
+                Remove-PatWatchedPlaylistItem -WatchDiff $watchDiffs -PlaylistName 'Travel' -ServerName 'HomeServer'
+            }
 
             Should -Invoke -CommandName Remove-PatPlaylistItem -ModuleName PlexAutomationToolkit -ParameterFilter {
                 $ServerName -eq 'HomeServer'
@@ -436,8 +474,10 @@ Describe 'Remove-PatWatchedPlaylistItem' {
                 [PSCustomObject]@{ Title = 'Movie'; TargetRatingKey = 1001 }
             )
 
-            & $script:RemovePatWatchedPlaylistItem -WatchDiff $watchDiffs -PlaylistName 'Travel' `
-                -ServerUri 'http://plex:32400' -Token 'test-token'
+            InModuleScope PlexAutomationToolkit -Parameters @{ watchDiffs = $watchDiffs } {
+                Remove-PatWatchedPlaylistItem -WatchDiff $watchDiffs -PlaylistName 'Travel' `
+                    -ServerUri 'http://plex:32400' -Token 'test-token'
+            }
 
             Should -Invoke -CommandName Remove-PatPlaylistItem -ModuleName PlexAutomationToolkit -ParameterFilter {
                 $ServerUri -eq 'http://plex:32400' -and $Token -eq 'test-token'
@@ -477,7 +517,9 @@ Describe 'Remove-PatWatchedPlaylistItem' {
                 }
             )
 
-            $result = & $script:RemovePatWatchedPlaylistItem -WatchDiff $watchDiffs -PlaylistName 'Travel'
+            $result = InModuleScope PlexAutomationToolkit -Parameters @{ watchDiffs = $watchDiffs } {
+                Remove-PatWatchedPlaylistItem -WatchDiff $watchDiffs -PlaylistName 'Travel'
+            }
 
             $result | Should -Be 1
             Should -Invoke -CommandName Remove-PatPlaylistItem -ModuleName PlexAutomationToolkit -ParameterFilter {
@@ -488,26 +530,32 @@ Describe 'Remove-PatWatchedPlaylistItem' {
 
     Context 'Parameter validation' {
         It 'Has mandatory WatchDiff parameter' {
-            $command = & (Get-Module PlexAutomationToolkit) { Get-Command Remove-PatWatchedPlaylistItem }
-            $parameter = $command.Parameters['WatchDiff']
+            InModuleScope PlexAutomationToolkit {
+                $command = Get-Command Remove-PatWatchedPlaylistItem
+                $parameter = $command.Parameters['WatchDiff']
 
-            $parameter | Should -Not -BeNullOrEmpty
-            $parameter.Attributes.Mandatory | Should -Contain $true
+                $parameter | Should -Not -BeNullOrEmpty
+                $parameter.Attributes.Mandatory | Should -Contain $true
+            }
         }
 
         It 'Allows empty collection for WatchDiff' {
-            $command = & (Get-Module PlexAutomationToolkit) { Get-Command Remove-PatWatchedPlaylistItem }
-            $parameter = $command.Parameters['WatchDiff']
+            InModuleScope PlexAutomationToolkit {
+                $command = Get-Command Remove-PatWatchedPlaylistItem
+                $parameter = $command.Parameters['WatchDiff']
 
-            $allowEmpty = $parameter.Attributes | Where-Object { $_.TypeId.Name -eq 'AllowEmptyCollectionAttribute' }
-            $allowEmpty | Should -Not -BeNullOrEmpty
+                $allowEmpty = $parameter.Attributes | Where-Object { $_.TypeId.Name -eq 'AllowEmptyCollectionAttribute' }
+                $allowEmpty | Should -Not -BeNullOrEmpty
+            }
         }
 
         It 'Returns int type' {
-            $command = & (Get-Module PlexAutomationToolkit) { Get-Command Remove-PatWatchedPlaylistItem }
-            $outputType = $command.OutputType
+            InModuleScope PlexAutomationToolkit {
+                $command = Get-Command Remove-PatWatchedPlaylistItem
+                $outputType = $command.OutputType
 
-            $outputType.Type.Name | Should -Contain 'Int32'
+                $outputType.Type.Name | Should -Contain 'Int32'
+            }
         }
     }
 }
