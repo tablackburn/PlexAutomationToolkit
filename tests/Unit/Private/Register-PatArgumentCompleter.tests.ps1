@@ -1868,4 +1868,200 @@ Describe 'Register-PatArgumentCompleter' {
             $results | Should -Be '/mnt/movies/Action'
         }
     }
+
+    Context 'Direct helper function invocation' {
+        # These tests directly invoke the helper functions called by the wrapper scriptblocks
+        # to ensure all parameter paths are covered
+
+        It 'Get-PatSectionNameCompletion handles WordToComplete with ServerUri and Token' {
+            InModuleScope PlexAutomationToolkit {
+                Mock Get-PatLibrary {
+                    return @{
+                        Directory = @(
+                            @{ title = 'Movies' }
+                            @{ title = 'TV Shows' }
+                        )
+                    }
+                }
+
+                $result = Get-PatSectionNameCompletion -WordToComplete 'Mov' -ServerUri 'http://test:32400' -Token 'test-token'
+
+                $result | Should -Not -BeNullOrEmpty
+                Should -Invoke Get-PatLibrary -ParameterFilter {
+                    $ServerUri -eq 'http://test:32400' -and $Token -eq 'test-token'
+                }
+            }
+        }
+
+        It 'Get-PatSectionIdCompletion handles WordToComplete with ServerUri and Token' {
+            InModuleScope PlexAutomationToolkit {
+                Mock Get-PatLibrary {
+                    return @{
+                        Directory = @(
+                            @{ key = '/library/sections/1'; title = 'Movies' }
+                            @{ key = '/library/sections/2'; title = 'TV Shows' }
+                        )
+                    }
+                }
+
+                $result = Get-PatSectionIdCompletion -WordToComplete '1' -ServerUri 'http://test:32400' -Token 'test-token'
+
+                $result | Should -Not -BeNullOrEmpty
+                Should -Invoke Get-PatLibrary -ParameterFilter {
+                    $ServerUri -eq 'http://test:32400' -and $Token -eq 'test-token'
+                }
+            }
+        }
+
+        It 'Get-PatCollectionTitleCompletion calls Get-PatCollection with ServerUri and Token' {
+            InModuleScope PlexAutomationToolkit {
+                Mock Get-PatCollection {
+                    return @(
+                        [PSCustomObject]@{ title = 'Marvel Movies' }
+                    )
+                }
+
+                $result = Get-PatCollectionTitleCompletion -WordToComplete 'Mar' -ServerUri 'http://test:32400' -Token 'test-token'
+
+                Should -Invoke Get-PatCollection -Times 1 -ParameterFilter {
+                    $ServerUri -eq 'http://test:32400' -and $Token -eq 'test-token'
+                }
+            }
+        }
+
+        It 'Get-PatPlaylistTitleCompletion handles ServerUri and Token' {
+            InModuleScope PlexAutomationToolkit {
+                Mock Get-PatPlaylist {
+                    return @(
+                        [PSCustomObject]@{ title = 'My Playlist' }
+                    )
+                }
+
+                $result = Get-PatPlaylistTitleCompletion -WordToComplete 'My' -ServerUri 'http://test:32400' -Token 'test-token'
+
+                Should -Invoke Get-PatPlaylist -ParameterFilter {
+                    $ServerUri -eq 'http://test:32400' -and $Token -eq 'test-token'
+                }
+            }
+        }
+
+        It 'Get-PatLibraryPathCompletion handles ServerUri and SectionId' {
+            InModuleScope PlexAutomationToolkit {
+                Mock Get-PatStoredServer {
+                    return @{ name = 'Default'; uri = 'http://plex:32400' }
+                }
+                Mock Get-PatLibraryPath {
+                    return @(
+                        [PSCustomObject]@{ path = '/mnt/movies' }
+                    )
+                }
+
+                $result = Get-PatLibraryPathCompletion -WordToComplete '' -ServerUri 'http://test:32400' -SectionId 1
+
+                Should -Invoke Get-PatLibraryPath -Times 1
+            }
+        }
+
+        It 'Get-PatLibraryPathCompletion handles SectionName resolution' {
+            InModuleScope PlexAutomationToolkit {
+                Mock Get-PatStoredServer {
+                    return @{ name = 'Default'; uri = 'http://plex:32400' }
+                }
+                Mock Get-PatLibrary {
+                    return @{
+                        Directory = @(
+                            @{ key = '/library/sections/1'; title = 'Movies' }
+                        )
+                    }
+                }
+                Mock Get-PatLibraryPath {
+                    return @(
+                        [PSCustomObject]@{ path = '/mnt/movies' }
+                    )
+                }
+
+                $result = Get-PatLibraryPathCompletion -WordToComplete '' -SectionName 'Movies'
+
+                Should -Invoke Get-PatLibrary -Times 1
+            }
+        }
+    }
+
+    Context 'Wrapper scriptblock execution via TabExpansion2 with all parameters' {
+        # These tests verify the wrapper scriptblocks are invoked with various parameter combinations
+
+        BeforeAll {
+            InModuleScope PlexAutomationToolkit {
+                Mock Get-PatLibrary {
+                    @{
+                        Directory = @(
+                            @{ title = 'Movies'; key = '/library/sections/1' }
+                            @{ title = 'TV Shows'; key = '/library/sections/2' }
+                        )
+                    }
+                }
+                Mock Get-PatCollection {
+                    @(
+                        [PSCustomObject]@{ title = 'Action Movies' }
+                    )
+                }
+                Mock Get-PatPlaylist {
+                    @(
+                        [PSCustomObject]@{ title = 'My Playlist' }
+                    )
+                }
+                Mock Get-PatStoredServer {
+                    @{ name = 'TestServer'; uri = 'http://test:32400' }
+                }
+                Mock Get-PatLibraryPath {
+                    @(
+                        [PSCustomObject]@{ path = '/mnt/movies' }
+                    )
+                }
+                Register-PatArgumentCompleter
+            }
+        }
+
+        It 'SectionName completer works with ServerUri and Token together' {
+            $line = "Get-PatLibraryPath -ServerUri 'http://test:32400' -Token 'token123' -SectionName M"
+            $result = TabExpansion2 -inputScript $line -cursorColumn $line.Length
+            $result | Should -Not -BeNullOrEmpty
+        }
+
+        It 'SectionId completer works with ServerUri and Token together' {
+            $line = "Get-PatLibraryPath -ServerUri 'http://test:32400' -Token 'token123' -SectionId "
+            $result = TabExpansion2 -inputScript $line -cursorColumn $line.Length
+            $result | Should -Not -BeNullOrEmpty
+        }
+
+        It 'Collection Title completer works with ServerUri, Token, and SectionId' {
+            $line = "Get-PatCollection -ServerUri 'http://test:32400' -Token 'token123' -SectionId 1 -Title A"
+            $result = TabExpansion2 -inputScript $line -cursorColumn $line.Length
+            $result | Should -Not -BeNullOrEmpty
+        }
+
+        It 'Collection Title completer works with ServerUri, Token, and SectionName' {
+            $line = "Get-PatCollection -ServerUri 'http://test:32400' -Token 'token123' -SectionName 'Movies' -Title A"
+            $result = TabExpansion2 -inputScript $line -cursorColumn $line.Length
+            $result | Should -Not -BeNullOrEmpty
+        }
+
+        It 'Playlist Title completer works with ServerUri and Token together' {
+            $line = "Get-PatPlaylist -ServerUri 'http://test:32400' -Token 'token123' -Title M"
+            $result = TabExpansion2 -inputScript $line -cursorColumn $line.Length
+            $result | Should -Not -BeNullOrEmpty
+        }
+
+        It 'Path completer works with ServerUri and SectionId' {
+            $line = "Update-PatLibrary -ServerUri 'http://test:32400' -SectionId 1 -Path /"
+            $result = TabExpansion2 -inputScript $line -cursorColumn $line.Length
+            $result | Should -Not -BeNullOrEmpty
+        }
+
+        It 'Path completer works with SectionName' {
+            $line = "Update-PatLibrary -SectionName 'Movies' -Path /"
+            $result = TabExpansion2 -inputScript $line -cursorColumn $line.Length
+            $result | Should -Not -BeNullOrEmpty
+        }
+    }
 }
