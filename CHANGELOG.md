@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [0.10.3] - 2026-01-11
+
+### Added
+
+- Extended `Get-PatMediaInfo` output with human-readable formatted properties:
+  - `DurationFormatted` - human-readable duration (e.g., "2h 16m")
+  - `ContentRating` - age rating (e.g., "PG-13", "R", "TV-MA")
+  - `Rating` - critic/Plex rating (handles complex Plex API formats)
+  - `BitrateFormatted` on MediaVersion (e.g., "25.5 Mbps")
+  - `SizeFormatted` on MediaPart (e.g., "4.21 GB")
+  - `StreamTypeName` on MediaStream (Video, Audio, Subtitle)
+- New `Format-PatBitrate` private helper for bitrate formatting
+
+### Fixed
+
+- Handle Plex API returning `rating` as complex object or array instead of simple value
+
+### Changed
+
+- Remove duplicate `StreamTypeId` property from MediaStream (use `StreamType` instead)
+
 ## [0.10.2] - 2026-01-11
 
 ### Added
