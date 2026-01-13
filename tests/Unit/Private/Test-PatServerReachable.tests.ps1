@@ -187,7 +187,8 @@ Describe 'Test-PatServerReachable' {
             }
         }
 
-        It 'Skips certificate check for HTTPS when SkipCertificateCheck specified' {
+        # Skip on PS 5.1: -SkipCertificateCheck parameter doesn't exist, uses ServerCertificateValidationCallback instead
+        It 'Skips certificate check for HTTPS when SkipCertificateCheck specified' -Skip:($PSVersionTable.PSVersion.Major -lt 6) {
             Test-PatServerReachable -ServerUri 'https://192.168.1.100:32400' -SkipCertificateCheck
 
             Should -Invoke Invoke-RestMethod -Times 1 -ParameterFilter {

@@ -250,7 +250,8 @@ Describe 'Invoke-PatFileDownload Streaming Integration Tests' -Skip:(-not $scrip
 
     Context 'Non-streaming download for small files' {
 
-        It 'Downloads a small file using Invoke-WebRequest path' {
+        # Skip on PS 5.1: Invoke-WebRequest has connection issues with HttpListener in jobs for larger payloads
+        It 'Downloads a small file using Invoke-WebRequest path' -Skip:($PSVersionTable.PSVersion.Major -lt 6) {
             $testSize = 500KB
             $job = Start-TestHttpServerJob -Port $script:TestPort -ResponseData $script:TestData500KB
             $uri = "http://localhost:$($script:TestPort)/"
