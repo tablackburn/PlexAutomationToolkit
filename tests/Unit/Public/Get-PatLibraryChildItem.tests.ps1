@@ -106,8 +106,8 @@ Describe 'Get-PatLibraryChildItem' {
             $directories = $result | Where-Object { $_.key -like '*/action' -or $_.key -like '*/comedy' }
             $files = $result | Where-Object { $_.key -like '*.txt' }
 
-            $directories.Count | Should -Be 2
-            $files.Count | Should -Be 1
+            @($directories).Count | Should -Be 2
+            @($files).Count | Should -Be 1
         }
 
         It 'Should base64 encode the path in the endpoint' {

@@ -73,9 +73,9 @@ Describe 'Import-PatServerToken' {
             $results = Import-PatServerToken -PassThru
 
             $results | Should -Not -BeNullOrEmpty
-            $results.Count | Should -Be 3  # 2 migrated + 1 skipped (no token)
-            ($results | Where-Object { $_.Status -eq 'Migrated' }).Count | Should -Be 2
-            ($results | Where-Object { $_.Status -eq 'Skipped' }).Count | Should -Be 1
+            @($results).Count | Should -Be 3  # 2 migrated + 1 skipped (no token)
+            @($results | Where-Object { $_.Status -eq 'Migrated' }).Count | Should -Be 2
+            @($results | Where-Object { $_.Status -eq 'Skipped' }).Count | Should -Be 1
         }
 
         It 'Should skip servers without tokens' {

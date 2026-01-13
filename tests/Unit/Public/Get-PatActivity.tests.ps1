@@ -90,7 +90,7 @@ Describe 'Get-PatActivity' {
 
         It 'Returns only activities matching type' {
             $result = Get-PatActivity -ServerUri 'http://plex.local:32400' -Type 'library.update.section'
-            $result.Count | Should -Be 1
+            @($result).Count | Should -Be 1
             $result[0].Type | Should -Be 'library.update.section'
         }
     }
@@ -108,7 +108,7 @@ Describe 'Get-PatActivity' {
 
         It 'Returns only activities for specified section' {
             $result = Get-PatActivity -ServerUri 'http://plex.local:32400' -SectionId 2
-            $result.Count | Should -Be 1
+            @($result).Count | Should -Be 1
             $result[0].SectionId | Should -Be 2
         }
 

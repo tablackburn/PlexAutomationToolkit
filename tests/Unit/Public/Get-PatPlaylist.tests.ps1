@@ -238,7 +238,7 @@ Describe 'Get-PatPlaylist' {
 
         It 'Only returns non-smart playlists' {
             $result = Get-PatPlaylist -ServerUri 'http://plex.local:32400'
-            $result.Count | Should -Be 1
+            @($result).Count | Should -Be 1
             $result[0].Title | Should -Be 'Dumb Playlist'
         }
     }

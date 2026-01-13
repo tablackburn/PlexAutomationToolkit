@@ -123,7 +123,7 @@ Describe 'Get-PatLibraryPath' {
         It 'Should retrieve single path for section with one location' {
             $result = Get-PatLibraryPath -SectionId 2
 
-            $result.Count | Should -Be 1
+            @($result).Count | Should -Be 1
             $result.section | Should -Be 'TV Shows'
             $result.path | Should -Be '/mnt/media/tvshows'
         }
@@ -148,7 +148,7 @@ Describe 'Get-PatLibraryPath' {
         It 'Should retrieve paths for TV Shows section' {
             $result = Get-PatLibraryPath -SectionName 'TV Shows'
 
-            $result.Count | Should -Be 1
+            @($result).Count | Should -Be 1
             $result.section | Should -Be 'TV Shows'
             $result.path | Should -Be '/mnt/media/tvshows'
         }

@@ -145,7 +145,7 @@ Describe 'Get-PatSession' {
 
         It 'Returns only sessions for specified username' {
             $result = Get-PatSession -ServerUri 'http://plex.local:32400' -Username 'john'
-            $result.Count | Should -Be 1
+            @($result).Count | Should -Be 1
             $result[0].Username | Should -Be 'john'
         }
 
@@ -168,7 +168,7 @@ Describe 'Get-PatSession' {
 
         It 'Returns only sessions for specified player' {
             $result = Get-PatSession -ServerUri 'http://plex.local:32400' -Player 'iPhone'
-            $result.Count | Should -Be 1
+            @($result).Count | Should -Be 1
             $result[0].PlayerName | Should -Be 'iPhone'
         }
 
@@ -191,7 +191,7 @@ Describe 'Get-PatSession' {
 
         It 'Applies both Username and Player filters' {
             $result = Get-PatSession -ServerUri 'http://plex.local:32400' -Username 'john' -Player 'Living Room TV'
-            $result.Count | Should -Be 1
+            @($result).Count | Should -Be 1
             $result[0].Username | Should -Be 'john'
             $result[0].PlayerName | Should -Be 'Living Room TV'
         }

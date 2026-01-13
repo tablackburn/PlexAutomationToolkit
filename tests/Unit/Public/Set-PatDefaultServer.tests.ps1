@@ -48,7 +48,7 @@ Describe 'Set-PatDefaultServer' {
         It 'Should ensure only one server is default' {
             Set-PatDefaultServer -Name 'Server3'
 
-            $defaultCount = ($script:mockConfig.servers | Where-Object { $_.default -eq $true }).Count
+            $defaultCount = @($script:mockConfig.servers | Where-Object { $_.default -eq $true }).Count
             $defaultCount | Should -Be 1
         }
 
@@ -60,7 +60,7 @@ Describe 'Set-PatDefaultServer' {
             $server1 = $script:mockConfig.servers | Where-Object { $_.name -eq 'Server1' }
             $server1.default | Should -Be $true
 
-            $defaultCount = ($script:mockConfig.servers | Where-Object { $_.default -eq $true }).Count
+            $defaultCount = @($script:mockConfig.servers | Where-Object { $_.default -eq $true }).Count
             $defaultCount | Should -Be 1
         }
     }
