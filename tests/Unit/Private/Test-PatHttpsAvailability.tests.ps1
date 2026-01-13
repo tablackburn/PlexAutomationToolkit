@@ -345,27 +345,6 @@ Describe 'Test-PatHttpsAvailability' {
             $result | Should -BeTrue
         }
 
-        # Skip on PS 5.1: Same-thread mutex reentry allows recursive acquisition, so blocking doesn't work
-        It 'Returns $false when mutex acquisition times out' -Skip:$script:IsPS51 {
-            # Create and hold the mutex to simulate timeout scenario
-            $blockingMutex = [System.Threading.Mutex]::new($false, 'Global\PlexAutomationToolkit_CertCallback')
-            $blockingMutex.WaitOne() | Out-Null
-
-            try {
-                $result = Test-PatHttpsAvailability -HttpUri 'http://plex.local:32400'
-
-                # Should return false when mutex cannot be acquired
-                $result | Should -BeFalse
-
-                # Should not have called Invoke-RestMethod since mutex wasn't acquired
-                Should -Invoke Invoke-RestMethod -Times 0
-            }
-            finally {
-                $blockingMutex.ReleaseMutex()
-                $blockingMutex.Dispose()
-            }
-        }
-
         It 'Properly disposes mutex after successful operation' {
             # Run the function
             Test-PatHttpsAvailability -HttpUri 'http://plex.local:32400'
@@ -444,6 +423,34 @@ Describe 'Test-PatHttpsAvailability' {
         }
     }
 
+    Context 'Mutex timeout behavior' {
+        BeforeEach {
+            Mock Invoke-RestMethod { return @{} }
+        }
+
+        # Skip: Same-thread mutex reentry allows recursive acquisition, so blocking cannot be tested
+        # This is a fundamental limitation - the test and function run on the same thread
+        It 'Returns $false when mutex acquisition times out' -Skip {
+            # Create and hold the mutex to simulate timeout scenario
+            $blockingMutex = [System.Threading.Mutex]::new($false, 'Global\PlexAutomationToolkit_CertCallback')
+            $blockingMutex.WaitOne() | Out-Null
+
+            try {
+                $result = Test-PatHttpsAvailability -HttpUri 'http://plex.local:32400'
+
+                # Should return false when mutex cannot be acquired
+                $result | Should -BeFalse
+
+                # Should not have called Invoke-RestMethod since mutex wasn't acquired
+                Should -Invoke Invoke-RestMethod -Times 0
+            }
+            finally {
+                $blockingMutex.ReleaseMutex()
+                $blockingMutex.Dispose()
+            }
+        }
+    }
+
     Context 'Output type' {
         BeforeEach {
             Mock Invoke-RestMethod { return @{} }
@@ -500,7 +507,8 @@ Describe 'Test-PatHttpsAvailability' {
             $verboseMessages | Should -Match 'HTTPS not available'
         }
 
-        # Skip: Same-thread mutex reentry allows recursive acquisition, so blocking doesn't work in tests
+        # Skip: Same-thread mutex reentry allows recursive acquisition, so blocking cannot be tested
+        # This is a fundamental limitation - the test and function run on the same thread
         It 'Writes verbose message when mutex cannot be acquired' -Skip {
             # Create and hold the mutex
             $blockingMutex = [System.Threading.Mutex]::new($false, 'Global\PlexAutomationToolkit_CertCallback')
