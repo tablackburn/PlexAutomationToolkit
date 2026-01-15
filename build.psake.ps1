@@ -11,9 +11,9 @@ properties {
     $PSBPreference.Build.CompileModule = $false
     $PSBPreference.Help.DefaultLocale = 'en-US'
     # Workaround: PSScriptAnalyzer has a bug on Linux when loading settings files
-    # Set to $null to use default rules without a settings file
+    # Disable in-build analysis on Linux; the dedicated PSScriptAnalyzer Lint job provides coverage
     if ($IsLinux) {
-        $PSBPreference.Test.ScriptAnalysis.SettingsPath = $null
+        $PSBPreference.Test.ScriptAnalysis.Enabled = $false
     }
     # Use absolute paths for test output (relative paths resolve from tests directory)
     $PSBPreference.Test.OutputFile = [IO.Path]::Combine($PSScriptRoot, 'out', 'testResults.xml')
