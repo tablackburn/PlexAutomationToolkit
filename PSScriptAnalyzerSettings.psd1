@@ -1,3 +1,4 @@
 @{
-    IncludeRules = @('*')
+    Severity     = @('Error', 'Warning', 'Information')
+    ExcludeRules = @()
 }
