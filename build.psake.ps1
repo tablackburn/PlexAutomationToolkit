@@ -10,6 +10,11 @@ properties {
     # Set this to $true to create a module with a monolithic PSM1
     $PSBPreference.Build.CompileModule = $false
     $PSBPreference.Help.DefaultLocale = 'en-US'
+    # Workaround: PSScriptAnalyzer has a bug on Linux when loading settings files
+    # Set to $null to use default rules without a settings file
+    if ($IsLinux) {
+        $PSBPreference.Test.ScriptAnalysis.SettingsPath = $null
+    }
     # Use absolute paths for test output (relative paths resolve from tests directory)
     $PSBPreference.Test.OutputFile = [IO.Path]::Combine($PSScriptRoot, 'out', 'testResults.xml')
     $PSBPreference.Test.OutputFormat = 'NUnitXml'
