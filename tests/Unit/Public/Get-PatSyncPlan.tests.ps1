@@ -344,10 +344,9 @@ Describe 'Get-PatSyncPlan' {
                 }
             }
 
-            Mock -ModuleName PlexAutomationToolkit Get-PSDrive {
-                return [PSCustomObject]@{
-                    Free = 10000000000  # Only 10 GB free
-                }
+            # Mock the internal helper directly for cross-platform compatibility
+            Mock -ModuleName PlexAutomationToolkit Get-PatDestinationFreeSpace {
+                return 10000000000  # Only 10 GB free
             }
         }
 
