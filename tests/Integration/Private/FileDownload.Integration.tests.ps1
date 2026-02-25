@@ -43,29 +43,19 @@ BeforeAll {
         return $port
     }
 
-    # Helper function to wait for server to be ready with polling
+    # Helper function to wait for server to be ready by polling for a signal file
     function Wait-ServerReady {
         param(
-            [int]$Port,
+            [Parameter(Mandatory)]
+            [string]$SignalFile,
             [int]$TimeoutMs = 5000,
             [int]$PollIntervalMs = 50
         )
 
         $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
         while ($stopwatch.ElapsedMilliseconds -lt $TimeoutMs) {
-            try {
-                $client = [System.Net.Sockets.TcpClient]::new()
-                $result = $client.BeginConnect('localhost', $Port, $null, $null)
-                $success = $result.AsyncWaitHandle.WaitOne(100)
-                if ($success) {
-                    $client.EndConnect($result)
-                    $client.Close()
-                    return $true
-                }
-                $client.Close()
-            }
-            catch {
-                # Server not ready yet
+            if (Test-Path -Path $SignalFile) {
+                return $true
             }
             Start-Sleep -Milliseconds $PollIntervalMs
         }
@@ -82,8 +72,11 @@ BeforeAll {
             [switch]$CaptureHeaders
         )
 
+        $signalId = [guid]::NewGuid().ToString('N')
+        $readySignalFile = Join-Path -Path ([System.IO.Path]::GetTempPath()) -ChildPath "pat-test-ready-$signalId.signal"
+
         $job = Start-Job -ScriptBlock {
-            param($port, $data, $statusCode, $captureHeaders)
+            param($port, $data, $statusCode, $captureHeaders, $readySignalFile)
 
             $result = @{
                 ReceivedHeaders = @{}
@@ -96,8 +89,13 @@ BeforeAll {
             try {
                 $listener.Start()
 
-                # Use async with timeout to prevent hanging
+                # Begin async wait before signaling readiness so the
+                # listener is in GetContextAsync() when the test fires
                 $contextTask = $listener.GetContextAsync()
+
+                # Signal that the listener is ready to accept requests
+                [System.IO.File]::WriteAllText($readySignalFile, 'ready')
+
                 if (-not $contextTask.Wait(30000)) {
                     throw "Timeout waiting for request"
                 }
@@ -132,12 +130,17 @@ BeforeAll {
             }
 
             return $result
-        } -ArgumentList $Port, $ResponseData, $StatusCode, $CaptureHeaders.IsPresent
+        } -ArgumentList $Port, $ResponseData, $StatusCode, $CaptureHeaders.IsPresent, $readySignalFile
 
-        # Wait for server to be ready with polling
-        $ready = Wait-ServerReady -Port $Port -TimeoutMs 5000
+        # Wait for server to signal it is ready to accept HTTP requests
+        $ready = Wait-ServerReady -SignalFile $readySignalFile -TimeoutMs 5000
         if (-not $ready) {
-            Write-Warning "Server may not be ready on port $Port"
+            throw "Server failed to become ready on port $Port within timeout"
+        }
+
+        # Clean up signal file
+        if (Test-Path -Path $readySignalFile) {
+            Remove-Item -Path $readySignalFile -Force
         }
 
         return $job
