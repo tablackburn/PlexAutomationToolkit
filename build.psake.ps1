@@ -12,7 +12,7 @@ properties {
     $PSBPreference.Help.DefaultLocale = 'en-US'
     # Workaround: PSScriptAnalyzer has a bug on non-Windows platforms when loading settings files
     # Disable in-build analysis on Linux and macOS; the dedicated PSScriptAnalyzer Lint job provides coverage
-    if (-not $IsWindows) {
+    if (-not ($PSVersionTable.PSVersion.Major -lt 6 -or $IsWindows)) {
         $PSBPreference.Test.ScriptAnalysis.Enabled = $false
     }
     # Use absolute paths for test output (relative paths resolve from tests directory)
