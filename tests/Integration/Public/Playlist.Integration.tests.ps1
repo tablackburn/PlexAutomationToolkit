@@ -344,23 +344,25 @@ Describe 'Playlist WhatIf Integration Tests' -Skip:(-not $script:integrationEnab
                 return
             }
 
-            $countBefore = (Get-PatPlaylist).Count
+            $whatIfTitle = "WhatIf-Test-Playlist-$(Get-Date -Format 'yyyyMMddHHmmss')"
 
-            New-PatPlaylist -Title 'WhatIf-Test-Playlist' -RatingKey $script:whatIfRatingKey -WhatIf
+            New-PatPlaylist -Title $whatIfTitle -RatingKey $script:whatIfRatingKey -WhatIf
 
-            $countAfter = (Get-PatPlaylist).Count
-            $countAfter | Should -Be $countBefore
+            $playlists = Get-PatPlaylist
+            $matchingPlaylist = $playlists | Where-Object { $_.Title -eq $whatIfTitle }
+            $matchingPlaylist | Should -BeNullOrEmpty
         }
 
         It 'Remove-PatPlaylist WhatIf does not delete playlist' {
             $playlists = Get-PatPlaylist
             if ($playlists) {
-                $countBefore = $playlists.Count
+                $targetPlaylist = $playlists[0]
 
-                Remove-PatPlaylist -PlaylistId $playlists[0].PlaylistId -WhatIf
+                Remove-PatPlaylist -PlaylistId $targetPlaylist.PlaylistId -WhatIf
 
-                $countAfter = (Get-PatPlaylist).Count
-                $countAfter | Should -Be $countBefore
+                $stillExists = Get-PatPlaylist -PlaylistId $targetPlaylist.PlaylistId
+                $stillExists | Should -Not -BeNullOrEmpty
+                $stillExists.PlaylistId | Should -Be $targetPlaylist.PlaylistId
             }
             else {
                 Set-ItResult -Skipped -Because 'No playlists exist to test WhatIf'
