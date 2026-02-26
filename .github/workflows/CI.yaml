@@ -158,7 +158,63 @@ jobs:
         shell: pwsh
         run: ./build.ps1 -Task Build -Bootstrap
 
+      - name: Check Integration Secrets
+        id: check-secrets
+        shell: pwsh
+        env:
+          PLEX_SERVER_URI: ${{ secrets.PLEX_SERVER_URI }}
+          PLEX_TOKEN: ${{ secrets.PLEX_TOKEN }}
+        run: |
+          if (-not $env:PLEX_SERVER_URI -or -not $env:PLEX_TOKEN) {
+            Write-Host "::warning::Integration tests skipped - PLEX_SERVER_URI or PLEX_TOKEN secrets not configured"
+            "secrets-configured=false" >> $env:GITHUB_OUTPUT
+            exit 0
+          }
+          "secrets-configured=true" >> $env:GITHUB_OUTPUT
+
+      - name: Validate Plex Token
+        if: steps.check-secrets.outputs.secrets-configured == 'true'
+        shell: pwsh
+        env:
+          PLEX_SERVER_URI: ${{ secrets.PLEX_SERVER_URI }}
+          PLEX_TOKEN: ${{ secrets.PLEX_TOKEN }}
+        run: |
+          # Import the built module
+          $moduleManifest = Get-ChildItem -Path Output/PlexAutomationToolkit -Filter '*.psd1' -Recurse |
+            Select-Object -First 1
+          Import-Module $moduleManifest.FullName -Force
+
+          # Add a temporary server for validation
+          $validationServerName = 'CI-TokenValidation'
+          Add-PatServer -Name $validationServerName -ServerUri $env:PLEX_SERVER_URI -Token $env:PLEX_TOKEN -SkipValidation -Confirm:$false
+
+          try {
+            $testResult = Test-PatServer -Name $validationServerName
+
+            if (-not $testResult.IsAuthenticated) {
+              $errorLines = @(
+                "PLEX_TOKEN secret is expired or invalid (401)."
+                "To fix:"
+                "  1) Run 'Update-PatServerToken' locally to get a fresh token"
+                "  2) Update the PLEX_TOKEN secret in GitHub repo Settings > Secrets and variables > Actions"
+              )
+              Write-Host "::error::$($errorLines -join ' ')"
+              exit 1
+            }
+
+            if (-not $testResult.IsConnected) {
+              Write-Host "::warning::Plex server at $env:PLEX_SERVER_URI is not reachable. Integration tests may fail."
+            }
+            else {
+              Write-Host "Token validation successful: $($testResult.FriendlyName) v$($testResult.Version)"
+            }
+          }
+          finally {
+            Remove-PatServer -Name $validationServerName -Confirm:$false -ErrorAction 'SilentlyContinue'
+          }
+
       - name: Run Integration Tests
+        if: steps.check-secrets.outputs.secrets-configured == 'true'
         shell: pwsh
         env:
           PLEX_SERVER_URI: ${{ secrets.PLEX_SERVER_URI }}
@@ -168,11 +224,6 @@ jobs:
           PLEX_TEST_LIBRARY_PATH: ${{ secrets.PLEX_TEST_LIBRARY_PATH }}
           PLEX_ALLOW_LIBRARY_REFRESH: ${{ secrets.PLEX_ALLOW_LIBRARY_REFRESH }}
         run: |
-          if (-not $env:PLEX_SERVER_URI -or -not $env:PLEX_TOKEN) {
-            Write-Host "::warning::Integration tests skipped - PLEX_SERVER_URI or PLEX_TOKEN secrets not configured"
-            exit 0
-          }
-
           # Set up build environment (required for persistence tests)
           Set-BuildEnvironment -Force
 
