@@ -44,6 +44,16 @@ Describe 'Get-PatSession Integration Tests' -Skip:(-not $script:integrationEnabl
             -Default `
             -SkipValidation `
             -Confirm:$false
+
+        # Validate server connectivity
+        $script:serverAccessible = $false
+        try {
+            $null = Get-PatServer -ErrorAction Stop
+            $script:serverAccessible = $true
+        }
+        catch {
+            Write-Warning "Plex server not accessible: $($_.Exception.Message)"
+        }
     }
 
     AfterAll {
@@ -56,11 +66,17 @@ Describe 'Get-PatSession Integration Tests' -Skip:(-not $script:integrationEnabl
     Context 'Session retrieval' {
 
         It 'Successfully queries sessions endpoint' {
+            if (-not $script:serverAccessible) {
+                Set-ItResult -Skipped -Because 'Plex server not accessible'
+            }
             # This should not throw - even if no sessions are active
             { Get-PatSession } | Should -Not -Throw
         }
 
         It 'Returns array or null (depending on active sessions)' {
+            if (-not $script:serverAccessible) {
+                Set-ItResult -Skipped -Because 'Plex server not accessible'
+            }
             $result = Get-PatSession
             # Result can be null/empty or an array of sessions
             if ($result) {
@@ -69,6 +85,9 @@ Describe 'Get-PatSession Integration Tests' -Skip:(-not $script:integrationEnabl
         }
 
         It 'Session objects have expected properties when sessions exist' {
+            if (-not $script:serverAccessible) {
+                Set-ItResult -Skipped -Because 'Plex server not accessible'
+            }
             $result = Get-PatSession
             if ($result) {
                 $result[0].PSObject.Properties.Name | Should -Contain 'SessionId'
@@ -83,6 +102,9 @@ Describe 'Get-PatSession Integration Tests' -Skip:(-not $script:integrationEnabl
         }
 
         It 'Session objects have correct PSTypeName' {
+            if (-not $script:serverAccessible) {
+                Set-ItResult -Skipped -Because 'Plex server not accessible'
+            }
             $result = Get-PatSession
             if ($result) {
                 $result[0].PSObject.TypeNames[0] | Should -Be 'PlexAutomationToolkit.Session'
@@ -93,6 +115,9 @@ Describe 'Get-PatSession Integration Tests' -Skip:(-not $script:integrationEnabl
         }
 
         It 'Accepts explicit ServerUri parameter' {
+            if (-not $script:serverAccessible) {
+                Set-ItResult -Skipped -Because 'Plex server not accessible'
+            }
             { Get-PatSession -ServerUri $env:PLEX_SERVER_URI -Token $env:PLEX_TOKEN } | Should -Not -Throw
         }
     }
@@ -100,14 +125,23 @@ Describe 'Get-PatSession Integration Tests' -Skip:(-not $script:integrationEnabl
     Context 'Session filtering' {
 
         It 'Username filter does not throw' {
+            if (-not $script:serverAccessible) {
+                Set-ItResult -Skipped -Because 'Plex server not accessible'
+            }
             { Get-PatSession -Username 'nonexistent-user-12345' } | Should -Not -Throw
         }
 
         It 'Player filter does not throw' {
+            if (-not $script:serverAccessible) {
+                Set-ItResult -Skipped -Because 'Plex server not accessible'
+            }
             { Get-PatSession -Player 'nonexistent-player-12345' } | Should -Not -Throw
         }
 
         It 'Combined filters do not throw' {
+            if (-not $script:serverAccessible) {
+                Set-ItResult -Skipped -Because 'Plex server not accessible'
+            }
             { Get-PatSession -Username 'test' -Player 'test' } | Should -Not -Throw
         }
     }

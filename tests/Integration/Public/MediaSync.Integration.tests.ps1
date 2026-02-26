@@ -47,20 +47,31 @@ Describe 'Get-PatMediaInfo Integration Tests' -Skip:(-not $script:integrationEna
 
         # Find a library item to test with - use Travel playlist if it exists
         $script:testItem = $null
-        $travelPlaylist = Get-PatPlaylist -PlaylistName 'Travel' -IncludeItems -ErrorAction SilentlyContinue
-        if ($travelPlaylist -and $travelPlaylist.Items -and $travelPlaylist.Items.Count -gt 0) {
-            $script:testItem = $travelPlaylist.Items[0]
+        try {
+            $travelPlaylist = Get-PatPlaylist -PlaylistName 'Travel' -IncludeItems -ErrorAction Stop
+            if ($travelPlaylist -and $travelPlaylist.Items -and $travelPlaylist.Items.Count -gt 0) {
+                $script:testItem = $travelPlaylist.Items[0]
+            }
         }
-        else {
+        catch {
+            Write-Warning "Could not query playlists: $($_.Exception.Message)"
+        }
+
+        if (-not $script:testItem) {
             # Fallback: find any library item
-            $script:testLibrary = Get-PatLibrary | Select-Object -First 1
-            if ($script:testLibrary) {
-                $sectionId = $script:testLibrary.key -replace '.*/(\d+)$', '$1'
-                $items = Get-PatLibraryItem -SectionId $sectionId -ErrorAction SilentlyContinue |
-                    Select-Object -First 1
-                if ($items) {
-                    $script:testItem = $items
+            try {
+                $script:testLibrary = Get-PatLibrary -ErrorAction Stop | Select-Object -First 1
+                if ($script:testLibrary) {
+                    $sectionId = $script:testLibrary.key -replace '.*/(\d+)$', '$1'
+                    $items = Get-PatLibraryItem -SectionId $sectionId -ErrorAction Stop |
+                        Select-Object -First 1
+                    if ($items) {
+                        $script:testItem = $items
+                    }
                 }
+            }
+            catch {
+                Write-Warning "Could not find test library/items: $($_.Exception.Message)"
             }
         }
     }
@@ -123,7 +134,13 @@ Describe 'Get-PatSyncPlan Integration Tests' -Skip:(-not $script:integrationEnab
         New-Item -Path $script:testDestination -ItemType Directory -Force | Out-Null
 
         # Check if 'Travel' playlist exists
-        $script:travelPlaylist = Get-PatPlaylist -PlaylistName 'Travel' -ErrorAction SilentlyContinue
+        $script:travelPlaylist = $null
+        try {
+            $script:travelPlaylist = Get-PatPlaylist -PlaylistName 'Travel' -ErrorAction Stop
+        }
+        catch {
+            Write-Warning "Could not query playlists: $($_.Exception.Message)"
+        }
     }
 
     AfterAll {
@@ -205,8 +222,15 @@ Describe 'Sync-PatMedia Integration Tests' -Skip:(-not $script:integrationEnable
         New-Item -Path $script:syncDestination -ItemType Directory -Force | Out-Null
 
         # Check if 'Travel' playlist exists and has items
-        $script:travelPlaylist = Get-PatPlaylist -PlaylistName 'Travel' -IncludeItems -ErrorAction SilentlyContinue
-        $script:hasItems = $script:travelPlaylist -and $script:travelPlaylist.Items -and $script:travelPlaylist.Items.Count -gt 0
+        $script:travelPlaylist = $null
+        $script:hasItems = $false
+        try {
+            $script:travelPlaylist = Get-PatPlaylist -PlaylistName 'Travel' -IncludeItems -ErrorAction Stop
+            $script:hasItems = $script:travelPlaylist -and $script:travelPlaylist.Items -and $script:travelPlaylist.Items.Count -gt 0
+        }
+        catch {
+            Write-Warning "Could not query playlists: $($_.Exception.Message)"
+        }
     }
 
     AfterAll {

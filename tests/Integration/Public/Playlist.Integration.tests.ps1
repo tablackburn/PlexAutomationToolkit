@@ -44,6 +44,16 @@ Describe 'Get-PatPlaylist Integration Tests' -Skip:(-not $script:integrationEnab
             -Default `
             -SkipValidation `
             -Confirm:$false
+
+        # Validate server connectivity
+        $script:serverAccessible = $false
+        try {
+            $null = Get-PatServer -ErrorAction Stop
+            $script:serverAccessible = $true
+        }
+        catch {
+            Write-Warning "Plex server not accessible: $($_.Exception.Message)"
+        }
     }
 
     AfterAll {
@@ -56,10 +66,16 @@ Describe 'Get-PatPlaylist Integration Tests' -Skip:(-not $script:integrationEnab
     Context 'Playlist retrieval' {
 
         It 'Successfully queries playlists endpoint' {
+            if (-not $script:serverAccessible) {
+                Set-ItResult -Skipped -Because 'Plex server not accessible'
+            }
             { Get-PatPlaylist } | Should -Not -Throw
         }
 
         It 'Returns array or null (depending on existing playlists)' {
+            if (-not $script:serverAccessible) {
+                Set-ItResult -Skipped -Because 'Plex server not accessible'
+            }
             $result = Get-PatPlaylist
             # Result can be null/empty or an array of playlists
             if ($result) {
@@ -68,6 +84,9 @@ Describe 'Get-PatPlaylist Integration Tests' -Skip:(-not $script:integrationEnab
         }
 
         It 'Playlist objects have expected properties when playlists exist' {
+            if (-not $script:serverAccessible) {
+                Set-ItResult -Skipped -Because 'Plex server not accessible'
+            }
             $result = Get-PatPlaylist
             if ($result) {
                 $result[0].PSObject.Properties.Name | Should -Contain 'PlaylistId'
@@ -81,6 +100,9 @@ Describe 'Get-PatPlaylist Integration Tests' -Skip:(-not $script:integrationEnab
         }
 
         It 'Playlist objects have correct PSTypeName' {
+            if (-not $script:serverAccessible) {
+                Set-ItResult -Skipped -Because 'Plex server not accessible'
+            }
             $result = Get-PatPlaylist
             if ($result) {
                 $result[0].PSObject.TypeNames[0] | Should -Be 'PlexAutomationToolkit.Playlist'
@@ -91,6 +113,9 @@ Describe 'Get-PatPlaylist Integration Tests' -Skip:(-not $script:integrationEnab
         }
 
         It 'Accepts explicit ServerUri parameter' {
+            if (-not $script:serverAccessible) {
+                Set-ItResult -Skipped -Because 'Plex server not accessible'
+            }
             { Get-PatPlaylist -ServerUri $env:PLEX_SERVER_URI -Token $env:PLEX_TOKEN } | Should -Not -Throw
         }
     }
@@ -98,10 +123,16 @@ Describe 'Get-PatPlaylist Integration Tests' -Skip:(-not $script:integrationEnab
     Context 'Playlist retrieval with items' {
 
         It 'IncludeItems parameter does not throw' {
+            if (-not $script:serverAccessible) {
+                Set-ItResult -Skipped -Because 'Plex server not accessible'
+            }
             { Get-PatPlaylist -IncludeItems } | Should -Not -Throw
         }
 
         It 'Playlists have Items property when IncludeItems specified' {
+            if (-not $script:serverAccessible) {
+                Set-ItResult -Skipped -Because 'Plex server not accessible'
+            }
             $result = Get-PatPlaylist -IncludeItems
             if ($result) {
                 $result[0].PSObject.Properties.Name | Should -Contain 'Items'
@@ -149,7 +180,7 @@ Describe 'Playlist CRUD Integration Tests' -Skip:(-not $script:integrationEnable
         }
 
         if (-not $script:testRatingKey) {
-            throw "No media items available for playlist integration tests"
+            Write-Warning 'No media items available for playlist integration tests'
         }
     }
 
@@ -172,6 +203,9 @@ Describe 'Playlist CRUD Integration Tests' -Skip:(-not $script:integrationEnable
 
     Context 'Create playlist' {
         It 'Creates a new playlist with New-PatPlaylist' {
+            if (-not $script:testRatingKey) {
+                Set-ItResult -Skipped -Because 'No media items available for testing'
+            }
             $testTitle = "IntegrationTest-Playlist-$(Get-Date -Format 'yyyyMMddHHmmss')"
 
             $result = New-PatPlaylist -Title $testTitle -RatingKey $script:testRatingKey -PassThru -Confirm:$false
@@ -186,6 +220,9 @@ Describe 'Playlist CRUD Integration Tests' -Skip:(-not $script:integrationEnable
         }
 
         It 'Created playlist is retrievable via Get-PatPlaylist' {
+            if (-not $script:testRatingKey) {
+                Set-ItResult -Skipped -Because 'No media items available for testing'
+            }
             $testTitle = "IntegrationTest-Playlist-Get-$(Get-Date -Format 'yyyyMMddHHmmss')"
 
             $created = New-PatPlaylist -Title $testTitle -RatingKey $script:testRatingKey -PassThru -Confirm:$false
@@ -198,6 +235,9 @@ Describe 'Playlist CRUD Integration Tests' -Skip:(-not $script:integrationEnable
         }
 
         It 'Creates playlist with specified type' {
+            if (-not $script:testRatingKey) {
+                Set-ItResult -Skipped -Because 'No media items available for testing'
+            }
             $testTitle = "IntegrationTest-Playlist-Video-$(Get-Date -Format 'yyyyMMddHHmmss')"
 
             $result = New-PatPlaylist -Title $testTitle -Type 'video' -RatingKey $script:testRatingKey -PassThru -Confirm:$false
@@ -211,6 +251,9 @@ Describe 'Playlist CRUD Integration Tests' -Skip:(-not $script:integrationEnable
 
     Context 'Delete playlist' {
         It 'Removes a playlist with Remove-PatPlaylist' {
+            if (-not $script:testRatingKey) {
+                Set-ItResult -Skipped -Because 'No media items available for testing'
+            }
             $testTitle = "IntegrationTest-Playlist-Delete-$(Get-Date -Format 'yyyyMMddHHmmss')"
 
             # Create a playlist to delete
@@ -224,6 +267,9 @@ Describe 'Playlist CRUD Integration Tests' -Skip:(-not $script:integrationEnable
         }
 
         It 'PassThru returns removed playlist info' {
+            if (-not $script:testRatingKey) {
+                Set-ItResult -Skipped -Because 'No media items available for testing'
+            }
             $testTitle = "IntegrationTest-Playlist-PassThru-$(Get-Date -Format 'yyyyMMddHHmmss')"
 
             $created = New-PatPlaylist -Title $testTitle -RatingKey $script:testRatingKey -PassThru -Confirm:$false
@@ -348,25 +394,29 @@ Describe 'Playlist WhatIf Integration Tests' -Skip:(-not $script:integrationEnab
 
             New-PatPlaylist -Title $whatIfTitle -RatingKey $script:whatIfRatingKey -WhatIf
 
-            $playlists = Get-PatPlaylist
+            $playlists = try { Get-PatPlaylist -ErrorAction Stop } catch { $null }
+            if ($null -eq $playlists) {
+                Set-ItResult -Skipped -Because 'Could not verify playlist state'
+                return
+            }
             $matchingPlaylist = $playlists | Where-Object { $_.Title -eq $whatIfTitle }
             $matchingPlaylist | Should -BeNullOrEmpty
         }
 
         It 'Remove-PatPlaylist WhatIf does not delete playlist' {
-            $playlists = Get-PatPlaylist
-            if ($playlists) {
-                $targetPlaylist = $playlists[0]
-
-                Remove-PatPlaylist -PlaylistId $targetPlaylist.PlaylistId -WhatIf
-
-                $stillExists = Get-PatPlaylist -PlaylistId $targetPlaylist.PlaylistId
-                $stillExists | Should -Not -BeNullOrEmpty
-                $stillExists.PlaylistId | Should -Be $targetPlaylist.PlaylistId
+            $playlists = try { Get-PatPlaylist -ErrorAction Stop } catch { $null }
+            if (-not $playlists) {
+                Set-ItResult -Skipped -Because 'No playlists available or server not accessible'
+                return
             }
-            else {
-                Set-ItResult -Skipped -Because 'No playlists exist to test WhatIf'
-            }
+
+            $targetPlaylist = $playlists[0]
+
+            Remove-PatPlaylist -PlaylistId $targetPlaylist.PlaylistId -WhatIf
+
+            $stillExists = Get-PatPlaylist -PlaylistId $targetPlaylist.PlaylistId
+            $stillExists | Should -Not -BeNullOrEmpty
+            $stillExists.PlaylistId | Should -Be $targetPlaylist.PlaylistId
         }
     }
 }

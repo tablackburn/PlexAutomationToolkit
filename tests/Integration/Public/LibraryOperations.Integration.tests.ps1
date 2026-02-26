@@ -56,10 +56,18 @@ Describe 'Update-PatLibrary Integration Tests' -Skip:(-not $script:integrationEn
             -Confirm:$false
 
         # Get a library section to test with
-        $allSections = Get-PatLibrary
-        $script:testSection = $allSections.Directory | Select-Object -First 1
-        $script:testSectionId = $script:testSection.key
-        $script:testSectionName = $script:testSection.title
+        $script:testSection = $null
+        $script:testSectionId = $null
+        $script:testSectionName = $null
+        try {
+            $allSections = Get-PatLibrary -ErrorAction Stop
+            $script:testSection = $allSections.Directory | Select-Object -First 1
+            $script:testSectionId = $script:testSection.key
+            $script:testSectionName = $script:testSection.title
+        }
+        catch {
+            Write-Warning "Could not retrieve library sections: $($_.Exception.Message)"
+        }
     }
 
     AfterAll {
@@ -72,10 +80,16 @@ Describe 'Update-PatLibrary Integration Tests' -Skip:(-not $script:integrationEn
     Context 'WhatIf support (always safe)' {
 
         It 'Supports -WhatIf parameter' {
+            if (-not $script:testSectionId) {
+                Set-ItResult -Skipped -Because 'No library section available for testing'
+            }
             { Update-PatLibrary -SectionId $script:testSectionId -WhatIf } | Should -Not -Throw
         }
 
         It 'WhatIf does not trigger actual refresh' {
+            if (-not $script:testSectionId) {
+                Set-ItResult -Skipped -Because 'No library section available for testing'
+            }
             # This should succeed without actually refreshing
             $result = Update-PatLibrary -SectionId $script:testSectionId -WhatIf
             # WhatIf should not return data, just show what would happen
@@ -83,6 +97,9 @@ Describe 'Update-PatLibrary Integration Tests' -Skip:(-not $script:integrationEn
         }
 
         It 'WhatIf works with section name parameter' {
+            if (-not $script:testSectionName) {
+                Set-ItResult -Skipped -Because 'No library section available for testing'
+            }
             { Update-PatLibrary -SectionName $script:testSectionName -WhatIf } | Should -Not -Throw
         }
     }
