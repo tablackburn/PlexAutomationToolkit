@@ -167,13 +167,13 @@ jobs:
         run: |
           if (-not $env:PLEX_SERVER_URI -or -not $env:PLEX_TOKEN) {
             Write-Host "::warning::Integration tests skipped - PLEX_SERVER_URI or PLEX_TOKEN secrets not configured"
-            "secrets-configured=false" >> $env:GITHUB_OUTPUT
+            "secrets_configured=false" >> $env:GITHUB_OUTPUT
             exit 0
           }
-          "secrets-configured=true" >> $env:GITHUB_OUTPUT
+          "secrets_configured=true" >> $env:GITHUB_OUTPUT
 
       - name: Validate Plex Token
-        if: steps.check-secrets.outputs.secrets-configured == 'true'
+        if: steps.check-secrets.outputs.secrets_configured == 'true'
         shell: pwsh
         env:
           PLEX_SERVER_URI: ${{ secrets.PLEX_SERVER_URI }}
@@ -214,7 +214,7 @@ jobs:
           }
 
       - name: Run Integration Tests
-        if: steps.check-secrets.outputs.secrets-configured == 'true'
+        if: steps.check-secrets.outputs.secrets_configured == 'true'
         shell: pwsh
         env:
           PLEX_SERVER_URI: ${{ secrets.PLEX_SERVER_URI }}

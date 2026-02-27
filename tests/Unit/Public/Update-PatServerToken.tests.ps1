@@ -221,9 +221,17 @@ Describe 'Update-PatServerToken' {
     }
 
     Context 'ShouldProcess support' {
-        It 'Should support WhatIf' {
+        It 'Should support WhatIf with direct token' {
             Update-PatServerToken -Name 'DefaultServer' -Token 'whatif-token' -WhatIf
 
+            Should -Invoke Set-PatServerToken -ModuleName PlexAutomationToolkit -Times 0
+            Should -Invoke Set-PatServerConfiguration -ModuleName PlexAutomationToolkit -Times 0
+        }
+
+        It 'Should not invoke interactive auth when WhatIf is used without Token' {
+            Update-PatServerToken -Name 'DefaultServer' -WhatIf
+
+            Should -Invoke Connect-PatAccount -ModuleName PlexAutomationToolkit -Times 0
             Should -Invoke Set-PatServerToken -ModuleName PlexAutomationToolkit -Times 0
             Should -Invoke Set-PatServerConfiguration -ModuleName PlexAutomationToolkit -Times 0
         }

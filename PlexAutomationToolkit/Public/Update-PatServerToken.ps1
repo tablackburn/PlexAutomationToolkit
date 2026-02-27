@@ -113,20 +113,24 @@ function Update-PatServerToken {
         $serverName = $server.name
         Write-Verbose "Updating token for server '$serverName'"
 
-        # Obtain token
-        $newToken = $Token
-        if (-not $newToken) {
-            Write-Verbose "No token provided, starting interactive PIN authentication"
-            $newToken = Connect-PatAccount -TimeoutSeconds $TimeoutSeconds -Force:$Force
-        }
-
         if ($PSCmdlet.ShouldProcess($serverName, 'Update authentication token')) {
+            # Obtain token (inside ShouldProcess to avoid interactive auth during -WhatIf)
+            $newToken = $Token
+            if (-not $newToken) {
+                Write-Verbose "No token provided, starting interactive PIN authentication"
+                $newToken = Connect-PatAccount -TimeoutSeconds $TimeoutSeconds -Force:$Force
+            }
+
             # Store the new token
             $storageResult = Set-PatServerToken -ServerName $serverName -Token $newToken
 
             # Update the server configuration entry
             $configuration = Get-PatServerConfiguration -ErrorAction 'Stop'
             $serverEntry = $configuration.servers | Where-Object { $_.name -eq $serverName }
+
+            if (-not $serverEntry) {
+                throw "Server entry '$serverName' was not found in configuration."
+            }
 
             if ($storageResult.StorageType -eq 'Vault') {
                 # Remove inline token if present, set vault flag
