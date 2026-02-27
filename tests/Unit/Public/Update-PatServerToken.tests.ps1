@@ -180,6 +180,26 @@ Describe 'Update-PatServerToken' {
             $serverEntry.PSObject.Properties['token'] | Should -BeNullOrEmpty
         }
 
+        It 'Should update existing tokenInVault property when vault storage succeeds again' {
+            # Set up a server that already uses vault storage
+            $script:mockConfiguration.servers[0] | Add-Member -NotePropertyName 'tokenInVault' -NotePropertyValue $true -Force
+            $script:mockConfiguration.servers[0].PSObject.Properties.Remove('token')
+
+            Mock -CommandName Set-PatServerToken -ModuleName PlexAutomationToolkit -MockWith {
+                param($ServerName, $Token)
+                return [PSCustomObject]@{
+                    StorageType = 'Vault'
+                    Token       = $null
+                }
+            }
+
+            Update-PatServerToken -Name 'DefaultServer' -Token 'vault-again' -Confirm:$false
+
+            $serverEntry = $script:mockConfiguration.servers | Where-Object { $_.name -eq 'DefaultServer' }
+            $serverEntry.tokenInVault | Should -Be $true
+            $serverEntry.PSObject.Properties['token'] | Should -BeNullOrEmpty
+        }
+
         It 'Should remove tokenInVault when falling back to inline storage' {
             # Set up a server that previously used vault storage
             $script:mockConfiguration.servers[0] | Add-Member -NotePropertyName 'tokenInVault' -NotePropertyValue $true -Force
