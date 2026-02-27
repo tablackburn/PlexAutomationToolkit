@@ -218,6 +218,21 @@ Describe 'Update-PatServerToken' {
             $result.Verified | Should -Be $false
             $result.TokenUpdated | Should -Be $true
         }
+
+        It 'Should use localUri for verification when preferLocal is configured' {
+            # Set up a server with preferLocal and localUri
+            $script:mockConfiguration.servers[0] |
+                Add-Member -NotePropertyName 'preferLocal' -NotePropertyValue $true -Force
+            $script:mockConfiguration.servers[0] |
+                Add-Member -NotePropertyName 'localUri' -NotePropertyValue 'http://192.168.1.10:32400' -Force
+
+            $result = Update-PatServerToken -Name 'DefaultServer' -Token 'local-token' -Confirm:$false
+
+            $result.Verified | Should -Be $true
+            Should -Invoke Join-PatUri -ModuleName PlexAutomationToolkit -Times 1 -ParameterFilter {
+                $BaseUri -eq 'http://192.168.1.10:32400'
+            }
+        }
     }
 
     Context 'ShouldProcess support' {
@@ -260,6 +275,26 @@ Describe 'Update-PatServerToken' {
             }
 
             { Update-PatServerToken -Name 'DefaultServer' -Confirm:$false } | Should -Throw '*Authentication failed*'
+        }
+
+        It 'Should throw when server entry is missing from configuration' {
+            # Get-PatStoredServer succeeds but the config returned by Get-PatServerConfiguration
+            # has no matching server entry (simulates a race or corrupt config)
+            Mock -CommandName Get-PatServerConfiguration -ModuleName PlexAutomationToolkit -MockWith {
+                return [PSCustomObject]@{
+                    version = '1.0'
+                    servers = @(
+                        [PSCustomObject]@{
+                            name  = 'OtherServer'
+                            uri   = 'http://other:32400'
+                            token = 'some-token'
+                        }
+                    )
+                }
+            }
+
+            { Update-PatServerToken -Name 'DefaultServer' -Token 'token' -Confirm:$false } |
+                Should -Throw '*DefaultServer*was not found*'
         }
     }
 
