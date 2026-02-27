@@ -204,9 +204,9 @@ token is stored in plaintext in servers.json.
 
 ## RELATED LINKS
 
-[Connect-PatAccount]()
+[Connect-PatAccount](Connect-PatAccount.md)
 
-[Test-PatServer]()
+[Test-PatServer](Test-PatServer.md)
 
-[Add-PatServer]()
+[Add-PatServer](Add-PatServer.md)
 

@@ -160,10 +160,15 @@ function Update-PatServerToken {
             Set-PatServerConfiguration -Configuration $configuration -ErrorAction 'Stop'
             Write-Verbose "Token stored successfully (StorageType: $($storageResult.StorageType))"
 
-            # Verify the new token works
+            # Verify the new token works (honor localUri/preferLocal if configured)
             $verified = $false
             try {
-                $verificationUri = Join-PatUri -BaseUri $server.uri -Endpoint '/'
+                $verificationBaseUri = $server.uri
+                if ($server.PSObject.Properties['preferLocal'] -and $server.preferLocal -and
+                    $server.PSObject.Properties['localUri'] -and $server.localUri) {
+                    $verificationBaseUri = $server.localUri
+                }
+                $verificationUri = Join-PatUri -BaseUri $verificationBaseUri -Endpoint '/'
                 $verificationHeaders = @{ Accept = 'application/json' }
                 $verificationHeaders['X-Plex-Token'] = $newToken
                 $null = Invoke-PatApi -Uri $verificationUri -Headers $verificationHeaders -ErrorAction 'Stop'
