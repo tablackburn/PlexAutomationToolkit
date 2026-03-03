@@ -10,9 +10,11 @@ properties {
     # Set this to $true to create a module with a monolithic PSM1
     $PSBPreference.Build.CompileModule = $false
     $PSBPreference.Help.DefaultLocale = 'en-US'
-    # Workaround: PSScriptAnalyzer has a bug on Linux when loading settings files
-    # Disable in-build analysis on Linux; the dedicated PSScriptAnalyzer Lint job provides coverage
-    if ($IsLinux) {
+    # Workaround: PSScriptAnalyzer has a bug on non-Windows platforms when loading settings files
+    # Disable in-build analysis on Linux and macOS; the dedicated PSScriptAnalyzer Lint job provides coverage
+    # Note: $IsLinux and $IsMacOS are undefined ($null/falsy) in Windows PowerShell 5.x,
+    # so this correctly keeps ScriptAnalysis enabled there
+    if ($IsLinux -or $IsMacOS) {
         $PSBPreference.Test.ScriptAnalysis.Enabled = $false
     }
     # Use absolute paths for test output (relative paths resolve from tests directory)
