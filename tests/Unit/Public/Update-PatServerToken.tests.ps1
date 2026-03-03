@@ -233,10 +233,12 @@ Describe 'Update-PatServerToken' {
                 throw 'Error invoking Plex API: 401 Unauthorized'
             }
 
-            $result = Update-PatServerToken -Name 'DefaultServer' -Token 'bad-token' -Confirm:$false 3>$null
+            $result = Update-PatServerToken -Name 'DefaultServer' -Token 'bad-token' -Confirm:$false -WarningVariable verificationWarning
 
             $result.Verified | Should -Be $false
             $result.TokenUpdated | Should -Be $true
+            $verificationWarning | Should -Not -BeNullOrEmpty
+            $verificationWarning[0] | Should -BeLike '*verification failed*'
         }
 
         It 'Should use localUri for verification when preferLocal is configured' {
@@ -269,6 +271,12 @@ Describe 'Update-PatServerToken' {
             Should -Invoke Connect-PatAccount -ModuleName PlexAutomationToolkit -Times 0
             Should -Invoke Set-PatServerToken -ModuleName PlexAutomationToolkit -Times 0
             Should -Invoke Set-PatServerConfiguration -ModuleName PlexAutomationToolkit -Times 0
+        }
+
+        It 'Should return no output when WhatIf is used' {
+            $result = Update-PatServerToken -Name 'DefaultServer' -Token 'whatif-token' -WhatIf
+
+            $result | Should -BeNullOrEmpty
         }
     }
 

@@ -182,6 +182,10 @@ jobs:
           # Import the built module
           $moduleManifest = Get-ChildItem -Path Output/PlexAutomationToolkit -Filter '*.psd1' -Recurse |
             Select-Object -First 1
+          if (-not $moduleManifest) {
+            Write-Host "::error::Module manifest not found in Output/PlexAutomationToolkit"
+            exit 1
+          }
           Import-Module $moduleManifest.FullName -Force
 
           # Add a temporary server for validation
@@ -230,6 +234,10 @@ jobs:
           # Import the built module
           $moduleManifest = Get-ChildItem -Path Output/PlexAutomationToolkit -Filter '*.psd1' -Recurse |
             Select-Object -First 1
+          if (-not $moduleManifest) {
+            Write-Host "::error::Module manifest not found in Output/PlexAutomationToolkit"
+            exit 1
+          }
           Write-Host "Importing module from: $($moduleManifest.FullName)"
           Import-Module $moduleManifest.FullName -Force
 
