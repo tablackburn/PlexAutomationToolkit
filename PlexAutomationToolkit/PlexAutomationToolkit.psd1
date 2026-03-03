@@ -106,6 +106,7 @@ FunctionsToExport = @(
     'Test-PatLibraryPath'
     'Test-PatServer'
     'Update-PatLibrary'
+    'Update-PatServerToken'
     'Wait-PatLibraryScan'
 )
 
