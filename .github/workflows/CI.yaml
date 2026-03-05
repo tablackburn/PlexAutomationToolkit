@@ -86,7 +86,7 @@ jobs:
           fail_ci_if_error: false
 
       - name: Upload Test Results
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: test-results-${{ matrix.os }}
@@ -124,7 +124,7 @@ jobs:
           fail_ci_if_error: false
 
       - name: Upload Test Results
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: test-results-windows-ps51
@@ -245,7 +245,7 @@ jobs:
           Invoke-Pester -Path tests/Integration/ -CI -Output Detailed
 
       - name: Upload Integration Test Results
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: integration-results-${{ matrix.os }}
