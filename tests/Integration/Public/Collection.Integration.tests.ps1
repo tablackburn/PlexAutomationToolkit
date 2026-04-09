@@ -425,22 +425,23 @@ Describe 'Collection WhatIf Integration Tests' -Skip:(-not $script:integrationEn
         }
 
         It 'Remove-PatCollection WhatIf does not delete collection' {
-            if (-not $script:testLibrary) {
-                Set-ItResult -Skipped -Because 'No library available for testing'
+            if (-not $script:testLibrary -or -not $script:testMediaItem) {
+                Set-ItResult -Skipped -Because 'No library or media item available for testing'
                 return
             }
 
-            $collections = Get-PatCollection -LibraryId $script:testLibrary.key
-            if ($collections) {
-                $targetCollection = $collections[0]
+            $whatIfRemoveTitle = "WhatIf-Remove-Test-$([Guid]::NewGuid())"
+            $ratingKey = [int]$script:testMediaItem.ratingKey
+            $created = New-PatCollection -Title $whatIfRemoveTitle -LibraryId $script:testLibrary.key -RatingKey $ratingKey -PassThru
 
-                Remove-PatCollection -CollectionId $targetCollection.CollectionId -WhatIf
+            try {
+                Remove-PatCollection -CollectionId $created.CollectionId -WhatIf
 
                 $collectionsAfter = Get-PatCollection -LibraryId $script:testLibrary.key
-                $collectionsAfter.CollectionId | Should -Contain $targetCollection.CollectionId
+                $collectionsAfter.CollectionId | Should -Contain $created.CollectionId
             }
-            else {
-                Set-ItResult -Skipped -Because 'No collections exist to test WhatIf'
+            finally {
+                Remove-PatCollection -CollectionId $created.CollectionId -Confirm:$false -ErrorAction SilentlyContinue
             }
         }
     }
