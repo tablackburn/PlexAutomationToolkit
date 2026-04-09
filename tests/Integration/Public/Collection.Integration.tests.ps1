@@ -415,7 +415,7 @@ Describe 'Collection WhatIf Integration Tests' -Skip:(-not $script:integrationEn
                 return
             }
 
-            $whatIfTitle = "WhatIf-Test-Collection-$(Get-Random)"
+            $whatIfTitle = "WhatIf-Test-Collection-$([Guid]::NewGuid())"
             $ratingKey = [int]$script:testMediaItem.ratingKey
 
             New-PatCollection -Title $whatIfTitle -LibraryId $script:testLibrary.key -RatingKey $ratingKey -WhatIf
