@@ -415,13 +415,13 @@ Describe 'Collection WhatIf Integration Tests' -Skip:(-not $script:integrationEn
                 return
             }
 
-            $countBefore = (Get-PatCollection -LibraryId $script:testLibrary.key).Count
+            $whatIfTitle = "WhatIf-Test-Collection-$(Get-Random)"
             $ratingKey = [int]$script:testMediaItem.ratingKey
 
-            New-PatCollection -Title 'WhatIf-Test-Collection' -LibraryId $script:testLibrary.key -RatingKey $ratingKey -WhatIf
+            New-PatCollection -Title $whatIfTitle -LibraryId $script:testLibrary.key -RatingKey $ratingKey -WhatIf
 
-            $countAfter = (Get-PatCollection -LibraryId $script:testLibrary.key).Count
-            $countAfter | Should -Be $countBefore
+            $collections = Get-PatCollection -LibraryId $script:testLibrary.key
+            $collections.Title | Should -Not -Contain $whatIfTitle
         }
 
         It 'Remove-PatCollection WhatIf does not delete collection' {
@@ -432,12 +432,12 @@ Describe 'Collection WhatIf Integration Tests' -Skip:(-not $script:integrationEn
 
             $collections = Get-PatCollection -LibraryId $script:testLibrary.key
             if ($collections) {
-                $countBefore = $collections.Count
+                $targetCollection = $collections[0]
 
-                Remove-PatCollection -CollectionId $collections[0].CollectionId -WhatIf
+                Remove-PatCollection -CollectionId $targetCollection.CollectionId -WhatIf
 
-                $countAfter = (Get-PatCollection -LibraryId $script:testLibrary.key).Count
-                $countAfter | Should -Be $countBefore
+                $collectionsAfter = Get-PatCollection -LibraryId $script:testLibrary.key
+                $collectionsAfter.CollectionId | Should -Contain $targetCollection.CollectionId
             }
             else {
                 Set-ItResult -Skipped -Because 'No collections exist to test WhatIf'

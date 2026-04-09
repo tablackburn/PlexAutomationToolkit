@@ -27,11 +27,15 @@ jobs:
             ${{ runner.os }}-psmodules-lint-
 
       - name: Install PSScriptAnalyzer
-        if: steps.cache-lint-modules.outputs.cache-hit != 'true'
         shell: pwsh
         run: |
-          Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
-          Install-Module -Name PSScriptAnalyzer -Force -Scope CurrentUser
+          if (Get-Module -ListAvailable -Name PSScriptAnalyzer) {
+            Write-Host 'PSScriptAnalyzer already available (cache hit)'
+          } else {
+            Write-Host 'Installing PSScriptAnalyzer...'
+            Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
+            Install-Module -Name PSScriptAnalyzer -Force -Scope CurrentUser
+          }
 
       - name: Run PSScriptAnalyzer
         shell: pwsh
