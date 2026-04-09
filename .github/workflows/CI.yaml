@@ -28,9 +28,20 @@ jobs:
       - name: Install PSScriptAnalyzer
         shell: pwsh
         run: |
-          if (Get-Module -ListAvailable -Name PSScriptAnalyzer) {
-            Write-Host 'PSScriptAnalyzer already available'
-          } else {
+          $moduleFound = Get-Module -ListAvailable -Name PSScriptAnalyzer
+          if ($moduleFound) {
+            try {
+              Import-Module PSScriptAnalyzer -Force -ErrorAction Stop
+              Get-Command Invoke-ScriptAnalyzer -ErrorAction Stop | Out-Null
+              Write-Host 'PSScriptAnalyzer already available'
+            }
+            catch {
+              Write-Host 'PSScriptAnalyzer cache appears invalid; reinstalling...'
+              Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
+              Install-Module -Name PSScriptAnalyzer -Force -Scope CurrentUser
+            }
+          }
+          else {
             Write-Host 'Installing PSScriptAnalyzer...'
             Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
             Install-Module -Name PSScriptAnalyzer -Force -Scope CurrentUser
