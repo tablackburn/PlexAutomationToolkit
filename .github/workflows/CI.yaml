@@ -136,6 +136,7 @@ jobs:
   integration-tests:
     name: Integration Tests (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
     # Only run for pushes to main or PRs from the same repo (has access to secrets)
     if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
     needs: [unit-tests, unit-tests-ps51]
@@ -221,6 +222,7 @@ jobs:
 
       - name: Run Integration Tests
         if: steps.check-secrets.outputs.secrets_configured == 'true'
+        timeout-minutes: 75
         shell: pwsh
         env:
           PLEX_SERVER_URI: ${{ secrets.PLEX_SERVER_URI }}

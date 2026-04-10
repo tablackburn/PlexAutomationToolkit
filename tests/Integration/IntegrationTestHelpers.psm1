@@ -249,6 +249,86 @@ function Remove-IntegrationTestServers {
     }
 }
 
+function Start-SyncProgressMonitor {
+    <#
+    .SYNOPSIS
+        Starts a background timer that reports download progress to CI logs
+
+    .PARAMETER Path
+        The destination directory to monitor for downloaded files
+
+    .PARAMETER IntervalSeconds
+        How often to report progress (default: 30 seconds)
+
+    .OUTPUTS
+        PSCustomObject
+        Returns a monitor object to pass to Stop-SyncProgressMonitor
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Path,
+
+        [Parameter(Mandatory = $false)]
+        [int]$IntervalSeconds = 30
+    )
+
+    $timer = [System.Timers.Timer]::new($IntervalSeconds * 1000)
+    $timer.AutoReset = $true
+
+    $startTime = [DateTime]::UtcNow
+    $eventAction = Register-ObjectEvent -InputObject $timer -EventName Elapsed -MessageData @{
+        Path      = $Path
+        StartTime = $startTime
+    } -Action {
+        $destination = $Event.MessageData.Path
+        $elapsed = [DateTime]::UtcNow - $Event.MessageData.StartTime
+        $elapsedFormatted = '{0}m{1}s' -f [math]::Floor($elapsed.TotalMinutes), $elapsed.Seconds
+
+        if (Test-Path $destination) {
+            $files = Get-ChildItem -Path $destination -Recurse -File -ErrorAction SilentlyContinue
+            $totalBytes = ($files | Measure-Object -Property Length -Sum -ErrorAction SilentlyContinue).Sum
+            $totalMB = [math]::Round($totalBytes / 1MB, 1)
+            Write-Host "  [SYNC PROGRESS] $elapsedFormatted elapsed | $($files.Count) files | $totalMB MB downloaded"
+        }
+        else {
+            Write-Host "  [SYNC PROGRESS] $elapsedFormatted elapsed | Waiting for first file..."
+        }
+    }
+
+    $timer.Start()
+
+    return [PSCustomObject]@{
+        Timer             = $timer
+        EventSubscription = $eventAction.Name
+        StartTime         = $startTime
+    }
+}
+
+function Stop-SyncProgressMonitor {
+    <#
+    .SYNOPSIS
+        Stops a progress monitor started by Start-SyncProgressMonitor
+
+    .PARAMETER Monitor
+        The monitor object returned by Start-SyncProgressMonitor
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [PSCustomObject]$Monitor
+    )
+
+    $Monitor.Timer.Stop()
+    Unregister-Event -SourceIdentifier $Monitor.EventSubscription -ErrorAction SilentlyContinue
+    $Monitor.Timer.Dispose()
+
+    $elapsed = [DateTime]::UtcNow - $Monitor.StartTime
+    $elapsedFormatted = '{0}m{1}s' -f [math]::Floor($elapsed.TotalMinutes), $elapsed.Seconds
+    Write-Host "  [SYNC COMPLETE] Total time: $elapsedFormatted"
+}
+
 Export-ModuleMember -Function Test-IntegrationPrerequisites, Get-IntegrationTestContext, `
     Get-IntegrationConfigPath, Invoke-IntegrationTestWithRetry, Backup-ServerConfiguration, `
-    Restore-ServerConfiguration, Remove-IntegrationTestServers
+    Restore-ServerConfiguration, Remove-IntegrationTestServers, Start-SyncProgressMonitor, `
+    Stop-SyncProgressMonitor
