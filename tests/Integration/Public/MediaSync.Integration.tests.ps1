@@ -255,8 +255,14 @@ Describe 'Sync-PatMedia Integration Tests' -Skip:(-not $script:integrationEnable
     It 'Downloads media files from playlist' {
         if (-not $script:hasItems) { Set-ItResult -Skipped -Because 'Travel playlist has no items' }
 
-        # This actually downloads! Only runs if playlist has items
-        $result = Sync-PatMedia -Destination $script:syncDestination -PassThru -Confirm:$false
+        # Monitor download progress in CI logs (every 30s)
+        $monitor = Start-SyncProgressMonitor -Path $script:syncDestination
+        try {
+            $result = Sync-PatMedia -Destination $script:syncDestination -PassThru -Confirm:$false
+        }
+        finally {
+            Stop-SyncProgressMonitor -Monitor $monitor
+        }
 
         $result | Should -Not -BeNullOrEmpty
 
@@ -273,8 +279,14 @@ Describe 'Sync-PatMedia Integration Tests' -Skip:(-not $script:integrationEnable
     It 'Is idempotent - second run downloads nothing' {
         if (-not $script:hasItems) { Set-ItResult -Skipped -Because 'Travel playlist has no items' }
 
-        # Run sync again - should detect existing files and skip
-        $result = Sync-PatMedia -Destination $script:syncDestination -PassThru -Confirm:$false
+        # Monitor for visibility even though this should be fast
+        $monitor = Start-SyncProgressMonitor -Path $script:syncDestination -IntervalSeconds 10
+        try {
+            $result = Sync-PatMedia -Destination $script:syncDestination -PassThru -Confirm:$false
+        }
+        finally {
+            Stop-SyncProgressMonitor -Monitor $monitor
+        }
 
         # ItemsToAdd should be 0 since files already exist
         $result.ItemsToAdd | Should -Be 0
