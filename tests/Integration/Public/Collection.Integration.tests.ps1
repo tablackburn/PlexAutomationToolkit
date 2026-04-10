@@ -415,32 +415,33 @@ Describe 'Collection WhatIf Integration Tests' -Skip:(-not $script:integrationEn
                 return
             }
 
-            $countBefore = (Get-PatCollection -LibraryId $script:testLibrary.key).Count
+            $whatIfTitle = "WhatIf-Test-Collection-$([Guid]::NewGuid())"
             $ratingKey = [int]$script:testMediaItem.ratingKey
 
-            New-PatCollection -Title 'WhatIf-Test-Collection' -LibraryId $script:testLibrary.key -RatingKey $ratingKey -WhatIf
+            New-PatCollection -Title $whatIfTitle -LibraryId $script:testLibrary.key -RatingKey $ratingKey -WhatIf
 
-            $countAfter = (Get-PatCollection -LibraryId $script:testLibrary.key).Count
-            $countAfter | Should -Be $countBefore
+            $collections = Get-PatCollection -LibraryId $script:testLibrary.key
+            $collections.Title | Should -Not -Contain $whatIfTitle
         }
 
         It 'Remove-PatCollection WhatIf does not delete collection' {
-            if (-not $script:testLibrary) {
-                Set-ItResult -Skipped -Because 'No library available for testing'
+            if (-not $script:testLibrary -or -not $script:testMediaItem) {
+                Set-ItResult -Skipped -Because 'No library or media item available for testing'
                 return
             }
 
-            $collections = Get-PatCollection -LibraryId $script:testLibrary.key
-            if ($collections) {
-                $countBefore = $collections.Count
+            $whatIfRemoveTitle = "WhatIf-Remove-Test-$([Guid]::NewGuid())"
+            $ratingKey = [int]$script:testMediaItem.ratingKey
+            $created = New-PatCollection -Title $whatIfRemoveTitle -LibraryId $script:testLibrary.key -RatingKey $ratingKey -PassThru
 
-                Remove-PatCollection -CollectionId $collections[0].CollectionId -WhatIf
+            try {
+                Remove-PatCollection -CollectionId $created.CollectionId -WhatIf
 
-                $countAfter = (Get-PatCollection -LibraryId $script:testLibrary.key).Count
-                $countAfter | Should -Be $countBefore
+                $collectionsAfter = Get-PatCollection -LibraryId $script:testLibrary.key
+                $collectionsAfter.CollectionId | Should -Contain $created.CollectionId
             }
-            else {
-                Set-ItResult -Skipped -Because 'No collections exist to test WhatIf'
+            finally {
+                Remove-PatCollection -CollectionId $created.CollectionId -Confirm:$false -ErrorAction SilentlyContinue
             }
         }
     }
