@@ -277,7 +277,8 @@ function Start-SyncProgressMonitor {
     $timer.AutoReset = $true
 
     $startTime = [DateTime]::UtcNow
-    $eventAction = Register-ObjectEvent -InputObject $timer -EventName Elapsed -MessageData @{
+    $sourceId = "SyncProgressMonitor-$([Guid]::NewGuid())"
+    $eventAction = Register-ObjectEvent -InputObject $timer -EventName Elapsed -SourceIdentifier $sourceId -MessageData @{
         Path      = $Path
         StartTime = $startTime
     } -Action {
@@ -300,7 +301,7 @@ function Start-SyncProgressMonitor {
 
     return [PSCustomObject]@{
         Timer             = $timer
-        EventSubscription = $eventAction.Name
+        EventSubscription = $sourceId
         StartTime         = $startTime
     }
 }
