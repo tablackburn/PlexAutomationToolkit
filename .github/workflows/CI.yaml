@@ -30,8 +30,24 @@ jobs:
         if: steps.cache-lint-modules.outputs.cache-hit != 'true'
         shell: pwsh
         run: |
-          Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
-          Install-Module -Name PSScriptAnalyzer -Force -Scope CurrentUser
+          $moduleFound = Get-Module -ListAvailable -Name PSScriptAnalyzer
+          if ($moduleFound) {
+            try {
+              Import-Module PSScriptAnalyzer -Force -ErrorAction Stop
+              Get-Command Invoke-ScriptAnalyzer -ErrorAction Stop | Out-Null
+              Write-Host 'PSScriptAnalyzer already available'
+            }
+            catch {
+              Write-Host 'PSScriptAnalyzer cache appears invalid; reinstalling...'
+              Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
+              Install-Module -Name PSScriptAnalyzer -Force -Scope CurrentUser
+            }
+          }
+          else {
+            Write-Host 'Installing PSScriptAnalyzer...'
+            Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
+            Install-Module -Name PSScriptAnalyzer -Force -Scope CurrentUser
+          }
 
       - name: Run PSScriptAnalyzer
         shell: pwsh
