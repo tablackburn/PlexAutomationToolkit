@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- New `Update-PatServerToken` public command for refreshing an expired or invalid Plex authentication token in a single step.
+  - Interactive PIN authentication via `plex.tv/link` (default), or supply `-Token` directly for automation
+  - Stores the new token via `Microsoft.PowerShell.SecretManagement` vault when available, otherwise inline in `servers.json`
+  - Verifies the new token against the Plex API root endpoint and reports the outcome
+  - Supports `-WhatIf` and `-Confirm`
+- CI integration test workflow validates the configured `PLEX_TOKEN` secret in a dedicated pre-flight step. Expired or invalid tokens fail fast with an actionable `::error::` message instead of producing many cryptic test failures.
+
+### Changed
+
+- `401 Unauthorized` errors from the Plex API now include actionable token recovery guidance, naming `Update-PatServerToken`, `Get-PatStoredServer`, and the `-Token` parameter as concrete next steps. Detection lives centrally in the API wrapper, so every public cmdlet that hits the Plex API benefits. The original error message is appended to preserve URL/inner-exception detail for diagnostics.
+
 ## [0.10.3] - 2026-01-11
 
 ### Added
