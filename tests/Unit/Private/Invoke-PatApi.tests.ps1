@@ -127,7 +127,24 @@ Describe 'Invoke-PatApi' {
             }
 
             { Invoke-PatApi -Uri 'http://localhost:32400/test' -MaxRetries 1 -BaseDelaySeconds 0 } |
-                Should -Throw "*token is missing, expired, or invalid*"
+                Should -Throw "*token is missing, expired, or invalid*Update-PatServerToken*Get-PatStoredServer*"
+        }
+
+        It 'Should preserve the original error message in the 401 guidance' {
+            $originalError = 'Response status code does not indicate success: 401 (Unauthorized).'
+            Mock Invoke-RestMethod { throw $originalError }
+
+            { Invoke-PatApi -Uri 'http://localhost:32400/test' -MaxRetries 1 -BaseDelaySeconds 0 } |
+                Should -Throw "*Original error: $originalError*"
+        }
+
+        It 'Should not trigger 401 guidance for non-401 errors that mention Unauthorized' {
+            Mock Invoke-RestMethod {
+                throw 'UnauthorizedAccessException: cannot read configuration file'
+            }
+
+            { Invoke-PatApi -Uri 'http://localhost:32400/test' -MaxRetries 1 -BaseDelaySeconds 0 } |
+                Should -Throw "*Error invoking Plex API*UnauthorizedAccessException*"
         }
 
         It 'Should handle malformed JSON responses' {

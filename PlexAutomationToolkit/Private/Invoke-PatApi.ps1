@@ -133,12 +133,15 @@ function Invoke-PatApi {
 
                 # 401 indicates a missing, expired, or invalid token. Surface
                 # actionable guidance instead of the raw HTTP error so callers
-                # know which cmdlets to run to recover.
-                if ($errorMessage -match '\b401\b' -or $errorMessage -match 'Unauthorized') {
+                # know which cmdlets to run to recover. Match \b401\b only —
+                # bare "Unauthorized" is too broad (UnauthorizedAccessException,
+                # 403 bodies mentioning the word, etc. would misfire).
+                if ($errorMessage -match '\b401\b') {
                     throw ("Plex API returned 401 Unauthorized. The authentication token is missing, expired, or invalid. " +
                         "To resolve: refresh the token with 'Update-PatServerToken' (use -Name to target a non-default server), " +
                         "list configured servers with 'Get-PatStoredServer', " +
-                        "or pass an explicit -Token parameter to the cmdlet you are calling.")
+                        "or pass an explicit -Token parameter to the cmdlet you are calling. " +
+                        "Original error: $errorMessage")
                 }
 
                 throw "Error invoking Plex API: $errorMessage"
