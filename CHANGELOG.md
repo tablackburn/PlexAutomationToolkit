@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-04-27
+
 ### Added
 
 - New `Update-PatServerToken` public command for refreshing an expired or invalid Plex authentication token in a single step.
