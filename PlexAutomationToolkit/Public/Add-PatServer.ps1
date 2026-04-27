@@ -35,10 +35,15 @@ function Add-PatServer {
         Use this when adding a server that is temporarily offline or not yet configured.
 
     .PARAMETER Force
-        Suppresses all interactive prompts. When specified:
+        Suppresses interactive prompts and allows overwriting an existing server entry.
+        When specified:
+        - If a server with the same Name already exists, replaces it wholesale rather than
+          throwing. The existing entry's stored token (vault or plaintext) is removed before
+          the new entry is written. Fields not supplied on the new call are not preserved.
         - Automatically accepts HTTPS upgrade if available
         - Automatically attempts authentication if server requires it
-        Use this parameter for non-interactive scripts and automation.
+        Use this parameter for non-interactive scripts and automation, or to recover from
+        an expired token by re-running with a fresh -Token value.
 
     .PARAMETER LocalUri
         Optional local network URI for the server (e.g., http://192.168.1.100:32400).
@@ -91,6 +96,14 @@ function Add-PatServer {
 
         Adds a server with explicit local and remote URIs. The module will automatically
         use the local URI when reachable, falling back to the remote URI when not.
+
+    .EXAMPLE
+        Add-PatServer -Name "plex" -ServerUri "https://plex.example.com:32400" -Token $newToken -Force
+
+        Replaces an existing server entry named "plex" with the supplied configuration.
+        Without -Force, this would throw because the name is already in use. Use
+        Update-PatServerToken if you only need to refresh the token while preserving
+        other fields.
 
     .NOTES
         Security: If Microsoft.PowerShell.SecretManagement is installed with a registered vault,
@@ -176,9 +189,19 @@ function Add-PatServer {
 
         $configuration = Get-PatServerConfiguration -ErrorAction Stop
 
-        # Check for duplicate name
-        if ($configuration.servers | Where-Object { $_.name -eq $Name }) {
-            throw "A server with name '$Name' already exists"
+        # Check for duplicate name. With -Force, replace the existing entry wholesale; without
+        # -Force, throw so the user must opt in to clobbering.
+        $existingServer = $configuration.servers | Where-Object { $_.name -eq $Name }
+        if ($existingServer) {
+            if (-not $Force) {
+                throw "A server with name '$Name' already exists. Use -Force to overwrite, or Update-PatServerToken to refresh the token in place."
+            }
+
+            Write-Verbose "Replacing existing server '$Name' (-Force specified)"
+            # Drop any vault-stored token for the old entry; Set-PatServerToken below will
+            # write a fresh one if a new -Token was supplied.
+            Remove-PatServerToken -ServerName $Name
+            $configuration.servers = @($configuration.servers | Where-Object { $_.name -ne $Name })
         }
 
         # If marking as default, unset other defaults
