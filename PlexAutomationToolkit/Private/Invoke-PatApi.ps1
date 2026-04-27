@@ -129,7 +129,19 @@ function Invoke-PatApi {
 
             if (-not $isTransient -or $attempt -eq $MaxRetries) {
                 # Non-transient error or final attempt - throw immediately
-                throw "Error invoking Plex API: $($_.Exception.Message)"
+                $errorMessage = $_.Exception.Message
+
+                # 401 indicates a missing, expired, or invalid token. Surface
+                # actionable guidance instead of the raw HTTP error so callers
+                # know which cmdlets to run to recover.
+                if ($errorMessage -match '\b401\b' -or $errorMessage -match 'Unauthorized') {
+                    throw ("Plex API returned 401 Unauthorized. The authentication token is missing, expired, or invalid. " +
+                        "To resolve: refresh the token with 'Update-PatServerToken' (use -Name to target a non-default server), " +
+                        "list configured servers with 'Get-PatStoredServer', " +
+                        "or pass an explicit -Token parameter to the cmdlet you are calling.")
+                }
+
+                throw "Error invoking Plex API: $errorMessage"
             }
 
             # Calculate exponential backoff delay

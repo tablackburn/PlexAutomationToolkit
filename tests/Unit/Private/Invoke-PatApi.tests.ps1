@@ -113,16 +113,21 @@ Describe 'Invoke-PatApi' {
             { Invoke-PatApi -Uri 'http://localhost:32400/test' } | Should -Throw "*Error invoking Plex API*"
         }
 
-        It 'Should propagate authentication errors' {
+        It 'Should surface actionable guidance for 401 Unauthorized errors' {
             Mock Invoke-RestMethod {
-                $response = [PSCustomObject]@{
-                    StatusCode = [System.Net.HttpStatusCode]::Unauthorized
-                }
-                $exception = [System.Net.WebException]::new('Unauthorized', $null, [System.Net.WebExceptionStatus]::ProtocolError, $response)
-                throw $exception
+                throw [System.Net.WebException]::new('The remote server returned an error: (401) Unauthorized.')
             }
 
-            { Invoke-PatApi -Uri 'http://localhost:32400/test' } | Should -Throw "*Error invoking Plex API*"
+            { Invoke-PatApi -Uri 'http://localhost:32400/test' } | Should -Throw "*401 Unauthorized*Update-PatServerToken*Get-PatStoredServer*"
+        }
+
+        It 'Should include token recovery guidance when 401 is returned' {
+            Mock Invoke-RestMethod {
+                throw 'Response status code does not indicate success: 401 (Unauthorized).'
+            }
+
+            { Invoke-PatApi -Uri 'http://localhost:32400/test' -MaxRetries 1 -BaseDelaySeconds 0 } |
+                Should -Throw "*token is missing, expired, or invalid*"
         }
 
         It 'Should handle malformed JSON responses' {
