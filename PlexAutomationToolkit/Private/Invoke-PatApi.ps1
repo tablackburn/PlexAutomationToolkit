@@ -75,18 +75,21 @@ function Invoke-PatApi {
     Write-Debug 'Invoking Plex API with the following parameters:'
     $apiQueryParameters | Out-String | Write-Debug
 
+    # DNS failures. The "no data of the requested type" wording is the
+    # WSANO_DATA (11004) socket error that Windows raises when a hostname
+    # resolves but has no record of the queried type (commonly: only AAAA
+    # is present and the resolver asked for A). It is often transient while
+    # DNS records propagate or caches recover. Defined once so the retry
+    # classification and the post-exhaustion guidance branch cannot drift.
+    $dnsErrorPattern = 'No such host|DNS|name.+not.+resolve|no data of the requested type'
+
     # Helper function to determine if an error is transient and should be retried
     function Test-TransientError {
         param([System.Management.Automation.ErrorRecord]$ErrorRecord)
 
         $message = $ErrorRecord.Exception.Message
 
-        # DNS failures. The "no data of the requested type" wording is the
-        # WSANO_DATA (11004) socket error that Windows raises when a hostname
-        # resolves but has no record of the queried type (commonly: only AAAA
-        # is present and the resolver asked for A). It is often transient
-        # while DNS records propagate or caches recover.
-        if ($message -match 'No such host|DNS|name.+not.+resolve|no data of the requested type') {
+        if ($message -match $dnsErrorPattern) {
             return $true
         }
 
@@ -148,18 +151,19 @@ function Invoke-PatApi {
                         "Original error: $errorMessage")
                 }
 
-                # If retries were exhausted on a transient DNS/connection
-                # failure, surface a single actionable message rather than the
-                # raw socket error wrapped through three layers of cmdlets.
-                if ($isTransient -and $attempt -eq $MaxRetries) {
-                    if ($errorMessage -match 'No such host|DNS|name.+not.+resolve|no data of the requested type') {
-                        throw ("Plex API request failed after $MaxRetries attempts: DNS could not resolve the server hostname. " +
-                            "To resolve: verify the hostname with 'Resolve-DnsName <host>' (try -Type A and -Type AAAA), " +
-                            "confirm reachability with 'Test-NetConnection <host> -Port <port>', " +
-                            "check the stored URI with 'Get-PatStoredServer', " +
-                            "and re-add the server with 'Add-PatServer -Force' if the address has changed. " +
-                            "Original error: $errorMessage")
-                    }
+                # If retries were exhausted on a DNS resolution failure,
+                # surface a single actionable message rather than the raw
+                # socket error wrapped through three layers of cmdlets.
+                # Timeouts and connection-refused errors are also transient
+                # but have a different recovery story (server health, network,
+                # firewall) so they fall through to the generic message.
+                if ($isTransient -and $attempt -eq $MaxRetries -and $errorMessage -match $dnsErrorPattern) {
+                    throw ("Plex API request failed after $MaxRetries attempts: DNS could not resolve the server hostname. " +
+                        "To resolve: verify the hostname with 'Resolve-DnsName <host>' (try -Type A and -Type AAAA), " +
+                        "confirm reachability with 'Test-NetConnection <host> -Port <port>', " +
+                        "check the stored URI with 'Get-PatStoredServer', " +
+                        "and re-add the server with 'Add-PatServer -Force' if the address has changed. " +
+                        "Original error: $errorMessage")
                 }
 
                 throw "Error invoking Plex API: $errorMessage"
