@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [0.11.1] - 2026-04-28
+
 ### Changed
 
 - `Add-PatServer -Force` now overwrites an existing entry with the same `-Name` instead of throwing, matching the conventional PowerShell `-Force` semantics established by `New-Item -Force`, `Copy-Item -Force`, and `Register-PSRepository -Force`. Replace is wholesale: fields not supplied on the new call (e.g. `localUri`, `preferLocal`, `default`) are not preserved, and any vault-stored token for the old entry is removed before the new entry is written. Use `Update-PatServerToken` for in-place token rotation that preserves other fields. The duplicate-name error without `-Force` now points to both recovery paths.
