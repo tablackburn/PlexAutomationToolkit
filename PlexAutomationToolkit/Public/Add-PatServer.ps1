@@ -189,19 +189,17 @@ function Add-PatServer {
 
         $configuration = Get-PatServerConfiguration -ErrorAction Stop
 
-        # Check for duplicate name. With -Force, replace the existing entry wholesale; without
-        # -Force, throw so the user must opt in to clobbering.
+        # Check for duplicate name. Without -Force, throw so the user must opt in to clobbering.
+        # With -Force, defer the actual removal of the existing entry (and any vault token
+        # cleanup) until the ShouldProcess block below, so -WhatIf and a declined -Confirm
+        # do not destroy state.
         $existingServer = $configuration.servers | Where-Object { $_.name -eq $Name }
-        if ($existingServer) {
-            if (-not $Force) {
-                throw "A server with name '$Name' already exists. Use -Force to overwrite, or Update-PatServerToken to refresh the token in place."
-            }
-
-            Write-Verbose "Replacing existing server '$Name' (-Force specified)"
-            # Drop any vault-stored token for the old entry; Set-PatServerToken below will
-            # write a fresh one if a new -Token was supplied.
-            Remove-PatServerToken -ServerName $Name
-            $configuration.servers = @($configuration.servers | Where-Object { $_.name -ne $Name })
+        if ($existingServer -and -not $Force) {
+            throw "A server with name '$Name' already exists. Use -Force to overwrite, or Update-PatServerToken to refresh the token in place."
+        }
+        $replaceExisting = [bool]$existingServer
+        if ($replaceExisting) {
+            Write-Verbose "Will replace existing server '$Name' (-Force specified)"
         }
 
         # If marking as default, unset other defaults
@@ -324,9 +322,18 @@ function Add-PatServer {
             Write-Verbose "Skipping server validation as requested"
         }
 
-        $configuration.servers += $newServer
-
         if ($PSCmdlet.ShouldProcess($Name, 'Add server to configuration')) {
+            if ($replaceExisting) {
+                # Strip the old entry from the working copy, then clean up its vault token
+                # if the new entry isn't vault-stored. When the new entry has tokenInVault,
+                # Set-PatServerToken (above) has already overwritten the vault entry with
+                # the new token, so removing it here would clobber that fresh value.
+                $configuration.servers = @($configuration.servers | Where-Object { $_.name -ne $Name })
+                if ($newServer.tokenInVault -ne $true) {
+                    Remove-PatServerToken -ServerName $Name
+                }
+            }
+            $configuration.servers += $newServer
             Set-PatServerConfiguration -Configuration $configuration -ErrorAction Stop
             Write-Verbose "Added server '$Name' to configuration"
 

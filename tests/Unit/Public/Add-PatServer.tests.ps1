@@ -144,13 +144,48 @@ Describe 'Add-PatServer' {
             $script:mockConfig.servers[0].token | Should -Be 'NEW-TOKEN'
         }
 
-        It 'Should remove existing vault token before overwriting with -Force' {
+        It 'Should remove vault token entry when -Force overwrites with a non-vault-stored new entry' {
+            # Default mock returns Plaintext, so the new entry has no tokenInVault. Any vault
+            # entry from the prior add would be orphaned without the cleanup call.
             Add-PatServer -Name 'plex' -ServerUri 'http://old:32400' -Token 'OLD-TOKEN'
             Add-PatServer -Name 'plex' -ServerUri 'http://new:32400' -Token 'NEW-TOKEN' -Force -Confirm:$false
 
             Should -Invoke Remove-PatServerToken -ModuleName PlexAutomationToolkit -Times 1 -ParameterFilter {
                 $ServerName -eq 'plex'
             }
+        }
+
+        It 'Should not call Remove-PatServerToken when -Force overwrites with a vault-stored new token' {
+            # When the new -Token is stored in the vault, Set-PatServerToken has already
+            # overwritten the vault entry; calling Remove-PatServerToken would clobber it.
+            Mock -CommandName Set-PatServerToken -ModuleName PlexAutomationToolkit -MockWith {
+                param($ServerName, $Token)
+                return [PSCustomObject]@{
+                    StorageType = 'Vault'
+                    Token       = $null
+                }
+            }
+
+            Add-PatServer -Name 'plex' -ServerUri 'http://old:32400' -Token 'OLD-TOKEN'
+            Add-PatServer -Name 'plex' -ServerUri 'http://new:32400' -Token 'NEW-TOKEN' -Force -Confirm:$false
+
+            Should -Invoke Remove-PatServerToken -ModuleName PlexAutomationToolkit -Times 0
+        }
+
+        It 'Should not invoke Remove-PatServerToken or persist config when -Force overwrite is run with -WhatIf' {
+            Add-PatServer -Name 'plex' -ServerUri 'http://old:32400' -Token 'OLD-TOKEN'
+            # First add wrote the config; from here, -WhatIf must not perform any further writes.
+            Should -Invoke Set-PatServerConfiguration -ModuleName PlexAutomationToolkit -Times 1
+
+            Add-PatServer -Name 'plex' -ServerUri 'http://new:32400' -Token 'NEW-TOKEN' -Force -WhatIf
+
+            Should -Invoke Remove-PatServerToken -ModuleName PlexAutomationToolkit -Times 0
+            Should -Invoke Set-PatServerConfiguration -ModuleName PlexAutomationToolkit -Times 1
+
+            # In-memory configuration is unchanged from the first add.
+            $script:mockConfig.servers.Count | Should -Be 1
+            $script:mockConfig.servers[0].name | Should -Be 'plex'
+            $script:mockConfig.servers[0].uri | Should -Be 'http://old:32400'
         }
 
         It 'Should replace fields wholesale when -Force overwrites (no merge)' {
