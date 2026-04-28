@@ -415,6 +415,23 @@ Describe 'Invoke-PatApi' {
             $script:callCount | Should -Be 2
         }
 
+        It 'Should retry on WSANO_DATA DNS error and succeed' {
+            $script:callCount = 0
+            Mock Invoke-RestMethod {
+                $script:callCount++
+                if ($script:callCount -lt 2) {
+                    throw 'The requested name is valid, but no data of the requested type was found.'
+                }
+                return [PSCustomObject]@{
+                    MediaContainer = [PSCustomObject]@{ status = 'ok' }
+                }
+            }
+
+            $result = Invoke-PatApi -Uri 'http://localhost:32400/test' -MaxRetries 3 -BaseDelaySeconds 0
+            $result.status | Should -Be 'ok'
+            $script:callCount | Should -Be 2
+        }
+
         It 'Should retry on timeout and succeed' {
             $script:callCount = 0
             Mock Invoke-RestMethod {
@@ -492,6 +509,41 @@ Describe 'Invoke-PatApi' {
 
             { Invoke-PatApi -Uri 'http://localhost:32400/test' -MaxRetries 3 -BaseDelaySeconds 0 } | Should -Throw '*No such host*'
             $script:callCount | Should -Be 3
+        }
+
+        It 'Should surface actionable DNS guidance after retries are exhausted' {
+            Mock Invoke-RestMethod {
+                throw 'No such host is known'
+            }
+
+            { Invoke-PatApi -Uri 'http://localhost:32400/test' -MaxRetries 3 -BaseDelaySeconds 0 } |
+                Should -Throw "*DNS could not resolve*Resolve-DnsName*Test-NetConnection*Get-PatStoredServer*Add-PatServer -Force*"
+        }
+
+        It 'Should surface actionable DNS guidance for WSANO_DATA after retries are exhausted' {
+            Mock Invoke-RestMethod {
+                throw 'The requested name is valid, but no data of the requested type was found.'
+            }
+
+            { Invoke-PatApi -Uri 'http://localhost:32400/test' -MaxRetries 3 -BaseDelaySeconds 0 } |
+                Should -Throw "*DNS could not resolve*Resolve-DnsName*Test-NetConnection*"
+        }
+
+        It 'Should preserve the original error message in the DNS guidance' {
+            $originalError = 'No such host is known'
+            Mock Invoke-RestMethod { throw $originalError }
+
+            { Invoke-PatApi -Uri 'http://localhost:32400/test' -MaxRetries 3 -BaseDelaySeconds 0 } |
+                Should -Throw "*Original error: $originalError*"
+        }
+
+        It 'Should not apply DNS guidance to non-DNS transient errors' {
+            Mock Invoke-RestMethod {
+                throw '503 Service Unavailable'
+            }
+
+            { Invoke-PatApi -Uri 'http://localhost:32400/test' -MaxRetries 3 -BaseDelaySeconds 0 } |
+                Should -Throw "*Error invoking Plex API*503*"
         }
 
         It 'Should succeed after multiple retries' {
