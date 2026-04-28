@@ -53,6 +53,9 @@ Describe 'Add-PatServer' {
                 Token       = $Token
             }
         }
+
+        # Mock vault token cleanup; -Force overwrite path invokes this before re-adding.
+        Mock -CommandName Remove-PatServerToken -ModuleName PlexAutomationToolkit -MockWith { }
     }
 
     Context 'Adding a basic server' {
@@ -112,10 +115,17 @@ Describe 'Add-PatServer' {
     }
 
     Context 'Duplicate handling' {
-        It 'Should throw on duplicate server name' {
+        It 'Should throw on duplicate server name without -Force' {
             Add-PatServer -Name 'Duplicate' -ServerUri 'http://dup1:32400'
 
             { Add-PatServer -Name 'Duplicate' -ServerUri 'http://dup2:32400' } | Should -Throw "*already exists*"
+        }
+
+        It 'Should suggest -Force and Update-PatServerToken in the duplicate error' {
+            Add-PatServer -Name 'Duplicate' -ServerUri 'http://dup1:32400'
+
+            { Add-PatServer -Name 'Duplicate' -ServerUri 'http://dup2:32400' } |
+                Should -Throw "*-Force*Update-PatServerToken*"
         }
 
         It 'Should allow same URI with different names' {
@@ -123,6 +133,86 @@ Describe 'Add-PatServer' {
             Add-PatServer -Name 'Server2' -ServerUri 'http://same:32400'
 
             $script:mockConfig.servers.Count | Should -Be 2
+        }
+
+        It 'Should overwrite existing entry when -Force is specified' {
+            Add-PatServer -Name 'plex' -ServerUri 'http://old:32400' -Token 'OLD-TOKEN'
+            Add-PatServer -Name 'plex' -ServerUri 'http://new:32400' -Token 'NEW-TOKEN' -Force -Confirm:$false
+
+            $script:mockConfig.servers.Count | Should -Be 1
+            $script:mockConfig.servers[0].uri | Should -Be 'http://new:32400'
+            $script:mockConfig.servers[0].token | Should -Be 'NEW-TOKEN'
+        }
+
+        It 'Should remove vault token entry when -Force overwrites with a non-vault-stored new entry' {
+            # Default mock returns Plaintext, so the new entry has no tokenInVault. Any vault
+            # entry from the prior add would be orphaned without the cleanup call.
+            Add-PatServer -Name 'plex' -ServerUri 'http://old:32400' -Token 'OLD-TOKEN'
+            Add-PatServer -Name 'plex' -ServerUri 'http://new:32400' -Token 'NEW-TOKEN' -Force -Confirm:$false
+
+            Should -Invoke Remove-PatServerToken -ModuleName PlexAutomationToolkit -Times 1 -ParameterFilter {
+                $ServerName -eq 'plex'
+            }
+        }
+
+        It 'Should not call Remove-PatServerToken when -Force overwrites with a vault-stored new token' {
+            # When the new -Token is stored in the vault, Set-PatServerToken has already
+            # overwritten the vault entry; calling Remove-PatServerToken would clobber it.
+            Mock -CommandName Set-PatServerToken -ModuleName PlexAutomationToolkit -MockWith {
+                param($ServerName, $Token)
+                return [PSCustomObject]@{
+                    StorageType = 'Vault'
+                    Token       = $null
+                }
+            }
+
+            Add-PatServer -Name 'plex' -ServerUri 'http://old:32400' -Token 'OLD-TOKEN'
+            Add-PatServer -Name 'plex' -ServerUri 'http://new:32400' -Token 'NEW-TOKEN' -Force -Confirm:$false
+
+            Should -Invoke Remove-PatServerToken -ModuleName PlexAutomationToolkit -Times 0
+        }
+
+        It 'Should not invoke Remove-PatServerToken or persist config when -Force overwrite is run with -WhatIf' {
+            Add-PatServer -Name 'plex' -ServerUri 'http://old:32400' -Token 'OLD-TOKEN'
+            # First add wrote the config; from here, -WhatIf must not perform any further writes.
+            Should -Invoke Set-PatServerConfiguration -ModuleName PlexAutomationToolkit -Times 1
+
+            Add-PatServer -Name 'plex' -ServerUri 'http://new:32400' -Token 'NEW-TOKEN' -Force -WhatIf
+
+            Should -Invoke Remove-PatServerToken -ModuleName PlexAutomationToolkit -Times 0
+            Should -Invoke Set-PatServerConfiguration -ModuleName PlexAutomationToolkit -Times 1
+
+            # In-memory configuration is unchanged from the first add.
+            $script:mockConfig.servers.Count | Should -Be 1
+            $script:mockConfig.servers[0].name | Should -Be 'plex'
+            $script:mockConfig.servers[0].uri | Should -Be 'http://old:32400'
+        }
+
+        It 'Should replace fields wholesale when -Force overwrites (no merge)' {
+            Add-PatServer -Name 'plex' -ServerUri 'http://old:32400' -LocalUri 'http://192.168.1.50:32400' -PreferLocal -SkipValidation
+            Add-PatServer -Name 'plex' -ServerUri 'http://new:32400' -Force -SkipValidation -Confirm:$false
+
+            $script:mockConfig.servers.Count | Should -Be 1
+            $script:mockConfig.servers[0].uri | Should -Be 'http://new:32400'
+            # Replace semantics: localUri/preferLocal from the old entry are not preserved.
+            $script:mockConfig.servers[0].PSObject.Properties['localUri'] | Should -BeNullOrEmpty
+            $script:mockConfig.servers[0].PSObject.Properties['preferLocal'] | Should -BeNullOrEmpty
+        }
+
+        It 'Should preserve other servers when -Force overwrites a single entry' {
+            Add-PatServer -Name 'keep' -ServerUri 'http://keep:32400'
+            Add-PatServer -Name 'plex' -ServerUri 'http://old:32400'
+            Add-PatServer -Name 'plex' -ServerUri 'http://new:32400' -Force -Confirm:$false
+
+            $script:mockConfig.servers.Count | Should -Be 2
+            ($script:mockConfig.servers | Where-Object { $_.name -eq 'keep' }).uri | Should -Be 'http://keep:32400'
+            ($script:mockConfig.servers | Where-Object { $_.name -eq 'plex' }).uri | Should -Be 'http://new:32400'
+        }
+
+        It 'Should not call Remove-PatServerToken when -Force adds a brand new entry' {
+            Add-PatServer -Name 'fresh' -ServerUri 'http://fresh:32400' -Force -Confirm:$false
+
+            Should -Invoke Remove-PatServerToken -ModuleName PlexAutomationToolkit -Times 0
         }
     }
 

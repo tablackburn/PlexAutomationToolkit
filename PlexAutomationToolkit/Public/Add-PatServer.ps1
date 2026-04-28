@@ -35,10 +35,15 @@ function Add-PatServer {
         Use this when adding a server that is temporarily offline or not yet configured.
 
     .PARAMETER Force
-        Suppresses all interactive prompts. When specified:
+        Suppresses interactive prompts and allows overwriting an existing server entry.
+        When specified:
+        - If a server with the same Name already exists, replaces it wholesale rather than
+          throwing. The existing entry's stored token (vault or plaintext) is removed before
+          the new entry is written. Fields not supplied on the new call are not preserved.
         - Automatically accepts HTTPS upgrade if available
         - Automatically attempts authentication if server requires it
-        Use this parameter for non-interactive scripts and automation.
+        Use this parameter for non-interactive scripts and automation, or to recover from
+        an expired token by re-running with a fresh -Token value.
 
     .PARAMETER LocalUri
         Optional local network URI for the server (e.g., http://192.168.1.100:32400).
@@ -91,6 +96,14 @@ function Add-PatServer {
 
         Adds a server with explicit local and remote URIs. The module will automatically
         use the local URI when reachable, falling back to the remote URI when not.
+
+    .EXAMPLE
+        Add-PatServer -Name "plex" -ServerUri "https://plex.example.com:32400" -Token $newToken -Force
+
+        Replaces an existing server entry named "plex" with the supplied configuration.
+        Without -Force, this would throw because the name is already in use. Use
+        Update-PatServerToken if you only need to refresh the token while preserving
+        other fields.
 
     .NOTES
         Security: If Microsoft.PowerShell.SecretManagement is installed with a registered vault,
@@ -176,9 +189,17 @@ function Add-PatServer {
 
         $configuration = Get-PatServerConfiguration -ErrorAction Stop
 
-        # Check for duplicate name
-        if ($configuration.servers | Where-Object { $_.name -eq $Name }) {
-            throw "A server with name '$Name' already exists"
+        # Check for duplicate name. Without -Force, throw so the user must opt in to clobbering.
+        # With -Force, defer the actual removal of the existing entry (and any vault token
+        # cleanup) until the ShouldProcess block below, so -WhatIf and a declined -Confirm
+        # do not destroy state.
+        $existingServer = $configuration.servers | Where-Object { $_.name -eq $Name }
+        if ($existingServer -and -not $Force) {
+            throw "A server with name '$Name' already exists. Use -Force to overwrite, or Update-PatServerToken to refresh the token in place."
+        }
+        $replaceExisting = [bool]$existingServer
+        if ($replaceExisting) {
+            Write-Verbose "Will replace existing server '$Name' (-Force specified)"
         }
 
         # If marking as default, unset other defaults
@@ -301,9 +322,18 @@ function Add-PatServer {
             Write-Verbose "Skipping server validation as requested"
         }
 
-        $configuration.servers += $newServer
-
         if ($PSCmdlet.ShouldProcess($Name, 'Add server to configuration')) {
+            if ($replaceExisting) {
+                # Strip the old entry from the working copy, then clean up its vault token
+                # if the new entry isn't vault-stored. When the new entry has tokenInVault,
+                # Set-PatServerToken (above) has already overwritten the vault entry with
+                # the new token, so removing it here would clobber that fresh value.
+                $configuration.servers = @($configuration.servers | Where-Object { $_.name -ne $Name })
+                if ($newServer.tokenInVault -ne $true) {
+                    Remove-PatServerToken -ServerName $Name
+                }
+            }
+            $configuration.servers += $newServer
             Set-PatServerConfiguration -Configuration $configuration -ErrorAction Stop
             Write-Verbose "Added server '$Name' to configuration"
 
