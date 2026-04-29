@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [0.11.2] - 2026-04-28
+
 ### Changed
 
 - The transient-error retry classification in `Invoke-PatApi` now recognizes the Windows `WSANO_DATA` (11004) error ("The requested name is valid, but no data of the requested type was found."), which can surface while DNS records are propagating or when only AAAA records are returned. The error is now retried with the existing exponential backoff instead of failing immediately.
