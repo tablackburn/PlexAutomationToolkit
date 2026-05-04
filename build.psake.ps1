@@ -21,9 +21,19 @@ properties {
     $PSBPreference.Test.OutputFile = [IO.Path]::Combine($PSScriptRoot, 'out', 'testResults.xml')
     $PSBPreference.Test.OutputFormat = 'NUnitXml'
     $PSBPreference.Test.CodeCoverage.Enabled = $true
+    # Coverage must target the staged build output, not the source tree — tests
+    # Import-Module from Output/<Name>/<Version>, so Pester only records hits
+    # against those paths. $Env:BHBuildOutput points at <root>/BuildOutput at
+    # properties-evaluation time (PowerShellBuild rewrites it later inside its
+    # tasks), so we compute the staged path from the manifest version here.
+    if (-not $Env:BHPSModuleManifest -or -not $Env:BHProjectName) {
+        throw 'Coverage configuration requires BuildHelpers env vars. Run via ./build.ps1 or call Set-BuildEnvironment first.'
+    }
+    $_moduleVersion = (Import-PowerShellDataFile -Path $Env:BHPSModuleManifest).ModuleVersion
+    $_stagedOutput = [IO.Path]::Combine($PSScriptRoot, 'Output', $Env:BHProjectName, $_moduleVersion)
     $PSBPreference.Test.CodeCoverage.Files = @(
-        "$PSScriptRoot/PlexAutomationToolkit/Public/*.ps1"
-        "$PSScriptRoot/PlexAutomationToolkit/Private/*.ps1"
+        "$_stagedOutput/Public/*.ps1"
+        "$_stagedOutput/Private/*.ps1"
     )
     $PSBPreference.Test.CodeCoverage.Threshold = 0  # Threshold enforced by Codecov
     $PSBPreference.Test.CodeCoverage.OutputFile = [IO.Path]::Combine($PSScriptRoot, 'out', 'codeCoverage.xml')
