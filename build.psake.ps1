@@ -89,8 +89,19 @@ Task -Name 'UpdateReleaseNotes' -Depends 'Build' -Description 'Set built manifes
         return
     }
     $builtManifest = Join-Path -Path $PSBPreference.Build.ModuleOutDir -ChildPath "$($PSBPreference.General.ModuleName).psd1"
-    Update-ModuleManifest -Path $builtManifest -ReleaseNotes $releaseNotes -ErrorAction Stop
-    Write-Host "  Set ReleaseNotes on built manifest from CHANGELOG [$($releaseEntry.Version)] ($($releaseNotes.Length) chars)" -ForegroundColor Gray
+    if (-not (Test-Path -Path $builtManifest)) {
+        Write-Warning "Built manifest not found at '$builtManifest'; leaving ReleaseNotes unchanged."
+        return
+    }
+    try {
+        Update-ModuleManifest -Path $builtManifest -ReleaseNotes $releaseNotes -ErrorAction Stop
+        Write-Host "  Set ReleaseNotes on built manifest from CHANGELOG [$($releaseEntry.Version)] ($($releaseNotes.Length) chars)" -ForegroundColor Gray
+    }
+    catch {
+        # Keep publishing unblocked: a failure here just leaves the manifest's existing
+        # ReleaseNotes in place rather than aborting the release.
+        Write-Warning "Failed to set ReleaseNotes on the built manifest ($($_.Exception.Message)); leaving it unchanged."
+    }
 }
 
 # Inject ReleaseNotes into the built manifest before publishing (PowerShellBuild's Publish
