@@ -52,5 +52,50 @@ Task -Name 'Init_Integration' -Description 'Load integration test environment va
     }
 }
 
+# Populate the built manifest's ReleaseNotes from the matching CHANGELOG.md entry so the
+# PowerShell Gallery release-notes panel shows the curated, user-facing notes (the same
+# content used for the GitHub release) instead of just a link. Depends on Build so the
+# staged manifest in ModuleOutDir exists; runs before Publish (see $PSBPublishDependency
+# below). Non-fatal if the changelog can't be read or has no entry for the version being
+# published, so a release is never blocked.
+Task -Name 'UpdateReleaseNotes' -Depends 'Build' -Description 'Set built manifest ReleaseNotes from the matching CHANGELOG.md entry' {
+    $changelogPath = Join-Path -Path $PSScriptRoot -ChildPath 'CHANGELOG.md'
+    if (-not (Test-Path -Path $changelogPath)) {
+        Write-Warning 'CHANGELOG.md not found; leaving ReleaseNotes unchanged.'
+        return
+    }
+
+    $moduleVersion = $PSBPreference.General.ModuleVersion
+    try {
+        Import-Module -Name 'ChangelogManagement' -ErrorAction Stop
+        $changelogData = Get-ChangelogData -Path $changelogPath -ErrorAction Stop
+    }
+    catch {
+        Write-Warning "Could not read CHANGELOG.md ($($_.Exception.Message)); leaving ReleaseNotes unchanged."
+        return
+    }
+
+    $releaseEntry = $changelogData.Released |
+        Where-Object { [string]$_.Version -eq [string]$moduleVersion } |
+        Select-Object -First 1
+    if (-not $releaseEntry) {
+        Write-Warning "No CHANGELOG.md entry found for version $moduleVersion; leaving ReleaseNotes unchanged."
+        return
+    }
+
+    $releaseNotes = $releaseEntry.RawData.Trim()
+    if ([string]::IsNullOrWhiteSpace($releaseNotes)) {
+        Write-Warning "CHANGELOG.md entry for version $moduleVersion is empty; leaving ReleaseNotes unchanged."
+        return
+    }
+    $builtManifest = Join-Path -Path $PSBPreference.Build.ModuleOutDir -ChildPath "$($PSBPreference.General.ModuleName).psd1"
+    Update-ModuleManifest -Path $builtManifest -ReleaseNotes $releaseNotes -ErrorAction Stop
+    Write-Host "  Set ReleaseNotes on built manifest from CHANGELOG [$($releaseEntry.Version)] ($($releaseNotes.Length) chars)" -ForegroundColor Gray
+}
+
+# Inject ReleaseNotes into the built manifest before publishing (PowerShellBuild's Publish
+# defaults to depending only on 'Test').
+$PSBPublishDependency = @('Test', 'UpdateReleaseNotes')
+
 # Note: -Depends replaces PowerShellBuild's default dependencies, so we must include Pester and Analyze explicitly
 Task -Name 'Test' -FromModule 'PowerShellBuild' -MinimumVersion '0.7.3' -Depends 'Init_Integration', 'Pester', 'Analyze'
