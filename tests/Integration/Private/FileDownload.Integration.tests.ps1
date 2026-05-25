@@ -47,6 +47,7 @@ BeforeAll {
     function Wait-ServerReady {
         param(
             [Parameter(Mandatory)]
+            [ValidateNotNullOrEmpty()]
             [string]$SignalFile,
             [int]$TimeoutMs = 5000,
             [int]$PollIntervalMs = 50
@@ -132,15 +133,28 @@ BeforeAll {
             return $result
         } -ArgumentList $Port, $ResponseData, $StatusCode, $CaptureHeaders.IsPresent, $readySignalFile
 
-        # Wait for server to signal it is ready to accept HTTP requests
-        $ready = Wait-ServerReady -SignalFile $readySignalFile -TimeoutMs 5000
-        if (-not $ready) {
-            throw "Server failed to become ready on port $Port within timeout"
+        # Wait for server to signal it is ready to accept HTTP requests. Wrap the
+        # wait so a failed startup always stops the background job and removes the
+        # readiness signal file instead of leaking them.
+        try {
+            $ready = Wait-ServerReady -SignalFile $readySignalFile -TimeoutMs 5000
+            if (-not $ready) {
+                throw "Server failed to become ready on port $Port within timeout"
+            }
         }
-
-        # Clean up signal file
-        if (Test-Path -Path $readySignalFile) {
-            Remove-Item -Path $readySignalFile -Force
+        catch {
+            $startupError = $_
+            # Stop and remove the background job so a failed startup does not leak
+            # the HttpListener and its 30-second GetContextAsync wait.
+            $job | Stop-Job -ErrorAction 'SilentlyContinue'
+            $job | Remove-Job -Force -ErrorAction 'SilentlyContinue'
+            throw $startupError
+        }
+        finally {
+            # Always remove the readiness signal file, even when readiness times out.
+            if (Test-Path -Path $readySignalFile) {
+                Remove-Item -Path $readySignalFile -Force
+            }
         }
 
         return $job
