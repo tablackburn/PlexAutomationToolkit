@@ -10,13 +10,12 @@ properties {
     # Set this to $true to create a module with a monolithic PSM1
     $PSBPreference.Build.CompileModule = $false
     $PSBPreference.Help.DefaultLocale = 'en-US'
-    # Workaround: PSScriptAnalyzer has a bug on non-Windows platforms when loading settings files
-    # Disable in-build analysis on Linux and macOS; the dedicated PSScriptAnalyzer Lint job provides coverage
-    # Note: $IsLinux and $IsMacOS are undefined ($null/falsy) in Windows PowerShell 5.x,
-    # so this correctly keeps ScriptAnalysis enabled there
-    if ($IsLinux -or $IsMacOS) {
-        $PSBPreference.Test.ScriptAnalysis.Enabled = $false
-    }
+    # Analyze against the repo's own PSScriptAnalyzer ruleset instead of PowerShellBuild's
+    # bundled default. Analysis runs on every platform: loading a settings file no longer
+    # crashes PSScriptAnalyzer on Linux/macOS (verified 2026-05 on pwsh 7.5), so the previous
+    # non-Windows disable is no longer needed.
+    $PSBPreference.Test.ScriptAnalysis.SettingsPath =
+        Join-Path -Path $PSScriptRoot -ChildPath 'PSScriptAnalyzerSettings.psd1'
     # Use absolute paths for test output (relative paths resolve from tests directory)
     $PSBPreference.Test.OutputFile = [IO.Path]::Combine($PSScriptRoot, 'out', 'testResults.xml')
     $PSBPreference.Test.OutputFormat = 'NUnitXml'
@@ -108,5 +107,56 @@ Task -Name 'UpdateReleaseNotes' -Depends 'Build' -Description 'Set built manifes
 # defaults to depending only on 'Test').
 $PSBPublishDependency = @('Test', 'UpdateReleaseNotes')
 
-# Note: -Depends replaces PowerShellBuild's default dependencies, so we must include Pester and Analyze explicitly
-Task -Name 'Test' -FromModule 'PowerShellBuild' -MinimumVersion '0.7.3' -Depends 'Init_Integration', 'Pester', 'Analyze'
+# Note: -Depends replaces PowerShellBuild's default dependencies, so we must include Pester and
+# our own analysis task explicitly. We depend on a custom 'Lint' task (defined below) instead of
+# PowerShellBuild's 'Analyze', because that task never fails the build: its Test-PSBuildScriptAnalysis
+# - in every released PowerShellBuild version (through 0.8.0) and on its main branch - filters
+# results with '$_Severity' (an undefined variable) instead of '$_.Severity', so its error/warning
+# counts are always zero (upstream psake/PowerShellBuild#125). psake won't let us redefine the
+# 'Analyze' task it loads via -FromModule (duplicate-name error), so we leave it unused and run our
+# own task under a distinct name.
+Task -Name 'Test' -FromModule 'PowerShellBuild' -MinimumVersion '0.7.3' -Depends 'Init_Integration', 'Pester', 'Lint'
+
+Task -Name 'Lint' -Depends 'Build' -Description 'Run PSScriptAnalyzer against the built module and fail on the configured severity threshold' {
+    if (-not $PSBPreference.Test.ScriptAnalysis.Enabled) {
+        Write-Host 'Script analysis is disabled; skipping.'
+        return
+    }
+
+    $analyzeParameters = @{
+        Path     = $PSBPreference.Build.ModuleOutDir
+        Settings = $PSBPreference.Test.ScriptAnalysis.SettingsPath
+        Recurse  = $true
+    }
+    $analysisResult = Invoke-ScriptAnalyzer @analyzeParameters
+    if ($analysisResult) {
+        $analysisResult | Format-Table -AutoSize | Out-String | Write-Host
+    }
+
+    # Count ParseError (unparseable/syntax-broken files) as an error too - PSScriptAnalyzer
+    # reports those with Severity 'ParseError', which would otherwise bypass the 'Error' gate.
+    $errorCount = @($analysisResult).Where({ $_.Severity -eq 'Error' -or $_.Severity -eq 'ParseError' }).Count
+    $warningCount = @($analysisResult).Where({ $_.Severity -eq 'Warning' }).Count
+    $informationCount = @($analysisResult).Where({ $_.Severity -eq 'Information' }).Count
+
+    $failOnSeverity = $PSBPreference.Test.ScriptAnalysis.FailBuildOnSeverityLevel
+    switch ($failOnSeverity) {
+        'Error' {
+            if ($errorCount -gt 0) {
+                throw "PSScriptAnalyzer found $errorCount error(s)."
+            }
+        }
+        'Warning' {
+            if ($errorCount -gt 0 -or $warningCount -gt 0) {
+                throw "PSScriptAnalyzer found $errorCount error(s) and $warningCount warning(s)."
+            }
+        }
+        default {
+            if ($errorCount -gt 0 -or $warningCount -gt 0 -or $informationCount -gt 0) {
+                throw "PSScriptAnalyzer found $errorCount error(s), $warningCount warning(s), and $informationCount information record(s)."
+            }
+        }
+    }
+
+    Write-Host "PSScriptAnalyzer passed (errors: $errorCount, warnings: $warningCount, information: $informationCount; fail level: $failOnSeverity)."
+}
