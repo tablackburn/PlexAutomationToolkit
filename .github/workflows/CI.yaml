@@ -161,6 +161,13 @@ jobs:
     name: Integration Tests (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     timeout-minutes: 90
+    # Integration tests hit a shared, live Plex server, so they must not run concurrently.
+    # A constant group (no matrix.os, no ref) serializes every integration job in this repo -
+    # including the ubuntu and windows matrix legs of a single run - and cancel-in-progress is
+    # false so a running suite is never interrupted; newer queued runs simply wait.
+    concurrency:
+      group: ${{ github.workflow }}-integration
+      cancel-in-progress: false
     # Only run for pushes to main or PRs from the same repo (has access to secrets)
     if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
     needs: [unit-tests, unit-tests-ps51]
