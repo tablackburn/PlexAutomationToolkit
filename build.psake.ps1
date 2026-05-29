@@ -128,7 +128,32 @@ Task -Name 'Lint' -Depends 'Build' -Description 'Run PSScriptAnalyzer against th
         Settings = $PSBPreference.Test.ScriptAnalysis.SettingsPath
         Recurse  = $true
     }
-    $analysisResult = Invoke-ScriptAnalyzer @analyzeParameters
+    # PSScriptAnalyzer 1.25.0 intermittently throws a NullReferenceException
+    # ("Object reference not set to an instance of an object.") from inside the
+    # analyzer engine - a transient failure that has struck both Linux and Windows
+    # CI runners (PRs #65 and #66) on otherwise-passing builds. It is not a code
+    # defect and clears on a retry, so attempt the analysis a few times, retrying
+    # only that specific null reference and letting any genuine error surface
+    # immediately.
+    $maxAnalysisAttempts = 3
+    $analysisResult = $null
+    for ($analysisAttempt = 1; $analysisAttempt -le $maxAnalysisAttempts; $analysisAttempt++) {
+        try {
+            $analysisResult = Invoke-ScriptAnalyzer @analyzeParameters
+            break
+        }
+        catch {
+            $isTransientNullReference =
+                $_.Exception -is [NullReferenceException] -or
+                $_.Exception.InnerException -is [NullReferenceException] -or
+                $_.Exception.Message -like '*Object reference not set to an instance of an object*'
+            if (-not $isTransientNullReference -or $analysisAttempt -eq $maxAnalysisAttempts) {
+                throw
+            }
+            Write-Warning "PSScriptAnalyzer threw a transient null reference on attempt $analysisAttempt of $maxAnalysisAttempts; retrying. ($($_.Exception.Message))"
+            Start-Sleep -Seconds 1
+        }
+    }
     if ($analysisResult) {
         $analysisResult | Format-Table -AutoSize | Out-String | Write-Host
     }
