@@ -46,7 +46,7 @@ jobs:
           else {
             Write-Host "Installing PSScriptAnalyzer $requiredVersion..."
             Set-PSRepository -Name 'PSGallery' -InstallationPolicy 'Trusted'
-            Install-Module -Name 'PSScriptAnalyzer' -RequiredVersion $requiredVersion -Force -Scope 'CurrentUser'
+            Install-Module -Name 'PSScriptAnalyzer' -RequiredVersion $requiredVersion -Force -Scope 'CurrentUser' -ErrorAction 'Stop'
           }
 
       - name: Run PSScriptAnalyzer
@@ -58,7 +58,7 @@ jobs:
           # dynamic assembly in this version of the runtime."
           $manifest = Import-PowerShellDataFile -Path './build.depend.psd1'
           $requiredVersion = $manifest['PSScriptAnalyzer'].Version
-          Import-Module -Name 'PSScriptAnalyzer' -RequiredVersion $requiredVersion -Force
+          Import-Module -Name 'PSScriptAnalyzer' -RequiredVersion $requiredVersion -Force -ErrorAction 'Stop'
 
           $results = Invoke-ScriptAnalyzer -Path ./PlexAutomationToolkit -Recurse -Settings PSGallery -ReportSummary
           $errors = $results | Where-Object { $_.Severity -eq 'Error' }
