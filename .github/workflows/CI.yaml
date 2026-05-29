@@ -18,7 +18,6 @@ jobs:
       - uses: actions/checkout@v6
 
       - name: Cache PowerShell modules
-        id: cache-lint-modules
         uses: actions/cache@v5
         with:
           path: ~/.local/share/powershell/Modules
@@ -27,31 +26,40 @@ jobs:
             ${{ runner.os }}-psmodules-lint-
 
       - name: Install PSScriptAnalyzer
-        if: steps.cache-lint-modules.outputs.cache-hit != 'true'
         shell: pwsh
         run: |
-          $moduleFound = Get-Module -ListAvailable -Name PSScriptAnalyzer
-          if ($moduleFound) {
-            try {
-              Import-Module PSScriptAnalyzer -Force -ErrorAction Stop
-              Get-Command Invoke-ScriptAnalyzer -ErrorAction Stop | Out-Null
-              Write-Host 'PSScriptAnalyzer already available'
-            }
-            catch {
-              Write-Host 'PSScriptAnalyzer cache appears invalid; reinstalling...'
-              Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
-              Install-Module -Name PSScriptAnalyzer -Force -Scope CurrentUser
-            }
+          # Pin to the same version the rest of the build uses (build.depend.psd1) so the
+          # lint job never loads a version that mismatches the runner's PowerShell runtime.
+          $manifest = Import-PowerShellDataFile -Path './build.depend.psd1'
+          $requiredVersion = $manifest['PSScriptAnalyzer'].Version
+          if (-not $requiredVersion) {
+            throw 'PSScriptAnalyzer version not found in build.depend.psd1'
+          }
+
+          # Verify the exact version is present even on a cache hit; a cache restored from an
+          # earlier (unpinned) run can hold a different version, so check before trusting it.
+          $installed = Get-Module -ListAvailable -Name 'PSScriptAnalyzer' |
+            Where-Object { $_.Version -eq $requiredVersion }
+          if ($installed) {
+            Write-Host "PSScriptAnalyzer $requiredVersion already available"
           }
           else {
-            Write-Host 'Installing PSScriptAnalyzer...'
-            Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
-            Install-Module -Name PSScriptAnalyzer -Force -Scope CurrentUser
+            Write-Host "Installing PSScriptAnalyzer $requiredVersion..."
+            Set-PSRepository -Name 'PSGallery' -InstallationPolicy 'Trusted'
+            Install-Module -Name 'PSScriptAnalyzer' -RequiredVersion $requiredVersion -Force -Scope 'CurrentUser'
           }
 
       - name: Run PSScriptAnalyzer
         shell: pwsh
         run: |
+          # Import the pinned version explicitly so exactly one PSScriptAnalyzer assembly loads.
+          # Without this, a bare Invoke-ScriptAnalyzer can auto-load the runner image's bundled
+          # copy alongside the cached one and crash with "more than one dynamic module in each
+          # dynamic assembly in this version of the runtime."
+          $manifest = Import-PowerShellDataFile -Path './build.depend.psd1'
+          $requiredVersion = $manifest['PSScriptAnalyzer'].Version
+          Import-Module -Name 'PSScriptAnalyzer' -RequiredVersion $requiredVersion -Force
+
           $results = Invoke-ScriptAnalyzer -Path ./PlexAutomationToolkit -Recurse -Settings PSGallery -ReportSummary
           $errors = $results | Where-Object { $_.Severity -eq 'Error' }
 
