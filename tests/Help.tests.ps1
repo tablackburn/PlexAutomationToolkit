@@ -70,10 +70,10 @@ BeforeDiscovery {
     build the module. #>
     if ($null -eq $Env:BHBuildOutput) {
         # Populate BuildHelpers env vars so build.psake.ps1's properties block has
-        # the values it needs (BHPSModuleManifest, BHProjectName) — when running
+        # the values it needs (BHPSModuleManifest, BHProjectName) - when running
         # via ./build.ps1 this happens before psake; running tests in isolation
         # bypasses that, so we do it here.
-        Set-BuildEnvironment -Path (Split-Path -Parent $PSScriptRoot) -Force
+        Set-BuildEnvironment -Path (Split-Path -Path $PSScriptRoot -Parent) -Force
         $buildFilePath = Join-Path -Path $PSScriptRoot -ChildPath '..\build.psake.ps1'
         $invokePsakeParameters = @{
             TaskList  = 'Build'
@@ -83,10 +83,10 @@ BeforeDiscovery {
     }
 
     # PowerShellBuild outputs to Output/<ModuleName>/<Version>/, override BHBuildOutput
-    $projectRoot = Split-Path -Parent $PSScriptRoot
-    $sourceManifest = Join-Path $projectRoot "$Env:BHProjectName/$Env:BHProjectName.psd1"
-    $moduleVersion = (Import-PowerShellDataFile -Path $sourceManifest).ModuleVersion
-    $Env:BHBuildOutput = Join-Path $projectRoot "Output/$Env:BHProjectName/$moduleVersion"
+    $projectRoot = Split-Path -Path $PSScriptRoot -Parent
+    $sourceManifest = Join-Path -Path $projectRoot -ChildPath "$Env:BHProjectName/$Env:BHProjectName.psd1"
+    $moduleVersion = (Import-PowerShellDataFile $sourceManifest).ModuleVersion
+    $Env:BHBuildOutput = Join-Path -Path $projectRoot -ChildPath "Output/$Env:BHProjectName/$moduleVersion"
 
     # Define the path to the module manifest
     $moduleManifestFilename = $Env:BHProjectName + '.psd1'
@@ -105,7 +105,7 @@ BeforeDiscovery {
 
     # Remove all versions of the module from the session. Pester can't handle multiple versions.
     Get-Module $Env:BHProjectName | Remove-Module -Force -ErrorAction 'Ignore'
-    Import-Module -Name $moduleManifestPath -Verbose:$false -ErrorAction 'Stop'
+    Import-Module $moduleManifestPath -Verbose:$false -ErrorAction 'Stop'
 
     # Get module commands
     $getCommandParameters = @{
@@ -128,10 +128,10 @@ BeforeAll {
     build the module. #>
     if ($null -eq $Env:BHBuildOutput) {
         # Populate BuildHelpers env vars so build.psake.ps1's properties block has
-        # the values it needs (BHPSModuleManifest, BHProjectName) — when running
+        # the values it needs (BHPSModuleManifest, BHProjectName) - when running
         # via ./build.ps1 this happens before psake; running tests in isolation
         # bypasses that, so we do it here.
-        Set-BuildEnvironment -Path (Split-Path -Parent $PSScriptRoot) -Force
+        Set-BuildEnvironment -Path (Split-Path -Path $PSScriptRoot -Parent) -Force
         $buildFilePath = Join-Path -Path $PSScriptRoot -ChildPath '..\build.psake.ps1'
         $invokePsakeParameters = @{
             TaskList  = 'Build'
@@ -149,10 +149,10 @@ Describe "Test help for <_.Name>" -ForEach $commands {
         # -ForEach, which Pester evaluates during discovery (before BeforeAll runs).
         $command               = $_
         $commandName           = $command.Name
-        $commandHelp           = Get-Help -Name $command.Name -ErrorAction 'SilentlyContinue'
-        $commandParameters     = global:FilterOutCommonParameters -Parameters $command.ParameterSets.Parameters
+        $commandHelp           = Get-Help $command.Name -ErrorAction 'SilentlyContinue'
+        $commandParameters     = global:FilterOutCommonParameters $command.ParameterSets.Parameters
         $commandParameterNames = $commandParameters.Name
-        $helpParameters        = global:FilterOutCommonParameters -Parameters $commandHelp.Parameters.Parameter
+        $helpParameters        = global:FilterOutCommonParameters $commandHelp.Parameters.Parameter
         $helpParameterNames    = $helpParameters.Name
         $helpLinks             = $commandHelp.relatedLinks.navigationLink.uri | Where-Object { $_ -match '^https?://' }
     }
@@ -161,10 +161,10 @@ Describe "Test help for <_.Name>" -ForEach $commands {
         # These variables are needed in both discovery and test phases so we need to duplicate them here
         $command                = $_
         $commandName            = $_.Name
-        $commandHelp            = Get-Help -Name $command.Name -ErrorAction 'SilentlyContinue'
-        $commandParameters      = global:FilterOutCommonParameters -Parameters $command.ParameterSets.Parameters
+        $commandHelp            = Get-Help $command.Name -ErrorAction 'SilentlyContinue'
+        $commandParameters      = global:FilterOutCommonParameters $command.ParameterSets.Parameters
         $commandParameterNames  = $commandParameters.Name
-        $helpParameters         = global:FilterOutCommonParameters -Parameters $commandHelp.Parameters.Parameter
+        $helpParameters         = global:FilterOutCommonParameters $commandHelp.Parameters.Parameter
         $helpParameterNames     = $helpParameters.Name
     }
 
