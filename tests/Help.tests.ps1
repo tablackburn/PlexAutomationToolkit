@@ -70,7 +70,7 @@ BeforeDiscovery {
     build the module. #>
     if ($null -eq $Env:BHBuildOutput) {
         # Populate BuildHelpers env vars so build.psake.ps1's properties block has
-        # the values it needs (BHPSModuleManifest, BHProjectName) — when running
+        # the values it needs (BHPSModuleManifest, BHProjectName) - when running
         # via ./build.ps1 this happens before psake; running tests in isolation
         # bypasses that, so we do it here.
         Set-BuildEnvironment -Path (Split-Path -Path $PSScriptRoot -Parent) -Force
@@ -128,7 +128,7 @@ BeforeAll {
     build the module. #>
     if ($null -eq $Env:BHBuildOutput) {
         # Populate BuildHelpers env vars so build.psake.ps1's properties block has
-        # the values it needs (BHPSModuleManifest, BHProjectName) — when running
+        # the values it needs (BHPSModuleManifest, BHProjectName) - when running
         # via ./build.ps1 this happens before psake; running tests in isolation
         # bypasses that, so we do it here.
         Set-BuildEnvironment -Path (Split-Path -Path $PSScriptRoot -Parent) -Force
