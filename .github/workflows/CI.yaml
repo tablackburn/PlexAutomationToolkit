@@ -38,7 +38,7 @@ jobs:
           ./build.ps1 -Task Build,Test -Bootstrap
 
       - name: Upload Coverage to Codecov
-        uses: codecov/codecov-action@v6
+        uses: codecov/codecov-action@v7
         if: success()
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
@@ -76,7 +76,7 @@ jobs:
           ./build.ps1 -Task Build,Test -Bootstrap
 
       - name: Upload Coverage to Codecov
-        uses: codecov/codecov-action@v6
+        uses: codecov/codecov-action@v7
         if: success()
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
