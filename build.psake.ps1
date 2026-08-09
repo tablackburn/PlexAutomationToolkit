@@ -19,7 +19,7 @@ properties {
     # Use absolute paths for test output (relative paths resolve from tests directory)
     $PSBPreference.Test.OutputFile = [IO.Path]::Combine($PSScriptRoot, 'out', 'testResults.xml')
     $PSBPreference.Test.OutputFormat = 'NUnitXml'
-    $PSBPreference.Test.CodeCoverage.Enabled = $true
+    $PSBPreference.Test.CodeCoverage.Enabled = $false # TEMPORARY DIAGNOSTIC - REVERT
     # Coverage must target the staged build output, not the source tree — tests
     # Import-Module from Output/<Name>/<Version>, so Pester only records hits
     # against those paths. $Env:BHBuildOutput points at <root>/BuildOutput at
