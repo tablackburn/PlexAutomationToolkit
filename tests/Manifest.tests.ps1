@@ -157,7 +157,11 @@ Describe 'Module manifest' {
             $changelogVersion -as [Version] | Should -Be ( $manifestData.Version -as [Version] )
         }
 
-        Context 'Module Dependency' -ForEach $dependencies {
+        # -AllowNullOrEmptyForEach: the manifest currently declares no RequiredModules, so
+        # $dependencies is empty. Pester 6 throws on a null/empty -ForEach by default
+        # (Run.FailOnNullOrEmptyForEach), failing the whole container during discovery
+        # instead of simply generating no dependency tests.
+        Context 'Module Dependency' -ForEach $dependencies -AllowNullOrEmptyForEach {
             # This ensures we keep our dependant modules in sync between the manifest file and the requirements
             # script used to bootstrap and test.
             BeforeAll {
