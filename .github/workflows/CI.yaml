@@ -97,9 +97,16 @@ jobs:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 90
     # Integration tests hit a shared, live Plex server, so they must not run concurrently.
-    # A constant group (no matrix.os, no ref) serializes every integration job in this repo -
-    # including the ubuntu and windows matrix legs of a single run - and cancel-in-progress is
-    # false so a running suite is never interrupted; newer queued runs simply wait.
+    # A constant group (no matrix.os, no ref) serializes every integration job in this repo,
+    # and cancel-in-progress is false so a running suite is never interrupted.
+    #
+    # A concurrency group holds only one running job plus one waiting job; a third arrival
+    # cancels whichever job was waiting. cancel-in-progress only protects the running slot,
+    # never the waiting one. Both matrix legs are created at the same instant once 'needs'
+    # is satisfied, so without max-parallel below they land in that single waiting slot
+    # together and the second one cancels the first - the ubuntu leg was cancelled this way
+    # before it ran a single step. max-parallel serializes the legs within the run so only
+    # one is ever queued here, leaving the group to serialize across runs as intended.
     concurrency:
       group: ${{ github.workflow }}-integration
       cancel-in-progress: false
@@ -108,6 +115,7 @@ jobs:
     needs: [unit-tests, unit-tests-ps51]
     strategy:
       fail-fast: false
+      max-parallel: 1
       matrix:
         os: [ubuntu-latest, windows-latest]
     steps:
