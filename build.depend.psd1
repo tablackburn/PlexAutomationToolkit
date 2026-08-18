@@ -8,7 +8,15 @@
         }
     }
     'Pester'           = @{
-        Version    = '6.0.1'
+        # Not an exact version. Pester 6 discovers each test file separately and
+        # autoloads Pester to resolve Describe; autoload always selects the highest
+        # installed version, overriding whatever was explicitly imported. So a pin
+        # below the runner image's Pester collides:
+        #   Could not load file or assembly 'Pester, Version=6.0.1.0'.
+        #   Assembly with same name is already loaded
+        # which is how CI here broke with no commit to blame. The pin was never
+        # authoritative; it only guaranteed breakage on every Pester release.
+        Version    = 'latest'
         Parameters = @{
             SkipPublisherCheck = $true
         }
